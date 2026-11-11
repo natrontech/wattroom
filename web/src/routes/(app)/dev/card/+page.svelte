@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import LandingHero from '$lib/brand/LandingHero.svelte';
-	import Logo from '$lib/brand/Logo.svelte';
-	import { SITE_PAGES } from '$lib/site/pages';
-	import { LANDING } from '$lib/site/seo';
+	import LandingHero from '#lib/brand/LandingHero.svelte';
+	import Logo from '#lib/brand/Logo.svelte';
+	import { SITE_PAGES } from '#lib/site/pages.ts';
+	import { LANDING } from '#lib/site/seo.ts';
 
 	// The share card for a public page (#2995), drawn with the real brand
 	// components and shot by `make screenshots` into web/static/cards/ — the

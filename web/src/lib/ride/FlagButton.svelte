@@ -4,7 +4,7 @@
 	// the same icon — and only the session's carried the consent the tap needs.
 	// The phone remote's Flag is this button (ride-controls.ts): it is
 	// offered while the button is live, and counted when it takes.
-	import { tooltip } from '$lib/tooltip.svelte';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
 	import { CONTROLS } from './ride-controls';
 	import { rideOffers } from './ride-offers.svelte';
 	import { FLAG_ASKS } from './flag';

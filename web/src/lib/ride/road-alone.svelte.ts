@@ -1,15 +1,15 @@
-import type { Trainer } from '$lib/ble/trainer';
-import { countClimbed } from '$lib/ride/climbed-count.svelte';
-import { createProfileStore } from '$lib/profile.svelte';
-import type { createRideFlags } from '$lib/ride/flags.svelte';
-import { createFreeRide, freeRideLabel } from '$lib/ride/free-ride.svelte';
-import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
-import { createPacer } from '$lib/ride/pacer.svelte';
-import { rememberRoad } from '$lib/ride/last-ride';
-import type { RideableRoute } from '$lib/ride/roads';
-import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
-import { sensors } from '$lib/sensors.svelte';
-import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
+import type { Trainer } from '#lib/ble/trainer.ts';
+import { countClimbed } from '#lib/ride/climbed-count.svelte.ts';
+import { createProfileStore } from '#lib/profile.svelte.ts';
+import type { createRideFlags } from '#lib/ride/flags.svelte.ts';
+import { createFreeRide, freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+import { createGhostSplit } from '#lib/ride/ghost-split.svelte.ts';
+import { createPacer } from '#lib/ride/pacer.svelte.ts';
+import { rememberRoad } from '#lib/ride/last-ride.ts';
+import type { RideableRoute } from '#lib/ride/roads.ts';
+import { createSoloRoadRide } from '#lib/ride/solo-road.svelte.ts';
+import { sensors } from '#lib/sensors.svelte.ts';
+import { SIGNAL_LOST_MS } from '#lib/workout/ride-state.ts';
 
 /**
  * A free ride alone on a road (#3027), held as the device's one ride

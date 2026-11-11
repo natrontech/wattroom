@@ -1,25 +1,25 @@
 import { goto } from '$app/navigation';
-import { account } from '$lib/account.svelte';
-import { confirm } from '$lib/confirm.svelte';
+import { account } from '#lib/account.svelte.ts';
+import { confirm } from '#lib/confirm.svelte.ts';
 import {
 	inviteLink,
 	leaveCrew,
 	setCrewRole,
 	transferCrew,
 	type CrewPerson,
-} from '$lib/crew';
+} from '#lib/crew.ts';
 import {
 	deleteChannel,
 	deleteChannelWarning,
 	deleteLabel,
 	type ChannelKind,
-} from '$lib/channels';
-import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
-import { presence } from '$lib/presence.svelte';
-import { channelConnection } from '$lib/channel/connection.svelte';
-import type { CrewRef } from '$lib/crew-types';
-import { shareLink } from '$lib/share';
-import { toasts } from '$lib/toast.svelte';
+} from '#lib/channels.ts';
+import { chosenCrew } from '#lib/nav/chosen-crew.svelte.ts';
+import { presence } from '#lib/presence.svelte.ts';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
+import type { CrewRef } from '#lib/crew-types.ts';
+import { shareLink } from '#lib/share.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /**
  * Leaving a crew, from wherever it is offered — the crew page (#1228) and the

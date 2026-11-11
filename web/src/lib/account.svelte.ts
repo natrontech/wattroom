@@ -7,10 +7,10 @@
  * read; signing in syncs the server copy into it, so nothing ride-side needs to
  * know accounts exist.
  */
-import { api } from '$lib/api';
-import { STOCK_CHEERS } from '$lib/icons';
-import { people } from '$lib/people.svelte';
-import type { StatusLine } from '$lib/protocol';
+import { api } from '#lib/api.ts';
+import { STOCK_CHEERS } from '#lib/icons.ts';
+import { people } from '#lib/people.svelte.ts';
+import type { StatusLine } from '#lib/protocol.ts';
 
 export type ProfileSource = 'default' | 'manual' | 'ramp';
 

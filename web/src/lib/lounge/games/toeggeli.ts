@@ -3,9 +3,9 @@
  * (server/internal/hub/toeggeli_table.go). The hub runs it; a screen only
  * draws the table and sends its rider's rods and button.
  */
-import type { ToeggeliState } from '$lib/protocol';
-import { initialsOf } from '$lib/lounge/memory';
-import { LOUNGE as C } from '$lib/lounge/palette';
+import type { ToeggeliState } from '#lib/protocol.ts';
+import { initialsOf } from '#lib/lounge/memory.ts';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
 import {
 	outlined,
 	rect,
@@ -13,7 +13,7 @@ import {
 	text,
 	textWidth,
 	type Ctx,
-} from '$lib/lounge/pixel';
+} from '#lib/lounge/pixel.ts';
 import { SCREEN_H as H, SCREEN_W as W } from './game';
 
 /** The field on the screen: the table's 0 to 1 along and across. */

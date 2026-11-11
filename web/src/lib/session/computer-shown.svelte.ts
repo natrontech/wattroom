@@ -1,4 +1,4 @@
-import type { CameraPreset } from '$lib/world/cameras';
+import type { CameraPreset } from '#lib/world/cameras.ts';
 import type { ComputerPage } from './computer-pages';
 
 /**

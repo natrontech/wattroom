@@ -18,17 +18,21 @@ import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
 import User from '@lucide/svelte/icons/user';
 import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
-import { api } from '$lib/api';
-import { friends, type Friend } from '$lib/friends/friends.svelte';
-import { hiddenRiders } from '$lib/hidden-riders.svelte';
-import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
-import { connectionInfo } from '$lib/channel/connection-info.svelte';
-import { channelConnection } from '$lib/channel/connection.svelte';
-import { RIDER_FADER } from '$lib/sound/fader';
-import { mixer } from '$lib/sound/mixer.svelte';
-import { people } from '$lib/people.svelte';
-import { pokeFriend, threadOf } from '$lib/poke';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import { friends, type Friend } from '#lib/friends/friends.svelte.ts';
+import { hiddenRiders } from '#lib/hidden-riders.svelte.ts';
+import type {
+	MenuEntry,
+	MenuItem,
+	MenuSlider,
+} from '#lib/context-menu.svelte.ts';
+import { connectionInfo } from '#lib/channel/connection-info.svelte.ts';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
+import { RIDER_FADER } from '#lib/sound/fader.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import { people } from '#lib/people.svelte.ts';
+import { pokeFriend, threadOf } from '#lib/poke.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /**
  * Asking by id is allowed across a shared channel (ADR-0024), so the menu never

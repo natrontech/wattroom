@@ -1,12 +1,12 @@
 <script lang="ts">
 	import Check from '@lucide/svelte/icons/check';
-	import CompareTable from '$lib/site/CompareTable.svelte';
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import { RIVALS } from '$lib/site/rivals';
-	import { article, CHECKED, monthYear, versusPage } from '$lib/site/seo';
+	import CompareTable from '#lib/site/CompareTable.svelte';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import { RIVALS } from '#lib/site/rivals.ts';
+	import { article, CHECKED, monthYear, versusPage } from '#lib/site/seo.ts';
 
 	// WattRoom beside one rival (#2995): a disclosure, their best case made
 	// fairly, and sources for every claim about them.

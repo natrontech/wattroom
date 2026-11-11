@@ -4,23 +4,23 @@
 	// went with M9 the channel said nothing about it. Its time, the crew's
 	// answers, and — once it is due — a Start that starts it the way the
 	// Schedule does, so the plan is marked and stops offering itself.
-	import { useChannel } from '$lib/channel/context';
+	import { useChannel } from '#lib/channel/context.ts';
 	import { goto } from '$app/navigation';
 	import {
 		planDue,
 		pressAnswer,
 		startCrewPlan,
 		startedPath,
-	} from '$lib/crew-schedule';
-	import { device } from '$lib/device.svelte';
-	import { formatWhen } from '$lib/format';
-	import { rideFirstHref } from '$lib/session/ride-first';
-	import { serverNow } from '$lib/server-clock';
-	import RsvpRow from '$lib/session/RsvpRow.svelte';
-	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
-	import { needsTrainer } from '$lib/session/sensor-status';
-	import type { RsvpAnswer } from '$lib/session/rsvp';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/crew-schedule.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { formatWhen } from '#lib/format.ts';
+	import { rideFirstHref } from '#lib/session/ride-first.ts';
+	import { serverNow } from '#lib/server-clock.ts';
+	import RsvpRow from '#lib/session/RsvpRow.svelte';
+	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
+	import { needsTrainer } from '#lib/session/sensor-status.ts';
+	import type { RsvpAnswer } from '#lib/session/rsvp.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Check from '@lucide/svelte/icons/check';
 	import X from '@lucide/svelte/icons/x';
@@ -74,10 +74,7 @@
 			return;
 		}
 		// To the ride, where the count-in is (#2599).
-		void goto(startedPath(channel.address.crew, res.data), {
-			keepFocus: true,
-			noScroll: true,
-		});
+		void goto(startedPath(channel.address.crew, res.data), { reset: false });
 	}
 	async function choose(word: RsvpAnswer) {
 		if (!plan) return;

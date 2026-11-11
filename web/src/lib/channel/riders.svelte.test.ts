@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import { flushSync } from 'svelte';
 import { describe, expect, it } from 'vitest';
-import type { ServerTick } from '$lib/protocol';
-import { packRoad, type Road } from '$lib/road/road';
-import { flatten } from '$lib/workout/engine';
-import type { Workout } from '$lib/workout/types';
+import type { ServerTick } from '#lib/protocol.ts';
+import { packRoad, type Road } from '#lib/road/road.ts';
+import { flatten } from '#lib/workout/engine.ts';
+import type { Workout } from '#lib/workout/types.ts';
 import { createRiders } from './riders.svelte';
 
 // The crew's cut a session's pick carries (#3639): 3 km, a kilometre flat,

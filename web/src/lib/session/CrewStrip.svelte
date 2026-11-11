@@ -12,14 +12,14 @@
 	//
 	// Lifted out of the Training place when the phone got the same strip
 	// (#412) — one definition, so the desktop and the phone cannot drift.
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import { zoneOf } from '$lib/components/zones';
-	import { wkg } from '$lib/format';
-	import { useChannel } from '$lib/channel/context';
-	import { contextMenu } from '$lib/context-menu.svelte';
-	import { crewMenu } from '$lib/session/crew-menu';
-	import type { LiveRider } from '$lib/channel/types';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import { zoneOf } from '#lib/components/zones.ts';
+	import { wkg } from '#lib/format.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { contextMenu } from '#lib/context-menu.svelte.ts';
+	import { crewMenu } from '#lib/session/crew-menu.ts';
+	import type { LiveRider } from '#lib/channel/types.ts';
 
 	let {
 		riders,

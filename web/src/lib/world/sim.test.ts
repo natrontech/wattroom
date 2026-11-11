@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PaceDefaultCdA } from '$lib/protocol';
-import { createPace } from '$lib/road/pace';
-import { at } from '$lib/road/along';
-import { toRoute } from '$lib/road/route';
+import { PaceDefaultCdA } from '#lib/protocol.ts';
+import { createPace } from '#lib/road/pace.ts';
+import { at } from '#lib/road/along.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { advance, simRider } from './sim';
 import { syntheticPoints } from './synthetic';
 

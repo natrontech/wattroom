@@ -5,9 +5,9 @@
 	// of describing it. Pure SVG + CSS, no dependencies. Watts tick with one tiny
 	// interval; reduced motion gets the finished picture, steady numbers.
 
-	import ClayRider from '$lib/brand/ClayRider.svelte';
-	import Logo from '$lib/brand/Logo.svelte';
-	import { reducedMotion } from '$lib/motion';
+	import ClayRider from '#lib/brand/ClayRider.svelte';
+	import Logo from '#lib/brand/Logo.svelte';
+	import { reducedMotion } from '#lib/motion/index.ts';
 
 	const uid = $props.id();
 

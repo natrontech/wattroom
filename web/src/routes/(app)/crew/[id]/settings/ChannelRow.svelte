@@ -1,27 +1,27 @@
 <script lang="ts">
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	// One of the crew's channels as its owner and admins keep it (ADR-0058,
 	// #2454): its name, its gate and who is named through it, and — for a
 	// voice channel — its sounds and its autoplay. Everything saves on
 	// change; the list around it owns the order and re-reads after each save.
-	import Select from '$lib/components/Select.svelte';
+	import Select from '#lib/components/Select.svelte';
 	import {
 		deleteLabel,
 		setNamedInChannel,
 		updateChannel,
 		type CrewChannel,
 		type ChannelPatch,
-	} from '$lib/channels';
-	import { deleteChannelFlow } from '$lib/crew-flows';
+	} from '#lib/channels.ts';
+	import { deleteChannelFlow } from '#lib/crew-flows.ts';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import type { CrewPerson } from '$lib/crew';
-	import { MaxChannelNameChars } from '$lib/protocol';
-	import type { PlaylistStore } from '$lib/channel/playlists.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/context-menu.svelte.ts';
+	import type { CrewPerson } from '#lib/crew.ts';
+	import { MaxChannelNameChars } from '#lib/protocol.ts';
+	import type { PlaylistStore } from '#lib/channel/playlists.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';

@@ -1,4 +1,4 @@
-import type { LiveChannel, LiveCrew, LiveOccupant } from '$lib/crews-live';
+import type { LiveChannel, LiveCrew, LiveOccupant } from '#lib/crews-live.ts';
 
 /** A voice channel with somebody in it besides you, and the crew it is in. */
 export interface AroundChannel {

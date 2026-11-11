@@ -1,6 +1,6 @@
-import { at, type RoutePoint } from '$lib/road/along';
-import type { Route } from '$lib/road/route';
-import type { Road } from '$lib/road/road';
+import { at, type RoutePoint } from '#lib/road/along.ts';
+import type { Route } from '#lib/road/route.ts';
+import type { Road } from '#lib/road/road.ts';
 import type { Line } from './lines';
 
 /**

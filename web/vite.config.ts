@@ -46,21 +46,31 @@ function hardwareLog(): Plugin {
  * name the eager set for the same reason (it matches 4518 of 4534 modules), and
  * `experimentalMinChunkSize` is a Rollup option Rolldown ignores.
  *
- * So compute the eager set instead: the static-import closure of the three
- * modules the SPA fallback actually preloads — kit's client entry, the generated
+ * So compute the eager set instead: the static-import closure of the modules
+ * the SPA fallback actually preloads — kit's client runtime, the generated
  * app, and route node 0 (the root layout). `buildEnd` runs after the module
  * graph is complete and before chunk assignment, so the set is populated by the
  * time `codeSplitting.groups[].test` is consulted.
+ *
+ * SvelteKit 3 starts in two steps: client/entry.js sets the payload, then
+ * imports client/client-entry.js dynamically, and the build finds the runtime
+ * through that dynamic import. Both stay out of the groups: merged into one
+ * chunk, the import vanishes and the build stops with "Could not find the
+ * client runtime chunk". client-entry.js seeds the set instead of entry.js,
+ * whose static closure is only the payload.
  */
 function eagerShell(): { plugin: Plugin; contains: (id: string) => boolean } {
 	const eager = new Set<string>();
+	const kitEntry = (id: string) =>
+		id.endsWith('/kit/src/runtime/client/entry.js') ||
+		id.endsWith('/kit/src/runtime/client/client-entry.js');
 	const isSeed = (id: string) =>
 		id.endsWith('/client-optimized/app.js') ||
-		id.endsWith('/kit/src/runtime/client/entry.js') ||
+		id.endsWith('/kit/src/runtime/client/client-entry.js') ||
 		id.endsWith('/src/routes/(app)/+layout.svelte');
 
 	return {
-		contains: (id) => eager.has(id),
+		contains: (id) => eager.has(id) && !kitEntry(id),
 		plugin: {
 			name: 'wattroom-eager-shell',
 			applyToEnvironment: (environment) => environment.name === 'client',

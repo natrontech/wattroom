@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { voiceUp, type Me } from '$lib/account.svelte';
+import { voiceUp, type Me } from '#lib/account.svelte.ts';
 
 // Configured is not up (#2850): a Join voice that can only fail is a button
 // errors.md says not to draw. An older server sends no avReachable, which

@@ -13,7 +13,7 @@
  * reported as `crashSafe` and shown as persistent status (#1466 finding 4,
  * ADR-0052 rule 3).
  */
-import { MinRideSamples } from '$lib/protocol';
+import { MinRideSamples } from '#lib/protocol.ts';
 export interface BufferedSample {
 	/** Strictly increasing per ride; doubles as the WS seq for server dedupe. */
 	seq: number;

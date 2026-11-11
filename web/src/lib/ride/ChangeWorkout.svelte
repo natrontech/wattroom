@@ -4,12 +4,12 @@
 	 * picked with one big tap each. The ride, its recording and the place on
 	 * the road carry on; the page starts the pick at its first block.
 	 */
-	import Modal from '$lib/components/Modal.svelte';
-	import { formatClock } from '$lib/format';
-	import { FREE_RIDE_NAME } from '$lib/ride/free-ride.svelte';
-	import { durationSeconds } from '$lib/workout/engine';
-	import type { ShelfEntry } from '$lib/workout/shelf';
-	import type { Workout } from '$lib/workout/types';
+	import Modal from '#lib/components/Modal.svelte';
+	import { formatClock } from '#lib/format.ts';
+	import { FREE_RIDE_NAME } from '#lib/ride/free-ride.svelte.ts';
+	import { durationSeconds } from '#lib/workout/engine.ts';
+	import type { ShelfEntry } from '#lib/workout/shelf.ts';
+	import type { Workout } from '#lib/workout/types.ts';
 
 	let {
 		shelf,

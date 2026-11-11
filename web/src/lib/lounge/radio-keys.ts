@@ -6,7 +6,7 @@ import {
 	swell,
 	tone,
 	type Buses,
-} from '$lib/lounge/radio-voices';
+} from '#lib/lounge/radio-voices.ts';
 
 /** Electric piano: one FM pair whose bell of an attack settles to a round tone. */
 export function piano(

@@ -1,5 +1,5 @@
-import { mixer } from '$lib/sound/mixer.svelte';
-import { GATE_DEFAULT, clampThreshold } from '$lib/channel/gate-scale';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import { GATE_DEFAULT, clampThreshold } from '#lib/channel/gate-scale.ts';
 
 /**
  * What the rider chose about their own mic gate, and the one number the gate

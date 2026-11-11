@@ -10,7 +10,7 @@
  * ride through the gap between sentences.
  */
 
-import type { VoiceDspOptions } from '$lib/channel/voice-dsp';
+import type { VoiceDspOptions } from '#lib/channel/voice-dsp.ts';
 
 /** How far under the open threshold the level must fall to start the hang. */
 const GATE_CLOSE_DB = 6;

@@ -1,6 +1,6 @@
-import type { SensorKind, SensorReading } from '$lib/ble/sensor';
-import type { Trainer } from '$lib/ble/trainer';
-import type { SprintSetup } from '$lib/ride/actuation.svelte';
+import type { SensorKind, SensorReading } from '#lib/ble/sensor.ts';
+import type { Trainer } from '#lib/ble/trainer.ts';
+import type { SprintSetup } from '#lib/ride/actuation.svelte.ts';
 import type { RecordedSecond } from './ride-record.svelte';
 import type { Workout } from './types';
 

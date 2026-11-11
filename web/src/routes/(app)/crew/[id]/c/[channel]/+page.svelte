@@ -2,9 +2,9 @@
 	// A text channel (#2448, ADR-0058): the crew's talk, read and written
 	// over HTTP. Nothing to join — voice, the ride and the deck are a voice
 	// channel's.
-	import { invalidateAll } from '$app/navigation';
-	import Banner from '$lib/components/Banner.svelte';
-	import ChannelThread from '$lib/messages/ChannelThread.svelte';
+	import { refreshAll } from '$app/navigation';
+	import Banner from '#lib/components/Banner.svelte';
+	import ChannelThread from '#lib/messages/ChannelThread.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -32,7 +32,7 @@
 			<Banner tone="error">
 				{data.error}
 				{#snippet action()}
-					<button onclick={() => void invalidateAll()} class="btn-link text-xs"
+					<button onclick={() => void refreshAll()} class="btn-link text-xs"
 						>Retry</button
 					>
 				{/snippet}

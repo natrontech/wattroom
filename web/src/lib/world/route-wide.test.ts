@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { referenceSpeed } from '$lib/road/pace';
-import { toRoute, type Route } from '$lib/road/route';
+import { referenceSpeed } from '#lib/road/pace.ts';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { STYLES } from './test-styles';
 import { backdrop, bearings } from './backdrop';
 import { CHUNK_M } from './place/lattice';

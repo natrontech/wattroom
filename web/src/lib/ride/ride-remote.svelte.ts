@@ -1,16 +1,16 @@
-import { tabId } from '$lib/channel/rejoin';
-import { deviceWord } from '$lib/device.svelte';
-import { clockActions, pauseOf } from '$lib/ride/remote-blocks';
-import { shiftAnswer } from '$lib/ride/easier-harder';
-import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { createRemoteRunner } from '$lib/ride/keys';
-import { createRideShift } from '$lib/ride/ride-shift';
-import { offeredActions, viewNow } from '$lib/ride/ride-offers.svelte';
-import type { RoadAlone } from '$lib/ride/road-alone.svelte';
-import { riderLane } from '$lib/rider-lane.svelte';
-import { DEFAULTS } from '$lib/workout/guards';
-import type { createRideSession } from '$lib/workout/session.svelte';
-import { askCamera, askPhoto } from '$lib/world/ride-view';
+import { tabId } from '#lib/channel/rejoin.ts';
+import { deviceWord } from '#lib/device.svelte.ts';
+import { clockActions, pauseOf } from '#lib/ride/remote-blocks.ts';
+import { shiftAnswer } from '#lib/ride/easier-harder.ts';
+import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+import { createRemoteRunner } from '#lib/ride/keys.ts';
+import { createRideShift } from '#lib/ride/ride-shift.ts';
+import { offeredActions, viewNow } from '#lib/ride/ride-offers.svelte.ts';
+import type { RoadAlone } from '#lib/ride/road-alone.svelte.ts';
+import { riderLane } from '#lib/rider-lane.svelte.ts';
+import { DEFAULTS } from '#lib/workout/guards.ts';
+import type { createRideSession } from '#lib/workout/session.svelte.ts';
+import { askCamera, askPhoto } from '#lib/world/ride-view.ts';
 
 type Session = ReturnType<typeof createRideSession>;
 

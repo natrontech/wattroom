@@ -1,6 +1,6 @@
-import type { GearState } from '$lib/protocol';
-import { WATTS } from '$lib/ride/free-ride-controls';
-import { DEFAULTS } from '$lib/workout/guards';
+import type { GearState } from '#lib/protocol.ts';
+import { WATTS } from '#lib/ride/free-ride-controls.ts';
+import { DEFAULTS } from '#lib/workout/guards.ts';
 
 /**
  * Why Easier / Harder does nothing here — the one line the controls show

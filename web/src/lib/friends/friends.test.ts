@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 // A new request rings a cue, and this environment has no AudioContext —
 // nothing here is about the sound.
-vi.mock('$lib/messages/announce', () => ({ announce: () => {} }));
+vi.mock('#lib/messages/announce.ts', () => ({ announce: () => {} }));
 
 import {
 	declineEvent,

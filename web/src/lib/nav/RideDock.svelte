@@ -7,14 +7,14 @@
 	 * mends it, then Open and End ride. `short`: a phone's top bar, time and
 	 * watts in one 44 px tap back to the ride.
 	 */
-	import { createPairAgain } from '$lib/ble/pair-again.svelte';
-	import { formatClock } from '$lib/format';
-	import { navDrawer } from '$lib/nav/drawer.svelte';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import { dockShows } from '$lib/ride/ride-screens';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import { blockLabel } from '$lib/workout/block';
-	import { isOpenRoad } from '$lib/workout/ridden';
+	import { createPairAgain } from '#lib/ble/pair-again.svelte.ts';
+	import { formatClock } from '#lib/format.ts';
+	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { dockShows } from '#lib/ride/ride-screens.ts';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import { blockLabel } from '#lib/workout/block.ts';
+	import { isOpenRoad } from '#lib/workout/ridden.ts';
 	import { rideDock } from './ride-dock.svelte';
 
 	let { pathname, short = false }: { pathname: string; short?: boolean } =

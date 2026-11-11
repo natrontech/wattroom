@@ -1,5 +1,5 @@
-import type { TracePoint } from '$lib/components/trace';
-import { toleranceBand } from '$lib/workout/guards';
+import type { TracePoint } from '#lib/components/trace.ts';
+import { toleranceBand } from '#lib/workout/guards.ts';
 
 /**
  * The voice channel's view model (#39's design, made real): one rider shape the

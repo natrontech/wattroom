@@ -1,7 +1,7 @@
-import { GEAR_RATIOS, GEARS } from '$lib/ride/drivetrain';
-import type { SimParams } from '$lib/ble/trainer';
-import type { ShiftDir } from '$lib/ride/shifter';
-import { WHEEL_MM, type Probe, type ProbeStep } from '$lib/ride/gears-probe';
+import { GEAR_RATIOS, GEARS } from '#lib/ride/drivetrain.ts';
+import type { SimParams } from '#lib/ble/trainer.ts';
+import type { ShiftDir } from '#lib/ride/shifter.ts';
+import { WHEEL_MM, type Probe, type ProbeStep } from '#lib/ride/gears-probe.ts';
 
 /**
  * The Gears probe's steps (#3331), in the order the Kickr sitting runs them:

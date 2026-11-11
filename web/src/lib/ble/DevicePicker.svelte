@@ -5,8 +5,8 @@
 	// Riding sizes on every control (ux.md): pairing is a pre-ride job, but it
 	// is done leaning over the bars with the machine at arm's length, and the
 	// list is the one place a wrong tap pairs someone else's trainer.
-	import Modal from '$lib/components/Modal.svelte';
-	import type { BleDevice } from '$lib/ble/device-picker.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import type { BleDevice } from '#lib/ble/device-picker.svelte.ts';
 	import Bluetooth from '@lucide/svelte/icons/bluetooth';
 
 	// Presentational: the shell wiring lives in `device-picker.svelte.ts` and

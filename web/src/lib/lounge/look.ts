@@ -5,8 +5,8 @@
  * A rider who picked nothing, or a character this build does not know, wears
  * the part seeded from their id, so every screen dresses them alike.
  */
-import { HAIRS, SKINS } from '$lib/lounge/palette';
-import { fnv } from '$lib/world/loadout';
+import { HAIRS, SKINS } from '#lib/lounge/palette.ts';
+import { fnv } from '#lib/world/loadout.ts';
 
 /** What a top, trousers, shoes, a cap or a scarf may be dyed. */
 export const CLOTHES = [

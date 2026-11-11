@@ -12,7 +12,7 @@
  * on a recovery spin and on 5×5 VO2 are not the same achievement, so it is
  * never summed, ranked, or called fitness.
  */
-import type { RideRecord } from '$lib/history.svelte';
+import type { RideRecord } from '#lib/history.svelte.ts';
 import { namingRoad, type RideRoad } from './list';
 
 export interface CompareRow {

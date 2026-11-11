@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { heightAt } from '$lib/road/at-metre';
-import type { Road } from '$lib/road/road';
+import { heightAt } from '#lib/road/at-metre.ts';
+import type { Road } from '#lib/road/road.ts';
 import type { RoadSecond } from './road-ride';
 import { createRoadLaps, createRoadRide } from './road-ride';
 import { feltGrade } from './ride-grade';

@@ -1,4 +1,4 @@
-import { account } from '$lib/account.svelte';
+import { account } from '#lib/account.svelte.ts';
 import { readChosenCrew, rememberChosenCrew } from './crews';
 
 /**

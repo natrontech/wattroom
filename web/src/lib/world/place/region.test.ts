@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { hairpinClimb } from '$lib/road/fixtures';
-import { toRoute } from '$lib/road/route';
-import type { Road } from '$lib/road/road';
+import { hairpinClimb } from '#lib/road/fixtures.ts';
+import { toRoute } from '#lib/road/route.ts';
+import type { Road } from '#lib/road/road.ts';
 import type { Salt } from './keyed';
 import { FINE_M } from './lattice';
 import { keyAt, onStroke, type Keying } from './region';

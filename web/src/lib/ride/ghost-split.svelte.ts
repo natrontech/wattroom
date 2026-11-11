@@ -1,5 +1,5 @@
 import { untrack } from 'svelte';
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 import {
 	callMarks,
 	callSaid,
@@ -12,7 +12,7 @@ import {
 	newBestOn,
 	secondsTo,
 	splitAt,
-} from '$lib/road/ghost';
+} from '#lib/road/ghost.ts';
 import type { FreeRide } from './free-ride.svelte';
 
 /** Your ghost on a road (#3033): one of your own rides of it, a metre a second. */

@@ -1,4 +1,4 @@
-import { crewDoor, type CrewDoor } from '$lib/crew';
+import { crewDoor, type CrewDoor } from '#lib/crew.ts';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch, params }) => {

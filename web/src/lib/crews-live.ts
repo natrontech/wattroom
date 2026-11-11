@@ -1,7 +1,7 @@
-import { loadApi, type ApiResult } from '$lib/api';
-import type { ChannelKind } from '$lib/channels';
-import type { CrewRole } from '$lib/crew';
-import type { LiveSession, StatusLine } from '$lib/protocol';
+import { loadApi, type ApiResult } from '#lib/api.ts';
+import type { ChannelKind } from '#lib/channels.ts';
+import type { CrewRole } from '#lib/crew.ts';
+import type { LiveSession, StatusLine } from '#lib/protocol.ts';
 
 /**
  * What is going on in every crew you are in, from one fetch (#2444): who is

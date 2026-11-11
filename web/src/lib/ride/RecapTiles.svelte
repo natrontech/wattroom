@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { RecapTile } from '$lib/ride/recap-frame';
+	import type { RecapTile } from '#lib/ride/recap-frame.ts';
 
 	// A finished ride's numbers (#3686), three by two: the closing card's and
 	// the ride page's, in the same order (`recapTiles`); and the importer's

@@ -1,20 +1,20 @@
 <script lang="ts">
 	import Mic from '@lucide/svelte/icons/mic';
 	import { page } from '$app/state';
-	import Logo from '$lib/brand/Logo.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { iceGathered } from '$lib/perf/ice-gathered';
-	import Skyline from '$lib/ride/Skyline.svelte';
-	import type { DioramaSky } from '$lib/world/look';
-	import type { Road } from '$lib/road/road';
-	import { sceneLoop } from '$lib/lounge/scene-loop';
-	import { PLACES, drawScene, type Figure } from '$lib/lounge/scene';
-	import { shadeFor } from '$lib/lounge/draw-room';
-	import type { Moment, Visitor } from '$lib/lounge/moments';
-	import { applyLoungeTheme, type Sky } from '$lib/lounge/palette';
-	import { themeFor } from '$lib/themes';
+	import Logo from '#lib/brand/Logo.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { iceGathered } from '#lib/perf/ice-gathered.ts';
+	import Skyline from '#lib/ride/Skyline.svelte';
+	import type { DioramaSky } from '#lib/world/look.ts';
+	import type { Road } from '#lib/road/road.ts';
+	import { sceneLoop } from '#lib/lounge/scene-loop.ts';
+	import { PLACES, drawScene, type Figure } from '#lib/lounge/scene.ts';
+	import { shadeFor } from '#lib/lounge/draw-room.ts';
+	import type { Moment, Visitor } from '#lib/lounge/moments.ts';
+	import { applyLoungeTheme, type Sky } from '#lib/lounge/palette.ts';
+	import { themeFor } from '#lib/themes.ts';
 
 	/**
 	 * One element at a time, for `make perf` (#3039): the harness in
@@ -249,13 +249,13 @@
 		let scene: { dispose(): void } | undefined;
 		let gone = false;
 		void Promise.all([
-			import('$lib/world/scene'),
-			import('$lib/world/world'),
-			import('$lib/world/look'),
-			import('$lib/world/synthetic'),
-			import('$lib/world/test-crew'),
-			import('$lib/road/route'),
-			import('$lib/world/mode'),
+			import('#lib/world/scene.ts'),
+			import('#lib/world/world.ts'),
+			import('#lib/world/look.ts'),
+			import('#lib/world/synthetic.ts'),
+			import('#lib/world/test-crew.ts'),
+			import('#lib/road/route.ts'),
+			import('#lib/world/mode.ts'),
 		]).then(
 			([
 				{ mount },

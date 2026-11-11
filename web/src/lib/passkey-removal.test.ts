@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ confirm: vi.fn() }));
-vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
-vi.mock('$lib/api', () => ({ api: vi.fn() }));
+vi.mock('#lib/confirm.svelte.ts', () => ({ confirm: mocks.confirm }));
+vi.mock('#lib/api.ts', () => ({ api: vi.fn() }));
 
 const { confirmRemoval, removeBody } = await import('./passkeys');
 

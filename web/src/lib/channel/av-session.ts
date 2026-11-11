@@ -2,19 +2,19 @@ import type {
 	Room as LiveKitRoom,
 	Track as LiveKitTrack,
 } from 'livekit-client';
-import { api } from '$lib/api';
-import { device } from '$lib/device.svelte';
-import { mixer } from '$lib/sound/mixer.svelte';
-import type { ClaimantSource, LiveKitClient } from '$lib/channel/av-types';
-import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
-import type { DeviceChoices } from '$lib/channel/av-devices.svelte';
-import type { RiderOutput } from '$lib/channel/av-output';
-import type { Speaking } from '$lib/channel/speaking';
-import type { Claims } from '$lib/channel/av-claim.svelte';
-import type { MicChain } from '$lib/channel/mic-chain.svelte';
-import type { Listeners } from '$lib/channel/av-listeners';
-import type { NoteKeeper } from '$lib/channel/rejoin';
-import { riderOf } from '$lib/channel/tabs';
+import { api } from '#lib/api.ts';
+import { device } from '#lib/device.svelte.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import type { ClaimantSource, LiveKitClient } from '#lib/channel/av-types.ts';
+import type { AvConn, AvState } from '#lib/channel/av-state.svelte.ts';
+import type { DeviceChoices } from '#lib/channel/av-devices.svelte.ts';
+import type { RiderOutput } from '#lib/channel/av-output.ts';
+import type { Speaking } from '#lib/channel/speaking.ts';
+import type { Claims } from '#lib/channel/av-claim.svelte.ts';
+import type { MicChain } from '#lib/channel/mic-chain.svelte.ts';
+import type { Listeners } from '#lib/channel/av-listeners.ts';
+import type { NoteKeeper } from '#lib/channel/rejoin.ts';
+import { riderOf } from '#lib/channel/tabs.ts';
 
 /**
  * Getting into the voice channel's call and back out of it (#21, #1698).

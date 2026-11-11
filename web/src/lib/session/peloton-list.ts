@@ -1,4 +1,4 @@
-import type { LiveRider } from '$lib/channel/types';
+import type { LiveRider } from '#lib/channel/types.ts';
 
 /** #3215: the list stays at you and the 3 nearest while no offset moved more than this, in metres… */
 export const SETTLED_M = 5;

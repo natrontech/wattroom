@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createRawSnippet } from 'svelte';
 import { render } from 'svelte/server';
-import GamePanel from '$lib/session/GamePanel.svelte';
-import type { GameState } from '$lib/protocol';
+import GamePanel from '#lib/session/GamePanel.svelte';
+import type { GameState } from '#lib/protocol.ts';
 
 /** The panel as the eliminated rider's screen draws it, deck and all. */
 function panel(game: Partial<GameState>, me = 'me') {

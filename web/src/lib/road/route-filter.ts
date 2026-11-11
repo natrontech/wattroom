@@ -1,5 +1,5 @@
-import { BikeKg } from '$lib/protocol';
-import { durationSeconds } from '$lib/workout/engine';
+import { BikeKg } from '#lib/protocol.ts';
+import { durationSeconds } from '#lib/workout/engine.ts';
 import type { Climb } from './climbs';
 import { compileRoad } from './compile';
 import type { Road } from './road';

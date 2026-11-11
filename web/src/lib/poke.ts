@@ -10,11 +10,11 @@
  * the moment, so a friend's poke heard on the socket and then found by the
  * thread's poll is announced once.
  */
-import { api } from '$lib/api';
-import type { Arrival } from '$lib/messages/announce';
-import type { ReplyTo } from '$lib/notify.svelte';
-import type { Poke } from '$lib/protocol';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import type { Arrival } from '#lib/messages/announce.ts';
+import type { ReplyTo } from '#lib/notify.svelte.ts';
+import type { Poke } from '#lib/protocol.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /** A friend's DM thread, where their pokes live. */
 export const threadOf = (id: string) => `/messages/dm/${id}`;

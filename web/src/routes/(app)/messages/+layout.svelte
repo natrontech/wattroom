@@ -6,7 +6,7 @@
 	// Above md the page is the thread alone and the sidebar is the list;
 	// below md the sidebar is a drawer, so the list column stands in for it.
 	import { page } from '$app/state';
-	import ThreadList from '$lib/messages/ThreadList.svelte';
+	import ThreadList from '#lib/messages/ThreadList.svelte';
 
 	let { children } = $props();
 

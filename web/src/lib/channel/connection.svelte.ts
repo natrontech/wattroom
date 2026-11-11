@@ -1,42 +1,45 @@
 import { untrack } from 'svelte';
-import { placeOnRoad } from '$lib/channel/road-place';
-import { roadOf } from '$lib/workout/road-workout';
-import { roadHash } from '$lib/road/road';
-import { rememberRodeIn } from '$lib/crew-lounge';
-import { account } from '$lib/account.svelte';
-import { createProfileStore } from '$lib/profile.svelte';
-import { spaceBelongsTo } from '$lib/channel/ptt-keys';
-import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { EASIER_HARDER_OFF, shiftAnswer } from '$lib/ride/easier-harder';
-import { bindShifters, createRemoteRunner } from '$lib/ride/keys';
-import { offeredActions, viewNow } from '$lib/ride/ride-offers.svelte';
-import { createRemoteWorld } from '$lib/channel/remote-world';
-import { createTalkOpener } from '$lib/ride/remote-talk';
-import { clockActions, pauseOf } from '$lib/ride/remote-blocks';
-import { shifterSlot } from '$lib/ble/controller-slot.svelte';
-import { DEFAULTS } from '$lib/workout/guards';
-import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
-import { pullProfile } from '$lib/profile-sync.svelte';
-import { createChannelLive } from '$lib/channel/live.svelte';
-import { createRecording } from '$lib/session/recording.svelte';
-import { channelRide, type ChannelRide } from '$lib/ride/channel-ride.svelte';
-import type { FreeRide } from '$lib/ride/free-ride.svelte';
-import { sensorClaim } from '$lib/channel/sensor-claim';
-import type { OwnRide } from '$lib/ride/own-ride.svelte';
-import { parseSharedWorkout } from '$lib/workout/shared';
-import { play } from '$lib/sound/cues';
-import { applyAway, noEcho, pressed } from '$lib/channel/away-echo';
-import { connectionCues } from '$lib/channel/connection-cues.svelte';
-import { bottleHandUps } from '$lib/channel/bottles.svelte';
-import { effortOf } from '$lib/roadside';
-import { followMoves } from '$lib/channel/follow-move.svelte';
-import { toasts } from '$lib/toast.svelte';
-import type { SessionState } from '$lib/protocol';
-import type { Segment, Workout } from '$lib/workout/types';
-import { listening } from '$lib/channel/listening.svelte';
-import { onPlacePath, type PlaceAddress } from '$lib/channel/address';
-import { isLivePhase } from '$lib/channel/tick-session';
-import { createVoiceRecovery } from '$lib/channel/voice-recover';
+import { placeOnRoad } from '#lib/channel/road-place.ts';
+import { roadOf } from '#lib/workout/road-workout.ts';
+import { roadHash } from '#lib/road/road.ts';
+import { rememberRodeIn } from '#lib/crew-lounge.ts';
+import { account } from '#lib/account.svelte.ts';
+import { createProfileStore } from '#lib/profile.svelte.ts';
+import { spaceBelongsTo } from '#lib/channel/ptt-keys.ts';
+import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+import { EASIER_HARDER_OFF, shiftAnswer } from '#lib/ride/easier-harder.ts';
+import { bindShifters, createRemoteRunner } from '#lib/ride/keys.ts';
+import { offeredActions, viewNow } from '#lib/ride/ride-offers.svelte.ts';
+import { createRemoteWorld } from '#lib/channel/remote-world.ts';
+import { createTalkOpener } from '#lib/ride/remote-talk.ts';
+import { clockActions, pauseOf } from '#lib/ride/remote-blocks.ts';
+import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+import { DEFAULTS } from '#lib/workout/guards.ts';
+import { createRideShift, type RideShift } from '#lib/ride/ride-shift.ts';
+import { pullProfile } from '#lib/profile-sync.svelte.ts';
+import { createChannelLive } from '#lib/channel/live.svelte.ts';
+import { createRecording } from '#lib/session/recording.svelte.ts';
+import {
+	channelRide,
+	type ChannelRide,
+} from '#lib/ride/channel-ride.svelte.ts';
+import type { FreeRide } from '#lib/ride/free-ride.svelte.ts';
+import { sensorClaim } from '#lib/channel/sensor-claim.ts';
+import type { OwnRide } from '#lib/ride/own-ride.svelte.ts';
+import { parseSharedWorkout } from '#lib/workout/shared.ts';
+import { play } from '#lib/sound/cues.ts';
+import { applyAway, noEcho, pressed } from '#lib/channel/away-echo.ts';
+import { connectionCues } from '#lib/channel/connection-cues.svelte.ts';
+import { bottleHandUps } from '#lib/channel/bottles.svelte.ts';
+import { effortOf } from '#lib/roadside.ts';
+import { followMoves } from '#lib/channel/follow-move.svelte.ts';
+import { toasts } from '#lib/toast.svelte.ts';
+import type { SessionState } from '#lib/protocol.ts';
+import type { Segment, Workout } from '#lib/workout/types.ts';
+import { listening } from '#lib/channel/listening.svelte.ts';
+import { onPlacePath, type PlaceAddress } from '#lib/channel/address.ts';
+import { isLivePhase } from '#lib/channel/tick-session.ts';
+import { createVoiceRecovery } from '#lib/channel/voice-recover.ts';
 
 /**
  * The voice channel you are IN (#173, ADR-0010's logical end): joining is a
@@ -108,13 +111,13 @@ let statusShown = $state(0);
 // prepareChannelAv() before the shell mounts, so join() stays synchronous
 // for everything that reads the connection the moment it exists.
 type ChannelAv = ReturnType<
-	typeof import('$lib/channel/av.svelte').createChannelAv
+	typeof import('#lib/channel/av.svelte.ts').createChannelAv
 >;
 let createChannelAv:
-	typeof import('$lib/channel/av.svelte').createChannelAv | null = null;
+	typeof import('#lib/channel/av.svelte.ts').createChannelAv | null = null;
 export async function prepareChannelAv(): Promise<void> {
 	if (createChannelAv) return;
-	({ createChannelAv } = await import('$lib/channel/av.svelte'));
+	({ createChannelAv } = await import('#lib/channel/av.svelte.ts'));
 }
 
 /**

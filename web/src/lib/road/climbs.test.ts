@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MaxClimbs } from '$lib/protocol';
+import { MaxClimbs } from '#lib/protocol.ts';
 import { classOf, climbsOf, hairpinsOf, type Climb } from './climbs';
 import {
 	HAIRPINS,

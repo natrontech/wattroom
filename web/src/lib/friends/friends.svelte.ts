@@ -7,11 +7,11 @@
  * Refreshed off the lobby ping (the layout drives it from presence.version),
  * so a request lands on the other side while they watch, not a minute later.
  */
-import { api } from '$lib/api';
-import { announce } from '$lib/messages/announce';
-import { people } from '$lib/people.svelte';
-import type { StatusLine } from '$lib/protocol';
-import { whereabouts, type Whereabouts } from '$lib/whereabouts';
+import { api } from '#lib/api.ts';
+import { announce } from '#lib/messages/announce.ts';
+import { people } from '#lib/people.svelte.ts';
+import type { StatusLine } from '#lib/protocol.ts';
+import { whereabouts, type Whereabouts } from '#lib/whereabouts.ts';
 
 /**
  * Presence (`Whereabouts`) is an accepted friend's only (ADR-0012): the app

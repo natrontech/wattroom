@@ -1,4 +1,4 @@
-import type { LiveRider } from '$lib/channel/types';
+import type { LiveRider } from '#lib/channel/types.ts';
 
 /**
  * Whose instrument the narrow Training surface shows (#412).

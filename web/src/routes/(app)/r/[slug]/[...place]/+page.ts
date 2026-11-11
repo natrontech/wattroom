@@ -1,4 +1,4 @@
-import { followRoomLink } from '$lib/moved';
+import { followRoomLink } from '#lib/moved.ts';
 import type { PageLoad } from './$types';
 
 // Rooms became a crew's channels (ADR-0058). Every old room link — the room,

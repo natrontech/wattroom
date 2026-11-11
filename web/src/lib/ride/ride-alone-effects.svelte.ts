@@ -1,10 +1,13 @@
-import { hwlog } from '$lib/ble/hwlog';
-import { createRideFlags } from '$lib/ride/flags.svelte';
-import type { RoadAlone } from '$lib/ride/road-alone.svelte';
-import { createRideSounds, soloRideSounds } from '$lib/ride/ride-sounds.svelte';
-import type { createRideSession } from '$lib/workout/session.svelte';
-import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
-import { serveRideRemote } from '$lib/ride/ride-remote.svelte';
+import { hwlog } from '#lib/ble/hwlog.ts';
+import { createRideFlags } from '#lib/ride/flags.svelte.ts';
+import type { RoadAlone } from '#lib/ride/road-alone.svelte.ts';
+import {
+	createRideSounds,
+	soloRideSounds,
+} from '#lib/ride/ride-sounds.svelte.ts';
+import type { createRideSession } from '#lib/workout/session.svelte.ts';
+import { createSignalWatch } from '#lib/workout/signal-watch.svelte.ts';
+import { serveRideRemote } from '#lib/ride/ride-remote.svelte.ts';
 
 type Session = ReturnType<typeof createRideSession>;
 

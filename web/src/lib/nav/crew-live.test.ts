@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveSession } from '$lib/protocol';
+import type { LiveSession } from '#lib/protocol.ts';
 import { quiet } from './crews';
 import { livePulse, sessionLine, type LiveCrew } from './crew-live.svelte';
 

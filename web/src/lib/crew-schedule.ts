@@ -1,10 +1,10 @@
-import { api, loadApi, type ApiResult } from '$lib/api';
-import { sessionPath } from '$lib/channel/address';
-import { voiceChannelPath } from '$lib/channels';
-import { serverNow } from '$lib/server-clock';
-import type { CrewRole } from '$lib/crew';
-import type { PlanAnswers, RsvpAnswer } from '$lib/session/rsvp';
-import { askToShareRoute } from '$lib/road/share';
+import { api, loadApi, type ApiResult } from '#lib/api.ts';
+import { sessionPath } from '#lib/channel/address.ts';
+import { voiceChannelPath } from '#lib/channels.ts';
+import { serverNow } from '#lib/server-clock.ts';
+import type { CrewRole } from '#lib/crew.ts';
+import type { PlanAnswers, RsvpAnswer } from '#lib/session/rsvp.ts';
+import { askToShareRoute } from '#lib/road/share.ts';
 
 /**
  * The crew's schedule (#2440, #2452): one calendar for the crew, a plan naming

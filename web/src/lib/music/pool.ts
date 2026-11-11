@@ -3,12 +3,12 @@
  * rider browses and edits what they uploaded; playing is wider — a track
  * plays in any voice channel its uploader may enter (`visible_channels`).
  *
- * The fetch goes through `$lib/api` like everything else; what lives here is
+ * The fetch goes through `#lib/api.ts` like everything else; what lives here is
  * the shape and the two things worth stating once — how a track is labelled
  * when its tags are thin, and what "MP3 only" means before a byte is sent.
  */
-import type { PlaceAddress } from '$lib/channel/address';
-import { api } from '$lib/api';
+import type { PlaceAddress } from '#lib/channel/address.ts';
+import { api } from '#lib/api.ts';
 
 export interface Track {
 	id: string;

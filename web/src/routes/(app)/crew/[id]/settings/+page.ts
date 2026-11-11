@@ -1,4 +1,4 @@
-import { fetchCrew } from '$lib/crew';
+import { fetchCrew } from '#lib/crew.ts';
 import type { CrewPageData } from '../+page';
 import type { PageLoad } from './$types';
 

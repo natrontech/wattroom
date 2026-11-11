@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { RaceBracket } from '$lib/protocol';
-	import { account } from '$lib/account.svelte';
-	import { confirmWeight as sendConfirm } from '$lib/profile-sync.svelte';
+	import type { RaceBracket } from '#lib/protocol.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { confirmWeight as sendConfirm } from '#lib/profile-sync.svelte.ts';
 	import { finishMark, unrankedWhy, yoursFirst } from './closing-card';
 
 	// The race's section of the closing card (#3779, ADR-0067): per Category,

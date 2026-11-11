@@ -1,22 +1,22 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
-import { channelAddress } from '$lib/channel/address';
+import { channelAddress } from '#lib/channel/address.ts';
 
 const played: string[] = [];
-vi.mock('$lib/sound/cues', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/sound/cues')>()),
+vi.mock('#lib/sound/cues.ts', async (importOriginal) => ({
+	...(await importOriginal<typeof import('#lib/sound/cues.ts')>()),
 	play: (id: string) => played.push(id),
 }));
-vi.mock('$lib/notify.svelte', () => ({
+vi.mock('#lib/notify.svelte.ts', () => ({
 	notify: { push: () => {} },
 	away: () => false,
 }));
 const signedIn = vi.hoisted(() => ({ me: null as null | { id: string } }));
-vi.mock('$lib/account.svelte', () => ({ account: signedIn }));
+vi.mock('#lib/account.svelte.ts', () => ({ account: signedIn }));
 
-import { connectionCues } from '$lib/channel/connection-cues.svelte';
-import { toasts } from '$lib/toast.svelte';
+import { connectionCues } from '#lib/channel/connection-cues.svelte.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 // A hand-driven tick: the roster is what these cues are about. $state, so an
 // effect that fails to track it is caught rather than papered over.

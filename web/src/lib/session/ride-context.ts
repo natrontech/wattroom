@@ -1,4 +1,4 @@
-import { rideName } from '$lib/road/profile';
+import { rideName } from '#lib/road/profile.ts';
 
 /**
  * The riding surface's opening eyebrow (TARGETS ride-road-world item 6):

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { at } from '$lib/road/along';
-import { toRoute, type Route } from '$lib/road/route';
-import type { TrackPoint } from '$lib/road/parse';
+import { at } from '#lib/road/along.ts';
+import { toRoute, type Route } from '#lib/road/route.ts';
+import type { TrackPoint } from '#lib/road/parse.ts';
 import { pageGrids } from './chunks/grids';
 import { road } from './geometry';
 import { roadPieces, streamGround, type GroundSink } from './ground-stream';

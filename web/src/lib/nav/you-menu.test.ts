@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
-import { account } from '$lib/account.svelte';
-import { youMenu } from '$lib/nav/you-menu';
-import { mixer } from '$lib/sound/mixer.svelte';
-import { statusEditor } from '$lib/status-line/editor.svelte';
+import type {
+	MenuEntry,
+	MenuItem,
+	MenuSlider,
+} from '#lib/context-menu.svelte.ts';
+import { account } from '#lib/account.svelte.ts';
+import { youMenu } from '#lib/nav/you-menu.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import { statusEditor } from '#lib/status-line/editor.svelte.ts';
 
 // The voice channel decides whether a voice can dip anything (#904), and
 // whether this browser can move the voice to another output (#920).
@@ -13,13 +17,13 @@ const connection = vi.hoisted(() => ({
 		return this.current;
 	},
 }));
-vi.mock('$lib/channel/connection.svelte', () => ({
+vi.mock('#lib/channel/connection.svelte.ts', () => ({
 	channelConnection: connection,
 }));
 
 // The cue engine is an AudioContext; the fader only has to reach it.
 const cues = vi.hoisted(() => ({ played: [] as string[] }));
-vi.mock('$lib/sound/cues', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
 	play: (id: string) => void cues.played.push(id),
 	setVolume: () => {},
 	setDuckLevel: () => {},

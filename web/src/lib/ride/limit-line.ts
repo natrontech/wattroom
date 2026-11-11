@@ -1,4 +1,4 @@
-import type { Clamp } from '$lib/ride/drivetrain';
+import type { Clamp } from '#lib/ride/drivetrain.ts';
 
 /** docs/SPEC.md "At the limit" (defaults — tune in alpha). */
 export const LIMIT = { showAfterMs: 3_000, clearAfterMs: 3_000 } as const;

@@ -1,5 +1,5 @@
-import { sessionOpen } from '$lib/channel/tick-session';
-import type { SessionState } from '$lib/protocol';
+import { sessionOpen } from '#lib/channel/tick-session.ts';
+import type { SessionState } from '#lib/protocol.ts';
 
 /**
  * What SessionControls draws on this screen (#2598), from the roles table in

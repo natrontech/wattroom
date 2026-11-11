@@ -9,8 +9,8 @@
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import { openMenu, type MenuEntry } from '$lib/context-menu.svelte';
-	import { copyText } from '$lib/copy';
+	import { openMenu, type MenuEntry } from '#lib/context-menu.svelte.ts';
+	import { copyText } from '#lib/copy.ts';
 
 	let {
 		text,

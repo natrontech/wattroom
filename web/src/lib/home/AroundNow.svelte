@@ -1,5 +1,5 @@
 <script lang="ts">
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	// Home's "Around right now" (#212): the reason to open the app, which is
 	// people — the voice channels in your crews with somebody besides you in
 	// them (#1502), each a door into the channel. It reads the crews' live
@@ -8,16 +8,16 @@
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import Check from '@lucide/svelte/icons/check';
 	import { SvelteSet } from 'svelte/reactivity';
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
-	import { voiceChannelPath } from '$lib/channels';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { presence } from '$lib/presence.svelte';
-	import { PokeCooldownSeconds } from '$lib/protocol';
-	import { play, unlockCues } from '$lib/sound/cues';
+	import CheerIcon from '#lib/components/CheerIcon.svelte';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
+	import { voiceChannelPath } from '#lib/channels.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { PokeCooldownSeconds } from '#lib/protocol.ts';
+	import { play, unlockCues } from '#lib/sound/cues.ts';
 	import { aroundNow } from './around-now';
 
 	const around = $derived(aroundNow(crewLive.crews, account.me?.id ?? ''));

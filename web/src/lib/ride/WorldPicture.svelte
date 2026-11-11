@@ -11,9 +11,9 @@
 	 * the card says so with the way there: the phone that took them finds
 	 * them on that page too.
 	 */
-	import { shareFile } from '$lib/share';
-	import { CAMERA_NAMES } from '$lib/world/cameras';
-	import { worldPicture } from '$lib/world/picture.svelte';
+	import { shareFile } from '#lib/share.ts';
+	import { CAMERA_NAMES } from '#lib/world/cameras.ts';
+	import { worldPicture } from '#lib/world/picture.svelte.ts';
 
 	let { rideId }: { rideId?: string | null } = $props();
 

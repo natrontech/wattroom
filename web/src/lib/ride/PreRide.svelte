@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { PROFILE_LIMITS } from '$lib/profile.svelte';
-	import Banner from '$lib/components/Banner.svelte';
+	import { PROFILE_LIMITS } from '#lib/profile.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
 	/**
 	 * Everything before the ride starts (#1057): what you are about to do, what
 	 * is going to measure it, and the one number the targets scale to.
@@ -13,21 +13,21 @@
 	 * because the riding half needs all three; this takes what it draws and
 	 * hands back what the rider pressed.
 	 */
-	import { canSimulate } from '$lib/ble/can-simulate';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import type { Trainer } from '$lib/ble/trainer';
-	import { device, spectatorRideLine } from '$lib/device.svelte';
-	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
-	import RideCard, { type RideKind } from '$lib/ride/RideCard.svelte';
-	import SessionDoor from '$lib/ride/SessionDoor.svelte';
-	import type { RideableRoute } from '$lib/ride/roads';
-	import type { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import SensorOverview from '$lib/session/SensorOverview.svelte';
-	import type { Workout } from '$lib/workout/types';
-	import { heldTrainer } from '$lib/session/sensor-status';
-	import { account, unchosen } from '$lib/account.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { canSimulate } from '#lib/ble/can-simulate.ts';
+	import { FtmsTrainer } from '#lib/ble/ftms.ts';
+	import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+	import type { Trainer } from '#lib/ble/trainer.ts';
+	import { device, spectatorRideLine } from '#lib/device.svelte.ts';
+	import RecoveredRides from '#lib/ride/RecoveredRides.svelte';
+	import RideCard, { type RideKind } from '#lib/ride/RideCard.svelte';
+	import SessionDoor from '#lib/ride/SessionDoor.svelte';
+	import type { RideableRoute } from '#lib/ride/roads.ts';
+	import type { createSoloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
+	import SensorOverview from '#lib/session/SensorOverview.svelte';
+	import type { Workout } from '#lib/workout/types.ts';
+	import { heldTrainer } from '#lib/session/sensor-status.ts';
+	import { account, unchosen } from '#lib/account.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 
 	let {
 		kind = $bindable(),

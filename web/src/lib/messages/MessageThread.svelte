@@ -11,39 +11,42 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import { type Snippet } from 'svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { people } from '$lib/people.svelte';
-	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { friends } from '$lib/friends/friends.svelte';
-	import { statusOf } from '$lib/status';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import Composer from '$lib/messages/Composer.svelte';
-	import LineActions from '$lib/messages/LineActions.svelte';
-	import LineBody from '$lib/messages/LineBody.svelte';
-	import LineEditor from '$lib/messages/LineEditor.svelte';
-	import Reactions from '$lib/chat/Reactions.svelte';
-	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
-	import { stickToBottom } from '$lib/chat/stick-to-bottom';
-	import { repeatedLinks } from '$lib/chat/unfurl';
-	import { account } from '$lib/account.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { people } from '#lib/people.svelte.ts';
+	import { hoverCard } from '#lib/rider-card/rider-card.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { friends } from '#lib/friends/friends.svelte.ts';
+	import { statusOf } from '#lib/status.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import Composer from '#lib/messages/Composer.svelte';
+	import LineActions from '#lib/messages/LineActions.svelte';
+	import LineBody from '#lib/messages/LineBody.svelte';
+	import LineEditor from '#lib/messages/LineEditor.svelte';
+	import Reactions from '#lib/chat/Reactions.svelte';
+	import EmojiPicker from '#lib/emoji/EmojiPicker.svelte';
+	import { stickToBottom } from '#lib/chat/stick-to-bottom.ts';
+	import { repeatedLinks } from '#lib/chat/unfurl.ts';
+	import { account } from '#lib/account.svelte.ts';
 	import { goto } from '$app/navigation';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
-	import { personMenu } from '$lib/person-menu';
+	import { personMenu } from '#lib/person-menu.ts';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { formatDay, formatStamp, formatTime, sameDay } from '$lib/format';
-	import { mentionsMe } from '$lib/messages/mention';
-	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
-	import { arrivedSince } from '$lib/messages/timeline';
-	import { confirm } from '$lib/confirm.svelte';
-	import { copyText } from '$lib/copy';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/context-menu.svelte.ts';
+	import { formatDay, formatStamp, formatTime, sameDay } from '#lib/format.ts';
+	import { mentionsMe } from '#lib/messages/mention.ts';
+	import type {
+		ThreadMessage,
+		ThreadSource,
+	} from '#lib/messages/thread-types.ts';
+	import { arrivedSince } from '#lib/messages/timeline.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import { copyText } from '#lib/copy.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let {
 		source,

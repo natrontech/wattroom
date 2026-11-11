@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SessionRecap } from '$lib/protocol';
+import type { SessionRecap } from '#lib/protocol.ts';
 import { riddenTogether, riddenTotals, workoutByName } from './crew-workouts';
 
 const recap = (

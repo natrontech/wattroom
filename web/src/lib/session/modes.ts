@@ -6,12 +6,12 @@ import TrendingUp from '@lucide/svelte/icons/trending-up';
 import Star from '@lucide/svelte/icons/star';
 import Users from '@lucide/svelte/icons/users';
 import Zap from '@lucide/svelte/icons/zap';
-import type { Icon } from '$lib/icons';
+import type { Icon } from '#lib/icons.ts';
 import {
 	WheelraceMaxMinutes,
 	WheelraceMinMinutes,
 	type Control,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /**
  * The seven game modes, one home (#458) — the picker that starts one and the

@@ -6,7 +6,7 @@
  * ceiling and step on the beat (drawLights). Nothing here is clickable; the
  * lamps follow the shared lamp.
  */
-import { LOUNGE as C } from '$lib/lounge/palette';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
 import {
 	disc,
 	ellipse,
@@ -16,9 +16,14 @@ import {
 	rect,
 	ring,
 	type Ctx,
-} from '$lib/lounge/pixel';
-import { FLOOR_Y, SCENE_W, pulseOf, type SceneInput } from '$lib/lounge/scene';
-import { hash3 } from '$lib/lounge/hash';
+} from '#lib/lounge/pixel.ts';
+import {
+	FLOOR_Y,
+	SCENE_W,
+	pulseOf,
+	type SceneInput,
+} from '#lib/lounge/scene.ts';
+import { hash3 } from '#lib/lounge/hash.ts';
 
 interface Prop {
 	w: number;

@@ -7,12 +7,12 @@
 	// The first new thing is the headline, said large, with the rest of its
 	// entry under it; every other entry wears its section's mark. The releases
 	// that landed while you were away open in place.
-	import Modal from '$lib/components/Modal.svelte';
-	import MessageText from '$lib/chat/MessageText.svelte';
-	import { changelog } from '$lib/changelog.svelte';
-	import { headline, type Release } from '$lib/changelog';
-	import type { ReleaseAction } from '$lib/release-actions';
-	import type { Icon } from '$lib/icons';
+	import Modal from '#lib/components/Modal.svelte';
+	import MessageText from '#lib/chat/MessageText.svelte';
+	import { changelog } from '#lib/changelog.svelte.ts';
+	import { headline, type Release } from '#lib/changelog.ts';
+	import type { ReleaseAction } from '#lib/release-actions.ts';
+	import type { Icon } from '#lib/icons.ts';
 	import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Clock from '@lucide/svelte/icons/clock';

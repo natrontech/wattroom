@@ -3,7 +3,7 @@ import {
 	createSpeaking,
 	SPEAKING_AT,
 	SPEAKING_HOLD_MS,
-} from '$lib/channel/speaking';
+} from '#lib/channel/speaking.ts';
 
 // Two tabs of Marco's, one of Ana's — the shape #293 made real.
 const riderOf = (identity: string) => identity.split('#')[0];

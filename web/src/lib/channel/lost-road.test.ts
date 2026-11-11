@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ServerTick } from '$lib/protocol';
-import { referenceOnly, resumeKm, roadOf } from '$lib/channel/lost-road';
+import type { ServerTick } from '#lib/protocol.ts';
+import { referenceOnly, resumeKm, roadOf } from '#lib/channel/lost-road.ts';
 
 const tick = (
 	coach: string,

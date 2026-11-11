@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { faultCopy } from '$lib/channel/fault-copy';
+import { faultCopy } from '#lib/channel/fault-copy.ts';
 
 /**
  * A dropped channel says how much riding this device is holding (#2855) —

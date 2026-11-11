@@ -4,7 +4,7 @@ import {
 	listening,
 	playerAction,
 	type Play,
-} from '$lib/channel/listening.svelte';
+} from '#lib/channel/listening.svelte.ts';
 
 const A: Play = { videoId: 'aaa', anchorMs: 1_000 };
 const B: Play = { videoId: 'bbb', anchorMs: 9_000 };
@@ -80,7 +80,7 @@ describe("sitting out the channel's music (#989)", () => {
 	it('does not survive a reload', async () => {
 		listening.stepOut('stop', A, 300);
 		vi.resetModules();
-		const fresh = await import('$lib/channel/listening.svelte');
+		const fresh = await import('#lib/channel/listening.svelte.ts');
 		expect(fresh.listening.out).toBe(false);
 	});
 });

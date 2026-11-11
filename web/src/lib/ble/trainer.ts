@@ -3,7 +3,7 @@ import {
 	PaceCrr,
 	PaceDefaultCdA,
 	PaceGravity,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 export type TrainerStatus = 'disconnected' | 'connecting' | 'connected';
 

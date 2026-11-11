@@ -7,7 +7,7 @@ import {
 	sectionOf,
 	styleOf,
 	tuneOf,
-} from '$lib/lounge/station';
+} from '#lib/lounge/station.ts';
 
 /** A bar as what sounds and where, without the hands' velocity and timing. */
 const shape = (crew: string, slot: number, bar: number) =>

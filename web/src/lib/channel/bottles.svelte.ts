@@ -1,9 +1,9 @@
-import { account } from '$lib/account.svelte';
-import type { PlaceAddress } from '$lib/channel/address';
-import type { createChannelLive } from '$lib/channel/live.svelte';
-import { announce } from '$lib/messages/announce';
-import { bottleArrival, inRecoveryValley, type Effort } from '$lib/roadside';
-import { toasts } from '$lib/toast.svelte';
+import { account } from '#lib/account.svelte.ts';
+import type { PlaceAddress } from '#lib/channel/address.ts';
+import type { createChannelLive } from '#lib/channel/live.svelte.ts';
+import { announce } from '#lib/messages/announce.ts';
+import { bottleArrival, inRecoveryValley, type Effort } from '#lib/roadside.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 import { untrack } from 'svelte';
 
 /**

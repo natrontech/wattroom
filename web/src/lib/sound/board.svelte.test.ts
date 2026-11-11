@@ -43,7 +43,7 @@ function fakeSource() {
 	return node;
 }
 
-vi.mock('$lib/sound/cues', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
 	bus: () => ({
 		ctx: {
 			get currentTime() {
@@ -61,7 +61,7 @@ vi.mock('$lib/sound/cues', () => ({
 	}),
 }));
 
-vi.mock('$lib/sound/mixer.svelte', () => ({
+vi.mock('#lib/sound/mixer.svelte.ts', () => ({
 	mixer: { muted: false, board: 1, riderGain: () => 1 },
 }));
 
@@ -79,7 +79,7 @@ const {
 	stop,
 	stopAll,
 	stopPreview,
-} = await import('$lib/sound/board.svelte');
+} = await import('#lib/sound/board.svelte.ts');
 
 const ME = 'rider-me';
 

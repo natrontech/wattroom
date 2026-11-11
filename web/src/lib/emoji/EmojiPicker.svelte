@@ -17,9 +17,9 @@
 	import Volleyball from '@lucide/svelte/icons/volleyball';
 	import Search from '@lucide/svelte/icons/search';
 	import Star from '@lucide/svelte/icons/star';
-	import Banner from '$lib/components/Banner.svelte';
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import { focusTrap } from '$lib/components/focus-trap';
+	import Banner from '#lib/components/Banner.svelte';
+	import CheerIcon from '#lib/components/CheerIcon.svelte';
+	import { focusTrap } from '#lib/components/focus-trap.ts';
 	import { crewEmoji, customName } from './crew-emoji.svelte';
 	import { loadEmoji, searchEmoji, type EmojiGroup } from './data';
 

@@ -1,6 +1,6 @@
-import type { TrainerSample } from '$lib/ble/trainer';
-import { publishHud } from '$lib/hud/feed';
-import type { RoadReadout } from '$lib/road/readout';
+import type { TrainerSample } from '#lib/ble/trainer.ts';
+import { publishHud } from '#lib/hud/feed.ts';
+import type { RoadReadout } from '#lib/road/readout.ts';
 import { signalLost, type RideState } from './ride-state';
 
 /**

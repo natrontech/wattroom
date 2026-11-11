@@ -1,5 +1,5 @@
-import type { CrewPlan } from '$lib/crew-schedule';
-import type { Workout } from '$lib/workout/types';
+import type { CrewPlan } from '#lib/crew-schedule.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 /**
  * Where a planned road session's "Ride it first" goes (#3621). Its planner

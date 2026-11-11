@@ -1,6 +1,6 @@
 <script lang="ts">
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { type LiveRider, targetState } from '$lib/channel/types';
+	import ProgressBar from '#lib/components/ProgressBar.svelte';
+	import { type LiveRider, targetState } from '#lib/channel/types.ts';
 
 	let { riders }: { riders: LiveRider[] } = $props();
 

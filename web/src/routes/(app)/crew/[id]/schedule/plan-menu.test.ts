@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { MenuEntry, MenuItem } from '$lib/context-menu.svelte';
+import type { MenuEntry, MenuItem } from '#lib/context-menu.svelte.ts';
 import { planEntries, startHint, type PlanActions } from './plan-menu';
 
 const act = (over: Partial<PlanActions> = {}): PlanActions => ({

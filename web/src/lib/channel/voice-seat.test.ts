@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ClientMessage } from '$lib/protocol';
+import type { ClientMessage } from '#lib/protocol.ts';
 import {
 	createVoiceSeat,
 	VOICE_ANSWER_MS,

@@ -1,5 +1,5 @@
-import { api } from '$lib/api';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /**
  * What the toggle says, in one place (#2167). A control says what pressing it

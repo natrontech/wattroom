@@ -14,7 +14,7 @@
 	 */
 	import Lock from '@lucide/svelte/icons/lock';
 	import Users from '@lucide/svelte/icons/users';
-	import { setRideShared, shareAction } from '$lib/ride/share';
+	import { setRideShared, shareAction } from '#lib/ride/share.ts';
 
 	let {
 		ride,

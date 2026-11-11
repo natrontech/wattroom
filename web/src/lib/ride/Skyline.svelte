@@ -21,11 +21,11 @@
 	 */
 	import { untrack } from 'svelte';
 	import { innerHeight } from 'svelte/reactivity/window';
-	import { ZONE_BG, ZONE_VAR, zoneOf } from '$lib/components/zones';
-	import { prefersReducedMotion } from '$lib/motion';
-	import { heightAt } from '$lib/road/at-metre';
-	import { climbsOf } from '$lib/road/climbs';
-	import { turnedRound, type Road } from '$lib/road/road';
+	import { ZONE_BG, ZONE_VAR, zoneOf } from '#lib/components/zones.ts';
+	import { prefersReducedMotion } from '#lib/motion/index.ts';
+	import { heightAt } from '#lib/road/at-metre.ts';
+	import { climbsOf } from '#lib/road/climbs.ts';
+	import { turnedRound, type Road } from '#lib/road/road.ts';
 	import {
 		aheadFor,
 		bandIn,
@@ -42,7 +42,7 @@
 		tilesIn,
 		yOf,
 		type BandBlock,
-	} from '$lib/road/skyline';
+	} from '#lib/road/skyline.ts';
 
 	let {
 		road: stored,

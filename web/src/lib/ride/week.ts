@@ -1,4 +1,4 @@
-import type { ServerRide } from '$lib/ride/list';
+import type { ServerRide } from '#lib/ride/list.ts';
 
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 

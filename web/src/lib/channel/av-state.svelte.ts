@@ -4,7 +4,7 @@ import type {
 	AvStatus,
 	LinkQuality,
 	LiveKitClient,
-} from '$lib/channel/av-types';
+} from '#lib/channel/av-types.ts';
 
 /**
  * One call's AV connection, in two named places (#892).

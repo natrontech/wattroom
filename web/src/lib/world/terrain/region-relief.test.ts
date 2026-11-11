@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hairpinClimb } from '$lib/road/fixtures';
-import { toRoute } from '$lib/road/route';
+import { hairpinClimb } from '#lib/road/fixtures.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { indexStroke } from '../chunks/stroke-index';
 import type { Salt } from '../place/keyed';
 import { onStroke, type Keying } from '../place/region';

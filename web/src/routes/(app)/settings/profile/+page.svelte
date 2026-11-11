@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { confirm } from '$lib/confirm.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
-	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import FtpPrompt from '#lib/components/FtpPrompt.svelte';
+	import LthrPrompt from '#lib/components/LthrPrompt.svelte';
 	import {
 		declineSuggestion,
 		declinedSuggestion,
 		suggestionDeclined,
-	} from '$lib/suggestion-decline';
-	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
-	import PasskeyList from '$lib/components/PasskeyList.svelte';
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { account, unchosen } from '$lib/account.svelte';
-	import { EMAIL_IS_FOR } from '$lib/auth/address';
-	import { compressImage } from '$lib/chat/media';
-	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import { hrZoneRanges } from '$lib/components/zones';
-	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
-	import { ownCachedLthr } from '$lib/profile-sync.svelte';
-	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	} from '#lib/suggestion-decline.ts';
+	import ProviderConnections from '#lib/components/ProviderConnections.svelte';
+	import PasskeyList from '#lib/components/PasskeyList.svelte';
+	import ProgressBar from '#lib/components/ProgressBar.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { account, unchosen } from '#lib/account.svelte.ts';
+	import { EMAIL_IS_FOR } from '#lib/auth/address.ts';
+	import { compressImage } from '#lib/chat/media.ts';
+	import { levelFromXp, levelProgress, xpForLevel } from '#lib/level.ts';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import { hrZoneRanges } from '#lib/components/zones.ts';
+	import { createProfileStore, PROFILE_LIMITS } from '#lib/profile.svelte.ts';
+	import { ownCachedLthr } from '#lib/profile-sync.svelte.ts';
+	import FtpTrendChart from '#lib/components/FtpTrendChart.svelte';
 	import SignOutElsewhere from './SignOutElsewhere.svelte';
-	import LookEditor from '$lib/lounge/LookEditor.svelte';
+	import LookEditor from '#lib/lounge/LookEditor.svelte';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 

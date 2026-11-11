@@ -5,8 +5,8 @@
  * does not decode again when the voice channel comes back to a song. Null when
  * the file cannot be read; the deck then keeps its placeholder shape.
  */
-import { audioSrc } from '$lib/music/pool';
-import { peaksOf } from '$lib/sound/peaks';
+import { audioSrc } from '#lib/music/pool.ts';
+import { peaksOf } from '#lib/sound/peaks.ts';
 
 const known = new Map<string, Promise<number[] | null>>();
 

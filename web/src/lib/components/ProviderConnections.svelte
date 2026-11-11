@@ -2,15 +2,15 @@
 	// The ways back into this account, and the offer to add one (#719).
 	// Connecting is a top-level navigation, not a fetch: it leaves for the
 	// provider and comes back to /settings/profile?link=<outcome>.
-	import { confirm } from '$lib/confirm.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import { page } from '$app/state';
-	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
-	import Banner from '$lib/components/Banner.svelte';
-	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
-	import { providerName } from '$lib/auth/providers';
-	import { LAST_WAY_IN, isLastWayIn } from '$lib/auth/last-way-in';
-	import { shellVersion } from '$lib/desktop';
+	import { GITHUB_MARK, GOOGLE_G } from '#lib/brand/icons.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
+	import { providerName } from '#lib/auth/providers.ts';
+	import { LAST_WAY_IN, isLastWayIn } from '#lib/auth/last-way-in.ts';
+	import { shellVersion } from '#lib/desktop.ts';
 
 	let {
 		onUploadToggle,

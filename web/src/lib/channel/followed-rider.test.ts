@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { followedRider } from './followed-rider';
-import type { LiveRider } from '$lib/channel/types';
+import type { LiveRider } from '#lib/channel/types.ts';
 
 const rider = (id: string, over: Partial<LiveRider> = {}): LiveRider =>
 	({ id, name: id, watts: 0, ftp: 200, you: false, ...over }) as LiveRider;

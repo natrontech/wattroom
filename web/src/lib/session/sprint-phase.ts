@@ -1,4 +1,4 @@
-import type { SprintState } from '$lib/protocol';
+import type { SprintState } from '#lib/protocol.ts';
 
 /**
  * Where a sprint is at server time `now` (#30): the klaxon's count before

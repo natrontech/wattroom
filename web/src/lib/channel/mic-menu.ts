@@ -29,11 +29,11 @@ import Mic from '@lucide/svelte/icons/mic';
 import MicOff from '@lucide/svelte/icons/mic-off';
 import Radio from '@lucide/svelte/icons/radio';
 import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
-import type { MenuEntry } from '$lib/context-menu.svelte';
-import { type Device, deviceOptions } from '$lib/channel/device-options';
-import { openSoundPanel } from '$lib/channel/sound-panel.svelte';
-import { canHoldToTalk } from '$lib/channel/ptt-keys';
-import { device } from '$lib/device.svelte';
+import type { MenuEntry } from '#lib/context-menu.svelte.ts';
+import { type Device, deviceOptions } from '#lib/channel/device-options.ts';
+import { openSoundPanel } from '#lib/channel/sound-panel.svelte.ts';
+import { canHoldToTalk } from '#lib/channel/ptt-keys.ts';
+import { device } from '#lib/device.svelte.ts';
 
 export interface MicVoice {
 	micOn: boolean;

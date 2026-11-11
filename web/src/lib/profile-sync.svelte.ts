@@ -1,6 +1,6 @@
-import { account, type Me } from '$lib/account.svelte';
+import { account, type Me } from '#lib/account.svelte.ts';
 import { untrack } from 'svelte';
-import type { createProfileStore, Profile } from '$lib/profile.svelte';
+import type { createProfileStore, Profile } from '#lib/profile.svelte.ts';
 
 /**
  * The account is the truth for FTP and weight (everything is signed in,

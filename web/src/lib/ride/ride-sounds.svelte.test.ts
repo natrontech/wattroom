@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
-import type { RideState } from '$lib/workout/ride-state';
+import type { RideState } from '#lib/workout/ride-state.ts';
 
 const heard = vi.hoisted(() => ({ cues: [] as string[] }));
-vi.mock('$lib/sound/cues', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
 	play: (id: string) => void heard.cues.push(id),
 	playCountdownTick: (n: number) => void heard.cues.push(`tick:${n}`),
 }));
-vi.mock('$lib/server-clock', () => ({ serverNow: () => 0 }));
+vi.mock('#lib/server-clock.ts', () => ({ serverNow: () => 0 }));
 
 import {
 	soloRideSounds,

@@ -2,38 +2,38 @@
 	import ChevronUp from '@lucide/svelte/icons/chevron-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { goto } from '$app/navigation';
-	import { account } from '$lib/account.svelte';
+	import { account } from '#lib/account.svelte.ts';
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { applyEdit, type GraphEdit } from '$lib/components/graph-edit';
+	import Banner from '#lib/components/Banner.svelte';
+	import IntervalGraph from '#lib/components/IntervalGraph.svelte';
+	import { applyEdit, type GraphEdit } from '#lib/components/graph-edit.ts';
 	import StepList from './StepList.svelte';
 	import {
 		plannedZoneSeconds,
 		ZONE_NAMES,
 		zoneOfStep,
-	} from '$lib/components/zones';
-	import ZoneBar from '$lib/components/ZoneBar.svelte';
-	import { formatClock } from '$lib/format';
-	import { toasts } from '$lib/toast.svelte';
-	import { customWorkouts } from '$lib/workout/custom.svelte';
-	import { durationSeconds, flatten } from '$lib/workout/engine';
-	import { createHistory, type Snapshot } from '$lib/workout/history.svelte';
-	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
-	import { LIMITS } from '$lib/workout/validate';
-	import { isTyping } from '$lib/keys';
+	} from '#lib/components/zones.ts';
+	import ZoneBar from '#lib/components/ZoneBar.svelte';
+	import { formatClock } from '#lib/format.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
+	import { durationSeconds, flatten } from '#lib/workout/engine.ts';
+	import { createHistory, type Snapshot } from '#lib/workout/history.svelte.ts';
+	import { guardLeaving } from '#lib/ride/leave-guard.svelte.ts';
+	import { LIMITS } from '#lib/workout/validate.ts';
+	import { isTyping } from '#lib/keys.ts';
 	import {
 		duplicate,
 		move,
 		removeAndSelect,
 		stepAt,
 		wrapInRepeat,
-	} from '$lib/workout/tree';
-	import { byId, library } from '$lib/workout/library';
-	import { backFrom, withPick } from '$lib/session/doors';
-	import type { RampStep, SteadyStep, Workout } from '$lib/workout/types';
-	import { validateWorkout } from '$lib/workout/validate';
+	} from '#lib/workout/tree.ts';
+	import { byId, library } from '#lib/workout/library.ts';
+	import { backFrom, withPick } from '#lib/session/doors.ts';
+	import type { RampStep, SteadyStep, Workout } from '#lib/workout/types.ts';
+	import { validateWorkout } from '#lib/workout/validate.ts';
 
 	// The rider steers by this preview — it is the workout they are about to
 	// ride — so it scales to their own FTP; 265 only covers the flicker

@@ -3,8 +3,8 @@
 	 * The flags a ride raised, after it: a note each and one Send. Drawn by
 	 * /ride and /ramp under their summaries (#1799).
 	 */
-	import Banner from '$lib/components/Banner.svelte';
-	import type { createRideFlags } from '$lib/ride/flags.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import type { createRideFlags } from '#lib/ride/flags.svelte.ts';
 
 	let { flags }: { flags: ReturnType<typeof createRideFlags> } = $props();
 </script>

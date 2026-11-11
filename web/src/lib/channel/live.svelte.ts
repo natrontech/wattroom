@@ -19,36 +19,36 @@ import type {
 	ToeggeliState,
 	ServerTick,
 	SessionRecap,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import {
 	MinRideSamples,
 	PokeKindBottle,
 	ToeggeliCleared,
 	RoadsideKindPaint,
 	type RoadsideStamp,
-} from '$lib/protocol';
-import type { PlaceAddress } from '$lib/channel/address';
-import { reconnectDelay } from '$lib/reconnect';
-import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
-import { account } from '$lib/account.svelte';
-import { deviceWord } from '$lib/device.svelte';
-import { createVoiceSeat } from '$lib/channel/voice-seat';
-import { tabId } from '$lib/channel/rejoin';
-import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+} from '#lib/protocol.ts';
+import type { PlaceAddress } from '#lib/channel/address.ts';
+import { reconnectDelay } from '#lib/reconnect.ts';
+import { fillDeck, type DeckHeard } from '#lib/channel/deck-heard.ts';
+import { account } from '#lib/account.svelte.ts';
+import { deviceWord } from '#lib/device.svelte.ts';
+import { createVoiceSeat } from '#lib/channel/voice-seat.ts';
+import { tabId } from '#lib/channel/rejoin.ts';
+import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
 import {
 	observeServerTime,
 	resetServerClock,
 	serverNow,
-} from '$lib/server-clock';
+} from '#lib/server-clock.ts';
 import {
 	REPLAY_SPACING_MS,
 	replayFrames,
 	timelineOrigin,
 	timelineSecond,
-} from '$lib/channel/replay';
-import { isLivePhase } from '$lib/channel/tick-session';
-import { roadOf, type LostRoad } from '$lib/channel/lost-road';
-import { askToShareRoute } from '$lib/road/share';
+} from '#lib/channel/replay.ts';
+import { isLivePhase } from '#lib/channel/tick-session.ts';
+import { roadOf, type LostRoad } from '#lib/channel/lost-road.ts';
+import { askToShareRoute } from '#lib/road/share.ts';
 
 /**
  * The live side of one voice channel (#18): a WebSocket to the hub, the
@@ -864,7 +864,7 @@ export function createChannelLive(address: PlaceAddress) {
 		/** One jukebox command. The wire shape IS the argument (#286) — six
 		 * positional optionals were a bug waiting to be passed in the wrong
 		 * order, and two of them already had been. */
-		jukebox(command: import('$lib/protocol').JukeboxCommand) {
+		jukebox(command: import('#lib/protocol.ts').JukeboxCommand) {
 			// The dock's own end-of-track report is not the rider acting: it
 			// must not wipe a refusal they are still reading (#824).
 			if (command.action !== 'ended' && command.action !== 'unplayable')
@@ -878,11 +878,11 @@ export function createChannelLive(address: PlaceAddress) {
 				json: string;
 				totalSeconds: number;
 				/** The road the pick rides, when it rides one (#3095, #3105). */
-				route?: import('$lib/protocol').ControlRoute;
+				route?: import('#lib/protocol.ts').ControlRoute;
 			},
 			/** For "game": the mode, and a race's road and minutes (#3777). */
 			game?: Pick<
-				import('$lib/protocol').Control,
+				import('#lib/protocol.ts').Control,
 				'gameMode' | 'route' | 'minutes'
 			>,
 		) {

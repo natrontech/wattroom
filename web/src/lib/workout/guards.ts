@@ -10,7 +10,7 @@
  * numbers here are docs/SPEC.md's — do not tune them in code.
  */
 
-import * as protocol from '$lib/protocol';
+import * as protocol from '#lib/protocol.ts';
 
 /**
  * docs/SPEC.md's tolerance band around a target, in watts: ±5 % with a ±10 W

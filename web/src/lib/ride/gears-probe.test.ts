@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SimulatedTrainer } from '$lib/ble/simulated';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
 import { GEARS_PROBE } from './gears-probe-steps';
 import { writesPerShift, type StepId } from './gears-probe';
 import { dryRunOn } from './gears-probe.test-helper';

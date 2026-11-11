@@ -7,9 +7,9 @@
  * (ADR-0004); where they are missing, `supported()` is false and the
  * affordance never renders rather than failing on click.
  */
-import { api } from '$lib/api';
-import { confirm } from '$lib/confirm.svelte';
-import type { Me } from '$lib/account.svelte';
+import { api } from '#lib/api.ts';
+import { confirm } from '#lib/confirm.svelte.ts';
+import type { Me } from '#lib/account.svelte.ts';
 
 export interface Passkey {
 	id: string;

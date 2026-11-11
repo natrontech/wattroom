@@ -2,7 +2,7 @@
 	// A panel that opens above the now bar from one of its buttons: the music
 	// and the reactions. Escape or a press outside closes it; focus goes in.
 	import type { Snippet } from 'svelte';
-	import { countModal } from '$lib/modals.svelte';
+	import { countModal } from '#lib/modals.svelte.ts';
 
 	let {
 		label,

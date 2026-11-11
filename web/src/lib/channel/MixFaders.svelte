@@ -7,11 +7,11 @@
 	// /settings/equipment. One set of faders, two surfaces. The riders' volumes
 	// beside them are `RiderVolumes`, so the Sound panel can give them their
 	// own column (#4170).
-	import FaderRow from '$lib/channel/FaderRow.svelte';
-	import { mixer } from '$lib/sound/mixer.svelte';
-	import { play } from '$lib/sound/cues';
-	import { applyLevels } from '$lib/sound/board.svelte';
-	import { MUSIC_FADER, UNIT_FADER, type Fader } from '$lib/sound/fader';
+	import FaderRow from '#lib/channel/FaderRow.svelte';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
+	import { play } from '#lib/sound/cues.ts';
+	import { applyLevels } from '#lib/sound/board.svelte.ts';
+	import { MUSIC_FADER, UNIT_FADER, type Fader } from '#lib/sound/fader.ts';
 
 	let {
 		onShareGain,

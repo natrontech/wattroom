@@ -1,4 +1,4 @@
-import { toasts } from '$lib/toast.svelte';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /**
  * Text onto the clipboard, and what the rider is told either way (#2182,

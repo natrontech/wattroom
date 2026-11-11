@@ -1,43 +1,43 @@
 <script lang="ts">
-	import { navDrawer } from '$lib/nav/drawer.svelte';
+	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
 	import { page } from '$app/state';
-	import { setMuted } from '$lib/sound/cues';
-	import { account, voiceUp } from '$lib/account.svelte';
-	import { device } from '$lib/device.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { ownRoad } from '$lib/ride/free-ride-controls';
-	import { publishHud } from '$lib/hud/feed';
-	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import { confirm } from '$lib/confirm.svelte';
-	import { banAsk } from '$lib/crew-flows';
-	import { pickStage, sourceLabel } from '$lib/channel/stage';
-	import { createRiders } from '$lib/channel/riders.svelte';
-	import { coachOf } from '$lib/channel/tick-session';
-	import { createSessionSounds } from '$lib/session/session-sounds.svelte';
-	import CheerLayer from '$lib/channel/CheerLayer.svelte';
-	import CheerDeck from '$lib/channel/CheerDeck.svelte';
-	import Jukebox from '$lib/channel/Jukebox.svelte';
-	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
-	import BoardToggle from '$lib/board/BoardToggle.svelte';
-	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
-	import NowBarPopover from '$lib/nav/NowBarPopover.svelte';
-	import { nowPanel } from '$lib/nav/now-panel.svelte';
+	import { setMuted } from '#lib/sound/cues.ts';
+	import { account, voiceUp } from '#lib/account.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { ownRoad } from '#lib/ride/free-ride-controls.ts';
+	import { publishHud } from '#lib/hud/feed.ts';
+	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import { banAsk } from '#lib/crew-flows.ts';
+	import { pickStage, sourceLabel } from '#lib/channel/stage.ts';
+	import { createRiders } from '#lib/channel/riders.svelte.ts';
+	import { coachOf } from '#lib/channel/tick-session.ts';
+	import { createSessionSounds } from '#lib/session/session-sounds.svelte.ts';
+	import CheerLayer from '#lib/channel/CheerLayer.svelte';
+	import CheerDeck from '#lib/channel/CheerDeck.svelte';
+	import Jukebox from '#lib/channel/Jukebox.svelte';
+	import { roadsideShown } from '#lib/channel/RoadsideDeck.svelte';
+	import BoardToggle from '#lib/board/BoardToggle.svelte';
+	import EmojiPicker from '#lib/emoji/EmojiPicker.svelte';
+	import NowBarPopover from '#lib/nav/NowBarPopover.svelte';
+	import { nowPanel } from '#lib/nav/now-panel.svelte.ts';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
-	import Soundboard from '$lib/board/Soundboard.svelte';
-	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
+	import Soundboard from '#lib/board/Soundboard.svelte';
+	import ChannelStatus from '#lib/channel/ChannelStatus.svelte';
 	import SessionLayers, {
 		createSessionLayers,
-	} from '$lib/session/SessionLayers.svelte';
-	import { setChannelContext } from '$lib/channel/context';
+	} from '#lib/session/SessionLayers.svelte';
+	import { setChannelContext } from '#lib/channel/context.ts';
 	import {
 		channelContextValue,
 		type ChannelShellProps,
-	} from '$lib/channel/context-value.svelte';
-	import { readNotes, shouldRejoinVoice, tabId } from '$lib/channel/rejoin';
-	import { takeVoice, type VoiceIntent } from '$lib/channel/voice-intent';
-	import { stageSlot } from '$lib/channel/stage-slot.svelte';
-	import { modals } from '$lib/modals.svelte';
+	} from '#lib/channel/context-value.svelte.ts';
+	import { readNotes, shouldRejoinVoice, tabId } from '#lib/channel/rejoin.ts';
+	import { takeVoice, type VoiceIntent } from '#lib/channel/voice-intent.ts';
+	import { stageSlot } from '#lib/channel/stage-slot.svelte.ts';
+	import { modals } from '#lib/modals.svelte.ts';
 
 	let props: ChannelShellProps = $props();
 

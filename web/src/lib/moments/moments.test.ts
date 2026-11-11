@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DUR, HOLD_ANNOUNCE } from '$lib/motion/tokens';
+import { DUR, HOLD_ANNOUNCE } from '#lib/motion/tokens.ts';
 import {
 	confetti,
 	createMoments,

@@ -1,4 +1,4 @@
-import { api, loadApi, type ApiResult } from '$lib/api';
+import { api, loadApi, type ApiResult } from '#lib/api.ts';
 
 export type ChannelKind = 'text' | 'voice';
 export type AutoplayOrder = 'ordered' | 'shuffled' | 'smart';

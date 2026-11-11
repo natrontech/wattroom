@@ -8,9 +8,9 @@ import {
 	crankAngle,
 	riderHead,
 	type View,
-} from '$lib/lounge/draw-rider';
-import { dress } from '$lib/lounge/figures';
-import { HAIR_NAMES, encodeLook, seededLook } from '$lib/lounge/look';
+} from '#lib/lounge/draw-rider.ts';
+import { dress } from '#lib/lounge/figures.ts';
+import { HAIR_NAMES, encodeLook, seededLook } from '#lib/lounge/look.ts';
 
 describe('the crank', () => {
 	it('pedals forward: the front foot goes down as the stroke runs on', () => {

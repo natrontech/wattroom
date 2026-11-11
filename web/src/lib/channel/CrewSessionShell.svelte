@@ -4,16 +4,21 @@
 	// roles, its plans. There is no voice channel behind it, so no deck, no
 	// announcement strip and no plan of a channel's.
 	import { untrack, type Snippet } from 'svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import { account } from '$lib/account.svelte';
-	import { fetchCrew, learnCrewFaces, setCrewRole, type Crew } from '$lib/crew';
-	import { planCrewSession } from '$lib/crew-schedule';
-	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
-	import { crewSessionAddress } from '$lib/channel/address';
-	import ChannelShell from '$lib/channel/ChannelShell.svelte';
-	import { liveRoleOf } from '$lib/channel/voice-channel';
-	import type { LiveSession } from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import {
+		fetchCrew,
+		learnCrewFaces,
+		setCrewRole,
+		type Crew,
+	} from '#lib/crew.ts';
+	import { planCrewSession } from '#lib/crew-schedule.ts';
+	import { provideCrewEmoji } from '#lib/emoji/crew-emoji.svelte.ts';
+	import { crewSessionAddress } from '#lib/channel/address.ts';
+	import ChannelShell from '#lib/channel/ChannelShell.svelte';
+	import { liveRoleOf } from '#lib/channel/voice-channel.ts';
+	import type { LiveSession } from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let {
 		crewId,

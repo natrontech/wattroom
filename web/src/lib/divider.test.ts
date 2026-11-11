@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { clampSize, dividerDrag, edgeDivider } from '$lib/divider';
+import { clampSize, dividerDrag, edgeDivider } from '#lib/divider.ts';
 
 function grip() {
 	const node = document.createElement('div');

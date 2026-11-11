@@ -1,4 +1,4 @@
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 import type { Workout } from './types';
 import { validateWorkout } from './validate';
 

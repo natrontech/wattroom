@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SimulatedTrainer } from '$lib/ble/simulated';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
 import { durationSeconds, flatten, targetAt } from './engine';
 import { createRideSession } from './session.svelte';
 import { DEFAULTS } from './guards';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { peaksOf } from '$lib/sound/peaks';
+import { peaksOf } from '#lib/sound/peaks.ts';
 
 describe('peaksOf', () => {
 	it('takes the loudest sample per bucket and normalises to the loudest bucket', () => {

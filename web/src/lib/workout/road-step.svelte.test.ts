@@ -1,8 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
-vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
-import { SimulatedTrainer } from '$lib/ble/simulated';
-import { packRoad } from '$lib/road/road';
-import { ROAD } from '$lib/ride/ride-grade';
+vi.mock('#lib/hud/feed.ts', () => ({ publishHud: () => {} }));
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+import { packRoad } from '#lib/road/road.ts';
+import { ROAD } from '#lib/ride/ride-grade.ts';
 import { createRideSession } from './session.svelte';
 import { COUNTDOWN_SECONDS } from './ride-state';
 import type { Workout } from './types';

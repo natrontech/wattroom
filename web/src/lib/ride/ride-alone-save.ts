@@ -1,14 +1,14 @@
-import { account } from '$lib/account.svelte';
-import { createHistoryStore, summarise } from '$lib/history.svelte';
-import type { RideBuffer } from '$lib/ride/buffer';
+import { account } from '#lib/account.svelte.ts';
+import { createHistoryStore, summarise } from '#lib/history.svelte.ts';
+import type { RideBuffer } from '#lib/ride/buffer.ts';
 import {
 	ROAD_LEFT_OFF,
 	recordingUpload,
 	toastSaved,
 	uploadRide,
-} from '$lib/ride/save';
-import { toasts } from '$lib/toast.svelte';
-import type { createRideSession } from '$lib/workout/session.svelte';
+} from '#lib/ride/save.ts';
+import { toasts } from '#lib/toast.svelte.ts';
+import type { createRideSession } from '#lib/workout/session.svelte.ts';
 
 type Session = ReturnType<typeof createRideSession>;
 

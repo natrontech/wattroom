@@ -4,24 +4,24 @@
 	// is read from the crew's voice channels; the crew itself holds nothing
 	// live.
 	import { page } from '$app/state';
-	import { account } from '$lib/account.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import CrewMark from '$lib/components/CrewMark.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import RecoveredNotice from '$lib/ride/RecoveredNotice.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import CrewMark from '#lib/components/CrewMark.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import RecoveredNotice from '#lib/ride/RecoveredNotice.svelte';
 	import CrewNow from './CrewNow.svelte';
 	import CrewBoard from './CrewBoard.svelte';
 	import YourWeek from './YourWeek.svelte';
-	import { fetchCrew, learnCrewFaces, type Crew } from '$lib/crew';
+	import { fetchCrew, learnCrewFaces, type Crew } from '#lib/crew.ts';
 	import {
 		leaveCrewFlow,
 		MAIN_CREW_HINT,
 		MAIN_CREW_LABEL,
 		makeMainCrewFlow,
 		shareInviteLink,
-	} from '$lib/crew-flows';
-	import { presence } from '$lib/presence.svelte';
-	import { shareVerb } from '$lib/share';
+	} from '#lib/crew-flows.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { shareVerb } from '#lib/share.ts';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Star from '@lucide/svelte/icons/star';

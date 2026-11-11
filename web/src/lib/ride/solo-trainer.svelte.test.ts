@@ -1,13 +1,17 @@
 // @vitest-environment happy-dom
 import { flushSync } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
+import type {
+	Trainer,
+	TrainerSample,
+	TrainerStatus,
+} from '#lib/ble/trainer.ts';
 
 /** The voice channel a solo screen has to take the trainer back from (#521). */
 const unpair = vi.fn();
 /** The voice channel's own hand-off (#2635): nothing held, unless a test says. */
 const channelHandOff = vi.fn((): unknown => null);
-vi.mock('$lib/channel/connection.svelte', () => ({
+vi.mock('#lib/channel/connection.svelte.ts', () => ({
 	channelConnection: {
 		get current() {
 			return { ride: { unpair, handOff: channelHandOff } };
@@ -17,7 +21,7 @@ vi.mock('$lib/channel/connection.svelte', () => ({
 
 const { createSoloTrainer, soloTrainer, trainerForChannel } =
 	await import('./solo-trainer.svelte');
-const { FtmsTrainer } = await import('$lib/ble/ftms');
+const { FtmsTrainer } = await import('#lib/ble/ftms.ts');
 
 class FakeTrainer implements Trainer {
 	status: TrainerStatus = 'disconnected';

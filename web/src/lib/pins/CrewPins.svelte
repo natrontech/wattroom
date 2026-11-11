@@ -2,9 +2,9 @@
 	// A crew's pins as a section (ADR-0056): the read, the writes and the
 	// states around PinBoard, which owns the grid. The crew's Board (#2455,
 	// #2413) draws it; the page around it composes whatever else it shows.
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import PinBoard from '$lib/pins/PinBoard.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import PinBoard from '#lib/pins/PinBoard.svelte';
 	import {
 		createPin,
 		deletePin,
@@ -12,8 +12,8 @@
 		updatePin,
 		type Pin,
 		type PinDraft,
-	} from '$lib/pins/pins';
-	import { presence } from '$lib/presence.svelte';
+	} from '#lib/pins/pins.ts';
+	import { presence } from '#lib/presence.svelte.ts';
 
 	let { crewId, crewName }: { crewId: string; crewName: string } = $props();
 

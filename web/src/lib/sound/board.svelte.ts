@@ -9,11 +9,11 @@
  * together rather than clipping.
  */
 import { SvelteMap } from 'svelte/reactivity';
-import { api } from '$lib/api';
-import { bus } from '$lib/sound/cues';
-import { peaksOf } from '$lib/sound/peaks';
-import { mixer } from '$lib/sound/mixer.svelte';
-import type { Edit } from '$lib/board/clips.svelte';
+import { api } from '#lib/api.ts';
+import { bus } from '#lib/sound/cues.ts';
+import { peaksOf } from '#lib/sound/peaks.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import type { Edit } from '#lib/board/clips.svelte.ts';
 
 /**
  * A clip as a LISTENER knows it: the audio, its name, and the edit that says

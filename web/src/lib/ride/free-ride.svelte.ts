@@ -1,5 +1,5 @@
-import { account } from '$lib/account.svelte';
-import { MaxBridgedGap, MinRideSamples } from '$lib/protocol';
+import { account } from '#lib/account.svelte.ts';
+import { MaxBridgedGap, MinRideSamples } from '#lib/protocol.ts';
 import {
 	openingWatts,
 	nudged,
@@ -8,18 +8,22 @@ import {
 	snappedWatts,
 	type FreeMode,
 	type RampKind,
-} from '$lib/ride/free-ride-controls';
-import { ergByRoad } from '$lib/ride/ride-grade';
-import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { createRoadReadout } from '$lib/ride/road-readout';
-import { wayUp } from '$lib/ride/climb-repeats';
-import { createRoadLaps, type RoadSecond } from '$lib/ride/road-ride';
-import type { RideableRoute } from '$lib/ride/roads';
-import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-import { createLiveStats } from '$lib/ride/live-stats.svelte';
-import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
-import { DEFAULTS } from '$lib/workout/guards';
-import { play } from '$lib/sound/cues';
+} from '#lib/ride/free-ride-controls.ts';
+import { ergByRoad } from '#lib/ride/ride-grade.ts';
+import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+import { createRoadReadout } from '#lib/ride/road-readout.ts';
+import { wayUp } from '#lib/ride/climb-repeats.ts';
+import { createRoadLaps, type RoadSecond } from '#lib/ride/road-ride.ts';
+import type { RideableRoute } from '#lib/ride/roads.ts';
+import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
+import { createLiveStats } from '#lib/ride/live-stats.svelte.ts';
+import {
+	uploadRide,
+	type RideUpload,
+	type SaveFailure,
+} from '#lib/ride/save.ts';
+import { DEFAULTS } from '#lib/workout/guards.ts';
+import { play } from '#lib/sound/cues.ts';
 
 /** The empty, unscored workout a free ride saves as — a game's shape. */
 export const FREE_RIDE_NAME = 'Free ride';

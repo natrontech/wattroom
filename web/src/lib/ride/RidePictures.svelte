@@ -6,8 +6,8 @@
 	 * Strava's API takes the activity and never a photo, so these are what a
 	 * rider adds by hand.
 	 */
-	import RideCardChooser from '$lib/ride/RideCardChooser.svelte';
-	import WorldPicture from '$lib/ride/WorldPicture.svelte';
+	import RideCardChooser from '#lib/ride/RideCardChooser.svelte';
+	import WorldPicture from '#lib/ride/WorldPicture.svelte';
 
 	let { rideId }: { rideId?: string } = $props();
 

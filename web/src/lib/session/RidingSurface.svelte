@@ -12,14 +12,14 @@
 	 * drawn here: `bar` hands them to the now bar.
 	 */
 	import { untrack, type Snippet } from 'svelte';
-	import { intoBar, rideBar } from '$lib/nav/ride-bar.svelte';
-	import { device } from '$lib/device.svelte';
-	import { createMoments } from '$lib/moments';
-	import SummitStrip from '$lib/ride/SummitStrip.svelte';
-	import { prefersReducedMotion } from '$lib/motion';
-	import { COLUMN_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
-	import { askPage } from '$lib/session/computer-pages';
-	import { computerShown } from '$lib/session/computer-shown.svelte';
+	import { intoBar, rideBar } from '#lib/nav/ride-bar.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { createMoments } from '#lib/moments/index.ts';
+	import SummitStrip from '#lib/ride/SummitStrip.svelte';
+	import { prefersReducedMotion } from '#lib/motion/index.ts';
+	import { COLUMN_SEAT, offerSeat } from '#lib/channel/stage-slot.svelte.ts';
+	import { askPage } from '#lib/session/computer-pages.ts';
+	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
 	import {
 		CORRIDOR,
 		GAP_PX,

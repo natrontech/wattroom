@@ -5,12 +5,12 @@
 // behind it (ADR-0077). Every ghost is one figure posed once a frame and
 // drawn as instances of it, so up to three cost one draw (#3082).
 import * as THREE from 'three';
-import { at } from '$lib/road/along';
-import type { Route } from '$lib/road/route';
+import { at } from '#lib/road/along.ts';
+import type { Route } from '#lib/road/route.ts';
 import { LANE } from './bunch';
 import { KEEP_RIGHT, placeOn, viewerOf } from './crew';
 import { tag } from './family';
-import type { Figure as Figure2D } from '$lib/lounge/scene';
+import type { Figure as Figure2D } from '#lib/lounge/scene.ts';
 import { RiderAnimator } from './figure/animator';
 import { buildFigure, type Figure, type Palette } from './figure/figure';
 import { figureMaterial } from './figure/material';

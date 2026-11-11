@@ -1,5 +1,5 @@
-import { climbedM } from '$lib/ride/climbed';
-import type { Road } from '$lib/road/road';
+import { climbedM } from '#lib/ride/climbed.ts';
+import type { Road } from '#lib/road/road.ts';
 
 /** Everest (docs/spec/roads.md): 8,849 m, the 2020 survey — climb repeats' goal (#3193). */
 export const EVEREST_M = 8849;

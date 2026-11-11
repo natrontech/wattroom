@@ -4,25 +4,25 @@
 	// the same `:name:` inside a message.
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
-	import { compressImage } from '$lib/chat/media';
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { confirm } from '$lib/confirm.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
+	import { compressImage } from '#lib/chat/media.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
 	import {
 		crewEmoji,
 		loadCrewEmoji,
 		EMOJI_NAME,
 		type CrewEmoji,
-	} from '$lib/emoji/crew-emoji.svelte';
+	} from '#lib/emoji/crew-emoji.svelte.ts';
 	import {
 		MaxCrewEmoji,
 		MaxEmojiBytes,
 		MaxEmojiNameChars,
 		MinEmojiNameChars,
-	} from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let { crewId, administers }: { crewId: string; administers: boolean } =
 		$props();

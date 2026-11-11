@@ -4,7 +4,7 @@ import {
 	initialsOf,
 	recordsOf,
 	wearStage,
-} from '$lib/lounge/memory';
+} from '#lib/lounge/memory.ts';
 
 describe('what the room remembers', () => {
 	it('grows the plant with the sessions ridden together', () => {

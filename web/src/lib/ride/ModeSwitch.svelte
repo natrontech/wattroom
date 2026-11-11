@@ -6,7 +6,7 @@
 	 * both halves, the pressed half filled, and no padding inside it, which
 	 * the band cannot spend above the corridor.
 	 */
-	import type { FreeMode } from '$lib/ride/free-ride-controls';
+	import type { FreeMode } from '#lib/ride/free-ride-controls.ts';
 
 	let {
 		mode,

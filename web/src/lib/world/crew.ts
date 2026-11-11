@@ -8,7 +8,7 @@
 // go mid-ride, dithered in and out.
 import * as THREE from 'three';
 import { tag } from './family';
-import { zoneOf } from '$lib/components/zones';
+import { zoneOf } from '#lib/components/zones.ts';
 import { makeZoneDigits } from './zone-digit';
 import { RiderAnimator, type RideInput } from './figure/animator';
 import { buildFigure, paint, type Figure, type Palette } from './figure/figure';
@@ -20,9 +20,9 @@ import {
 import { pose } from './figure/pose';
 import { fnv, seededLoadout, type Loadout } from './loadout';
 import { outfitOf, type Outfit } from './outfit';
-import { collides, type Viewer } from '$lib/wardrobe/guard';
-import { LOUNGE } from '$lib/lounge/palette';
-import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
+import { collides, type Viewer } from '#lib/wardrobe/guard.ts';
+import { LOUNGE } from '#lib/lounge/palette.ts';
+import { DEFAULT_DARK_ID, themeById } from '#lib/themes.ts';
 import { yOf } from './geometry';
 import { ROAD_W } from './terrain/road-profile';
 import { chevronGeometry, makeCar } from './team-car';
@@ -32,10 +32,10 @@ import { ramp } from './materials';
 import { DIORAMA } from './pixel';
 import { drawSheets, makeRiderSprite, riderSheet } from './rider-sprite';
 import type { RiderSprite } from './rider-sprite';
-import { dress } from '$lib/lounge/figures';
+import { dress } from '#lib/lounge/figures.ts';
 import { LANE, type Car } from './bunch';
-import { type Route } from '$lib/road/route';
-import { at, leftOf } from '$lib/road/along';
+import { type Route } from '#lib/road/route.ts';
+import { at, leftOf } from '#lib/road/along.ts';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
 

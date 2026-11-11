@@ -1,9 +1,9 @@
-import { createMicMeter, type MicMeter } from '$lib/channel/mic-level';
-import { device } from '$lib/device.svelte';
-import { mixer } from '$lib/sound/mixer.svelte';
-import { riderOf } from '$lib/channel/tabs';
-import { makeCeiling } from '$lib/sound/cue-graph';
-import { onDuck } from '$lib/sound/duck';
+import { createMicMeter, type MicMeter } from '#lib/channel/mic-level.ts';
+import { device } from '#lib/device.svelte.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import { riderOf } from '#lib/channel/tabs.ts';
+import { makeCeiling } from '#lib/sound/cue-graph.ts';
+import { onDuck } from '#lib/sound/duck.ts';
 
 /**
  * Everyone else's voice, on its way to your speakers (#152, #179).

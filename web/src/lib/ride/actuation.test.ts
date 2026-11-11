@@ -5,8 +5,8 @@ import type {
 	Trainer,
 	TrainerSample,
 	TrainerStatus,
-} from '$lib/ble/trainer';
-import { DEFAULTS, nudgedBias } from '$lib/workout/guards';
+} from '#lib/ble/trainer.ts';
+import { DEFAULTS, nudgedBias } from '#lib/workout/guards.ts';
 import { createActuator, simulate } from './actuation.svelte';
 import { EASIER_HARDER_OFF, ergPress } from './easier-harder';
 import { nudged } from './free-ride-controls';

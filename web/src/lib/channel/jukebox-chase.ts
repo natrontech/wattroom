@@ -1,20 +1,20 @@
-import type { JukeboxState } from '$lib/protocol';
-import { playerInfo } from '$lib/channel/jukebox-player.svelte';
+import type { JukeboxState } from '#lib/protocol.ts';
+import { playerInfo } from '#lib/channel/jukebox-player.svelte.ts';
 import {
 	listening,
 	playerAction,
 	type Play,
-} from '$lib/channel/listening.svelte';
-import { chase, pausedChase, playheadAt } from '$lib/channel/playhead';
-import { serverNow } from '$lib/server-clock';
+} from '#lib/channel/listening.svelte.ts';
+import { chase, pausedChase, playheadAt } from '#lib/channel/playhead.ts';
+import { serverNow } from '#lib/server-clock.ts';
 import {
 	BUFFERING,
 	PAUSED,
 	PLAYING,
 	UNSTARTED,
 	type YTPlayer,
-} from '$lib/channel/youtube-api';
-import { mixer } from '$lib/sound/mixer.svelte';
+} from '#lib/channel/youtube-api.ts';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
 
 /**
  * Keeping ONE client's embed on the shared playhead (#286, docs/SPEC.md sync

@@ -1,20 +1,20 @@
 <script lang="ts">
 	import Info from '@lucide/svelte/icons/info';
 	import type { Snippet } from 'svelte';
-	import { formatDuration } from '$lib/format';
-	import RecapTiles from '$lib/ride/RecapTiles.svelte';
-	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
+	import { formatDuration } from '#lib/format.ts';
+	import RecapTiles from '#lib/ride/RecapTiles.svelte';
+	import { routeNameLine, routePrivacyLine } from '#lib/privacy-copy.ts';
 	import {
 		MaxLegSeconds,
 		ReferenceRiderKg,
 		ReferenceRiderWatts,
-	} from '$lib/protocol';
-	import { secondsAtPace } from '$lib/road/route-filter';
-	import { statRow } from '$lib/road/stored';
+	} from '#lib/protocol.ts';
+	import { secondsAtPace } from '#lib/road/route-filter.ts';
+	import { statRow } from '#lib/road/stored.ts';
 	import RouteProfile from './RouteProfile.svelte';
 	import RouteShape from './RouteShape.svelte';
 	import RouteStatRow from './RouteStatRow.svelte';
-	import type { ImportedRoute } from '$lib/workout/import';
+	import type { ImportedRoute } from '#lib/workout/import/index.ts';
 
 	/**
 	 * What a route file became, before anything is stored (#3057): its shape —

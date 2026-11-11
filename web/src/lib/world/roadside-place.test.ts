@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { HOME_ROADS } from '$lib/ride/home-roads';
-import type { Road } from '$lib/road/road';
-import { toRoute, type Route } from '$lib/road/route';
+import { HOME_ROADS } from '#lib/ride/home-roads.ts';
+import type { Road } from '#lib/road/road.ts';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { Biome } from './biome';
 import { yOf } from './geometry';
 import { kitSpec, PIECE_MODELS, PROP_KINDS, type KitKind } from './props/kit';

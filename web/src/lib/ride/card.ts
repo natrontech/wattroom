@@ -1,5 +1,5 @@
-import { apiBlob } from '$lib/api';
-import type { ThemeFamily } from '$lib/palette';
+import { apiBlob } from '#lib/api.ts';
+import type { ThemeFamily } from '#lib/palette.ts';
 
 /**
  * The ride as a picture (#2112). Strava's API uploads the activity and never

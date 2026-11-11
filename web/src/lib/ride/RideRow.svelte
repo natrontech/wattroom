@@ -4,13 +4,13 @@
 	 * whole row opens it, a right-click holds the rest, and a ride only this
 	 * device knows offers nothing it cannot do.
 	 */
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import { formatClock } from '$lib/format';
-	import type { RideRecord } from '$lib/history.svelte';
-	import { kmAndClimb } from '$lib/road/profile';
-	import { ridePlace, rideTitle, type ServerRide } from '$lib/ride/list';
-	import { rideRowMenu } from '$lib/ride/row-menu';
-	import ShareToggle from '$lib/ride/ShareToggle.svelte';
+	import { contextMenu, MENU_HINT } from '#lib/context-menu.svelte.ts';
+	import { formatClock } from '#lib/format.ts';
+	import type { RideRecord } from '#lib/history.svelte.ts';
+	import { kmAndClimb } from '#lib/road/profile.ts';
+	import { ridePlace, rideTitle, type ServerRide } from '#lib/ride/list.ts';
+	import { rideRowMenu } from '#lib/ride/row-menu.ts';
+	import ShareToggle from '#lib/ride/ShareToggle.svelte';
 
 	let {
 		ride,

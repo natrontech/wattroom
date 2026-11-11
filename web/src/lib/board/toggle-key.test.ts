@@ -6,7 +6,7 @@ import {
 	isToggle,
 	refuseChord,
 	toggleKey,
-} from '$lib/board/toggle-key.svelte';
+} from '#lib/board/toggle-key.svelte.ts';
 
 // isToggle reads five fields, so a literal is a truer stand-in than a DOM
 // event this environment does not have. It carries `key` as well as `code`
@@ -163,7 +163,7 @@ describe('a chord stored before the switch to physical keys', () => {
 			removeItem: () => {},
 		});
 		vi.resetModules();
-		const fresh = await import('$lib/board/toggle-key.svelte');
+		const fresh = await import('#lib/board/toggle-key.svelte.ts');
 		expect(fresh.toggleKey.label).toBe('Ctrl+K');
 		expect(
 			fresh.isToggle({

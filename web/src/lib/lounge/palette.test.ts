@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { hexToOklch, hueDistance } from '$lib/color';
-import { themeFor } from '$lib/themes';
-import { LOUNGE, applyLoungeTheme } from '$lib/lounge/palette';
+import { hexToOklch, hueDistance } from '#lib/color.ts';
+import { themeFor } from '#lib/themes.ts';
+import { LOUNGE, applyLoungeTheme } from '#lib/lounge/palette.ts';
 
 describe('the lounge in the rider’s theme', () => {
 	it('is a pale room in a light theme and a dark one in a dark theme', () => {

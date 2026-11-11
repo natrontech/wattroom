@@ -6,10 +6,10 @@
 // ground.
 import * as THREE from 'three';
 import { DIORAMA } from './pixel';
-import { damp } from '$lib/motion/damp';
+import { damp } from '#lib/motion/damp.ts';
 import { yOf } from './geometry';
-import { type Route } from '$lib/road/route';
-import { at, closes, lastMetre, leftOf } from '$lib/road/along';
+import { type Route } from '#lib/road/route.ts';
+import { at, closes, lastMetre, leftOf } from '#lib/road/along.ts';
 import type { SimRider } from './sim';
 import type { World } from './world';
 import { makeReveal, REVEAL, type RevealView } from './reveal';

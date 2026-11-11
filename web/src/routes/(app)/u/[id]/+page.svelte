@@ -2,27 +2,27 @@
 	// A rider's page (ADR-0024): what crews already see — level, energy,
 	// medals from crews you share, where they are — plus, for friends, the
 	// rides they chose to share. Built from the /dev/profile mock (#457).
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import { api } from '$lib/api';
-	import { account } from '$lib/account.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { dm } from '$lib/dm/dm.svelte';
+	import { api } from '#lib/api.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import ProgressBar from '#lib/components/ProgressBar.svelte';
+	import RidingBars from '#lib/components/RidingBars.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { dm } from '#lib/dm/dm.svelte.ts';
 	import {
 		acceptRequest,
 		dismissRequest,
 		withdrawRequest,
-	} from '$lib/friends/actions';
-	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
-	import { medalName } from '$lib/medals';
-	import { presence } from '$lib/presence.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { statusEditor } from '$lib/status-line/editor.svelte';
+	} from '#lib/friends/actions.ts';
+	import { levelFromXp, levelProgress, xpForLevel } from '#lib/level.ts';
+	import { medalName } from '#lib/medals.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { statusEditor } from '#lib/status-line/editor.svelte.ts';
 	import {
 		fetchRider,
 		medalTotal,
@@ -30,11 +30,11 @@
 		ridePlace,
 		rideLine,
 		type Rider,
-	} from '$lib/rider';
-	import { toasts } from '$lib/toast.svelte';
-	import BadgeGrid from '$lib/trophies/BadgeGrid.svelte';
-	import TrophyCase from '$lib/trophies/TrophyCase.svelte';
-	import { fetchTrophies, type Trophies } from '$lib/trophies/trophies';
+	} from '#lib/rider.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import BadgeGrid from '#lib/trophies/BadgeGrid.svelte';
+	import TrophyCase from '#lib/trophies/TrophyCase.svelte';
+	import { fetchTrophies, type Trophies } from '#lib/trophies/trophies.ts';
 	import Award from '@lucide/svelte/icons/award';
 	import Check from '@lucide/svelte/icons/check';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -46,7 +46,7 @@
 	import Radio from '@lucide/svelte/icons/radio';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Users from '@lucide/svelte/icons/users';
-	import { placePath, whereabouts } from '$lib/whereabouts';
+	import { placePath, whereabouts } from '#lib/whereabouts.ts';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -77,7 +77,7 @@
 			// than fetch an empty id, which the SPA answers with index.html
 			// and left the page on its skeleton for good (audit 2026-09-09).
 			error = null;
-			await invalidateAll();
+			await refreshAll();
 			rider = data.rider;
 			error = data.riderError;
 			missing = data.riderMissing;

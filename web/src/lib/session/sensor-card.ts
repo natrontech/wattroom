@@ -1,4 +1,4 @@
-import type { PairState } from '$lib/session/sensor-status';
+import type { PairState } from '#lib/session/sensor-status.ts';
 
 /**
  * What one sensor card says and offers, for a given state.

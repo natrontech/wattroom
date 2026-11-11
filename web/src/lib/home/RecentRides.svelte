@@ -1,10 +1,10 @@
 <script lang="ts">
 	// Home's last three rides (#1333 split it out for size): each opens the
 	// ride's own page (#1331), and the list links to the rest.
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import { formatWhen } from '$lib/format';
-	import { NO_RIDES_YET, rideTitle, type ServerRide } from '$lib/ride/list';
-	import { rideRowMenu } from '$lib/ride/row-menu';
+	import { contextMenu, MENU_HINT } from '#lib/context-menu.svelte.ts';
+	import { formatWhen } from '#lib/format.ts';
+	import { NO_RIDES_YET, rideTitle, type ServerRide } from '#lib/ride/list.ts';
+	import { rideRowMenu } from '#lib/ride/row-menu.ts';
 
 	let {
 		rides,

@@ -1,23 +1,26 @@
-import { deviceChoices } from '$lib/channel/av-devices.svelte';
-import type { PlaceAddress } from '$lib/channel/address';
-import { createStage } from '$lib/channel/av-stage.svelte';
-import { createRiderOutput } from '$lib/channel/av-output';
-import { createSpeaking } from '$lib/channel/speaking';
-import { createAvConn, createAvState } from '$lib/channel/av-state.svelte';
-import { createSeats } from '$lib/channel/av-seats';
-import { createMic } from '$lib/channel/av-mic';
-import { createPublish } from '$lib/channel/av-publish';
-import { createTabs } from '$lib/channel/av-tabs';
-import { createListeners } from '$lib/channel/av-listeners';
-import { createSession, type VoiceSeatHost } from '$lib/channel/av-session';
-import { wireLiveKitRoom } from '$lib/channel/av-wire';
-import { channelAvApi } from '$lib/channel/av-api';
-import { type MediaDevice, describeMediaError } from '$lib/channel/media-error';
-import { createNoteKeeper } from '$lib/channel/rejoin';
-import { riderOf } from '$lib/channel/tabs';
+import { deviceChoices } from '#lib/channel/av-devices.svelte.ts';
+import type { PlaceAddress } from '#lib/channel/address.ts';
+import { createStage } from '#lib/channel/av-stage.svelte.ts';
+import { createRiderOutput } from '#lib/channel/av-output.ts';
+import { createSpeaking } from '#lib/channel/speaking.ts';
+import { createAvConn, createAvState } from '#lib/channel/av-state.svelte.ts';
+import { createSeats } from '#lib/channel/av-seats.ts';
+import { createMic } from '#lib/channel/av-mic.ts';
+import { createPublish } from '#lib/channel/av-publish.ts';
+import { createTabs } from '#lib/channel/av-tabs.ts';
+import { createListeners } from '#lib/channel/av-listeners.ts';
+import { createSession, type VoiceSeatHost } from '#lib/channel/av-session.ts';
+import { wireLiveKitRoom } from '#lib/channel/av-wire.ts';
+import { channelAvApi } from '#lib/channel/av-api.ts';
+import {
+	type MediaDevice,
+	describeMediaError,
+} from '#lib/channel/media-error.ts';
+import { createNoteKeeper } from '#lib/channel/rejoin.ts';
+import { riderOf } from '#lib/channel/tabs.ts';
 
-export type { AvError, AvStatus } from '$lib/channel/av-types';
-export { JOIN_TIMEOUT_MS } from '$lib/channel/av-session';
+export type { AvError, AvStatus } from '#lib/channel/av-types.ts';
+export { JOIN_TIMEOUT_MS } from '#lib/channel/av-session.ts';
 
 /**
  * The voice channel's call (#21): LiveKit voice + camera + screenshare,

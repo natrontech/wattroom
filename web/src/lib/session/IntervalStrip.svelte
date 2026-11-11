@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { formatClock } from '$lib/format';
-	import type { Block } from '$lib/workout/block';
-	import { blockBands, nextText, trainerChip } from '$lib/workout/block';
-	import { TV_LABEL } from '$lib/session/computer-pages';
-	import CountChips from '$lib/session/CountChips.svelte';
+	import { formatClock } from '#lib/format.ts';
+	import type { Block } from '#lib/workout/block.ts';
+	import { blockBands, nextText, trainerChip } from '#lib/workout/block.ts';
+	import { TV_LABEL } from '#lib/session/computer-pages.ts';
+	import CountChips from '#lib/session/CountChips.svelte';
 
 	let {
 		block,

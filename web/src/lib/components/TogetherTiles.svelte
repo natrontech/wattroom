@@ -3,7 +3,7 @@
 	// together, its streak, its sessions against its own last month, and the
 	// viewer's own turnout — the crew's Home and Members page, and a voice
 	// channel's Lounge. Sums and your own dots; nobody is ordered here.
-	import type { Together } from '$lib/crew-types';
+	import type { Together } from '#lib/crew-types.ts';
 
 	let {
 		together,

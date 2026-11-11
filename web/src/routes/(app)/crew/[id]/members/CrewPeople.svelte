@@ -1,25 +1,25 @@
 <script lang="ts">
-	import { formatMonth } from '$lib/format';
+	import { formatMonth } from '#lib/format.ts';
 	// The crew's people and its bans (#1150, #1208, #1212): roles from a
 	// person's menu, the hand-over behind a confirm, and the unban that names
 	// what it does not reach. Split from the page (#1234), and the crew's
 	// Members page since #2453, with each person's medals; the page reloads on
 	// `onchange`.
 	import { goto } from '$app/navigation';
-	import { account } from '$lib/account.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hoverCard } from '#lib/rider-card/rider-card.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		openMenu,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { setCrewRole, type Crew, type CrewPerson } from '$lib/crew';
-	import { banFromCrewFlow, handOverCrewFlow } from '$lib/crew-flows';
-	import { personMenu } from '$lib/person-menu';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/context-menu.svelte.ts';
+	import { setCrewRole, type Crew, type CrewPerson } from '#lib/crew.ts';
+	import { banFromCrewFlow, handOverCrewFlow } from '#lib/crew-flows.ts';
+	import { personMenu } from '#lib/person-menu.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import Award from '@lucide/svelte/icons/award';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Ellipsis from '@lucide/svelte/icons/ellipsis';

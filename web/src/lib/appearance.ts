@@ -1,4 +1,4 @@
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 
 /**
  * Appearance follows the account (#326): the palette identity and the scheme

@@ -1,16 +1,16 @@
-import { mixer } from '$lib/sound/mixer.svelte';
-import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
-import type { DeviceChoices } from '$lib/channel/av-devices.svelte';
-import type { Stage } from '$lib/channel/av-stage.svelte';
-import type { RiderOutput } from '$lib/channel/av-output';
-import type { Seats } from '$lib/channel/av-seats';
-import type { Mic } from '$lib/channel/av-mic';
-import type { Publish } from '$lib/channel/av-publish';
-import type { Tabs } from '$lib/channel/av-tabs';
-import type { Listeners } from '$lib/channel/av-listeners';
-import type { Session } from '$lib/channel/av-session';
-import { canPickOutput } from '$lib/channel/av-output';
-import { mountTrack } from '$lib/channel/mount-track';
+import { mixer } from '#lib/sound/mixer.svelte.ts';
+import type { AvConn, AvState } from '#lib/channel/av-state.svelte.ts';
+import type { DeviceChoices } from '#lib/channel/av-devices.svelte.ts';
+import type { Stage } from '#lib/channel/av-stage.svelte.ts';
+import type { RiderOutput } from '#lib/channel/av-output.ts';
+import type { Seats } from '#lib/channel/av-seats.ts';
+import type { Mic } from '#lib/channel/av-mic.ts';
+import type { Publish } from '#lib/channel/av-publish.ts';
+import type { Tabs } from '#lib/channel/av-tabs.ts';
+import type { Listeners } from '#lib/channel/av-listeners.ts';
+import type { Session } from '#lib/channel/av-session.ts';
+import { canPickOutput } from '#lib/channel/av-output.ts';
+import { mountTrack } from '#lib/channel/mount-track.ts';
 
 /**
  * What the voice channel may ask of AV (#1698).

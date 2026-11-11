@@ -4,9 +4,9 @@ import {
 	ReferenceRiderWatts,
 	RouteHiddenEndM,
 	type ControlRoute,
-} from '$lib/protocol';
-import { durationSeconds } from '$lib/workout/engine';
-import type { Workout } from '$lib/workout/types';
+} from '#lib/protocol.ts';
+import { durationSeconds } from '#lib/workout/engine.ts';
+import type { Workout } from '#lib/workout/types.ts';
 import type { Climb } from './climbs';
 import { compileRoad, type Stretch } from './compile';
 import { roadStep, type Road } from './road';

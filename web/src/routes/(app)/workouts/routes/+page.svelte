@@ -4,37 +4,37 @@
 	import { MediaQuery } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { account } from '$lib/account.svelte';
-	import { api } from '$lib/api';
-	import { withBack } from '$lib/back-link';
-	import Banner from '$lib/components/Banner.svelte';
-	import RouteProfile from '$lib/components/RouteProfile.svelte';
-	import RouteRow from '$lib/components/RouteRow.svelte';
-	import RouteShape from '$lib/components/RouteShape.svelte';
-	import RouteStatRow from '$lib/components/RouteStatRow.svelte';
-	import SectionTabs from '$lib/components/SectionTabs.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { device, isSpectator } from '$lib/device.svelte';
-	import { fileDrop, handFiles } from '$lib/file-drop.svelte';
-	import { formatDuration } from '$lib/format';
-	import { workoutSections } from '$lib/nav/pages';
-	import { routePrivacyLine } from '$lib/privacy-copy';
+	import { account } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
+	import { withBack } from '#lib/back-link.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import RouteProfile from '#lib/components/RouteProfile.svelte';
+	import RouteRow from '#lib/components/RouteRow.svelte';
+	import RouteShape from '#lib/components/RouteShape.svelte';
+	import RouteStatRow from '#lib/components/RouteStatRow.svelte';
+	import SectionTabs from '#lib/components/SectionTabs.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { device, isSpectator } from '#lib/device.svelte.ts';
+	import { fileDrop, handFiles } from '#lib/file-drop.svelte.ts';
+	import { formatDuration } from '#lib/format.ts';
+	import { workoutSections } from '#lib/nav/pages.ts';
+	import { routePrivacyLine } from '#lib/privacy-copy.ts';
 	import {
 		HOME_ROADS,
 		homeRoad,
 		homeRow,
 		homeShape,
-	} from '$lib/ride/home-roads';
-	import { loadRoad, myRoutes } from '$lib/ride/roads';
-	import { isLoop } from '$lib/road/line';
-	import type { Road } from '$lib/road/road';
+	} from '#lib/ride/home-roads.ts';
+	import { loadRoad, myRoutes } from '#lib/ride/roads.ts';
+	import { isLoop } from '#lib/road/line.ts';
+	import type { Road } from '#lib/road/road.ts';
 	import {
 		fitsBounds,
 		ROUTE_BOUNDS,
 		secondsAtPace,
 		type RouteBounds,
-	} from '$lib/road/route-filter';
-	import { shapeLine, statRow, type StoredRoute } from '$lib/road/stored';
+	} from '#lib/road/route-filter.ts';
+	import { shapeLine, statRow, type StoredRoute } from '#lib/road/stored.ts';
 	import RideHow from './[id]/RideHow.svelte';
 
 	/**
@@ -258,7 +258,7 @@
 				<ul
 					class="grid gap-2"
 					aria-label={source === 'yours' ? 'your routes' : 'WattRoom roads'}
-					data-sveltekit-noscroll
+					data-sveltekit-reset="false"
 				>
 					{#each shown as x (x.id)}
 						{@const t = times[x.id]}

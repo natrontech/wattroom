@@ -1,5 +1,5 @@
-import { EMOJI_NAME } from '$lib/emoji/crew-emoji.svelte';
-import { sameOriginPath } from '$lib/same-origin';
+import { EMOJI_NAME } from '#lib/emoji/crew-emoji.svelte.ts';
+import { sameOriginPath } from '#lib/same-origin.ts';
 
 /** One run of chat text: plain, a link, or marked up. Marks don't nest. */
 export type Part = {

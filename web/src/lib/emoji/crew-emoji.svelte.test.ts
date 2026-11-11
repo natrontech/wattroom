@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // for the loop: a clock in chat must not cost a read every half minute.
 let fetches = 0;
 let emoji: { id: string; name: string }[] = [];
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async () => {
 		fetches += 1;
 		return { ok: true, data: { emoji: structuredClone(emoji) } };

@@ -2,10 +2,10 @@
 	// The Appearance section of the profile page (#331, ADR-0005 amended):
 	// the palette, and the scheme toggle that lived on the room rail until
 	// ADR-0020 retired it (#326). Split out of the page for size.
-	import PalettePicker from '$lib/components/PalettePicker.svelte';
-	import { prefersReducedMotion } from '$lib/motion';
-	import { theme, type ThemeChoice } from '$lib/theme.svelte';
-	import { STEADY_BUTTON } from '$lib/world/ride-view';
+	import PalettePicker from '#lib/components/PalettePicker.svelte';
+	import { prefersReducedMotion } from '#lib/motion/index.ts';
+	import { theme, type ThemeChoice } from '#lib/theme.svelte.ts';
+	import { STEADY_BUTTON } from '#lib/world/ride-view.ts';
 	import {
 		setWorldDiorama,
 		setWorldMode,
@@ -13,7 +13,7 @@
 		worldDiorama,
 		worldMode,
 		type WorldMode,
-	} from '$lib/world/mode';
+	} from '#lib/world/mode.ts';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import Moon from '@lucide/svelte/icons/moon';
 	import Sun from '@lucide/svelte/icons/sun';

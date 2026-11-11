@@ -1,8 +1,13 @@
-import { api, loadApi, type ApiResult } from '$lib/api';
-import { people } from '$lib/people.svelte';
-import { liveNumbersLine } from '$lib/privacy-copy';
-import type { SessionRecap, StatusLine } from '$lib/protocol';
-import type { BoardRow, CrewRef, RiderPrefs, Together } from '$lib/crew-types';
+import { api, loadApi, type ApiResult } from '#lib/api.ts';
+import { people } from '#lib/people.svelte.ts';
+import { liveNumbersLine } from '#lib/privacy-copy.ts';
+import type { SessionRecap, StatusLine } from '#lib/protocol.ts';
+import type {
+	BoardRow,
+	CrewRef,
+	RiderPrefs,
+	Together,
+} from '#lib/crew-types.ts';
 
 /**
  * The crew's own surface (ADR-0038): identity, its people with their crew

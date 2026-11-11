@@ -12,17 +12,17 @@
 	 * on a tap (errors.md); a sentence being typed has a draft, and a rating
 	 * tap that posted on its own would race the draft beside it.
 	 */
-	import Banner from '$lib/components/Banner.svelte';
+	import Banner from '#lib/components/Banner.svelte';
 	import Lock from '@lucide/svelte/icons/lock';
-	import { MaxRideNoteChars } from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
+	import { MaxRideNoteChars } from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import {
 		RPE_SCALE,
 		noteTooLong,
 		rpeText,
 		setRideFeel,
 		type RideFeel,
-	} from '$lib/ride/feel';
+	} from '#lib/ride/feel.ts';
 
 	let { id, feel }: { id: string; feel: RideFeel } = $props();
 

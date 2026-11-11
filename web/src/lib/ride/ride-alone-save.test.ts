@@ -3,15 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const upload = vi.fn();
 const toastSaved = vi.fn();
 const push = vi.fn();
-vi.mock('$lib/ride/save', () => ({
+vi.mock('#lib/ride/save.ts', () => ({
 	ROAD_LEFT_OFF: 'left off',
 	recordingUpload: () => ({}),
 	toastSaved: (saved: unknown) => toastSaved(saved),
 	uploadRide: () => upload(),
 }));
-vi.mock('$lib/toast.svelte', () => ({ toasts: { push } }));
-vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'me' } } }));
-vi.mock('$lib/history.svelte', () => ({
+vi.mock('#lib/toast.svelte.ts', () => ({ toasts: { push } }));
+vi.mock('#lib/account.svelte', () => ({ account: { me: { id: 'me' } } }));
+vi.mock('#lib/history.svelte.ts', () => ({
 	createHistoryStore: () => ({ remove: () => {}, add: () => null }),
 	summarise: (samples: unknown[]) => ({ seconds: samples.length }),
 }));

@@ -1,13 +1,13 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { at, closes, lapEnd, sampleAt } from '$lib/road/along';
-import { toRoute } from '$lib/road/route';
+import { at, closes, lapEnd, sampleAt } from '#lib/road/along.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { syntheticPoints } from './synthetic';
-import { alpineLoop } from '$lib/road/fixtures';
-import type { PaintedGate } from '$lib/road/gates';
-import type { Route } from '$lib/road/route';
-import type { BunchView } from '$lib/channel/bunch-view';
+import { alpineLoop } from '#lib/road/fixtures.ts';
+import type { PaintedGate } from '#lib/road/gates.ts';
+import type { Route } from '#lib/road/route.ts';
+import type { BunchView } from '#lib/channel/bunch-view.ts';
 import { compose, type Hud } from './compose';
 import { RIDE } from './look.test-helper';
 import { routeOfRoad } from './road-route';

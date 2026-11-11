@@ -5,15 +5,15 @@ import type {
 	Trainer,
 	TrainerSample,
 	TrainerStatus,
-} from '$lib/ble/trainer';
-import { DEFAULTS } from '$lib/workout/guards';
+} from '#lib/ble/trainer.ts';
+import { DEFAULTS } from '#lib/workout/guards.ts';
 import { createActuator } from './actuation.svelte';
 import { biasPress } from './easier-harder';
 import { bindShiftKeys, createRemoteRunner } from './keys';
 import { createRideShift } from './ride-shift';
 
 // A production rider (#3333): gears no longer wait for the dev door.
-vi.mock('$lib/ble/can-simulate', () => ({ canSimulate: () => false }));
+vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => false }));
 
 /** A trainer that keeps its mode and what it was told. */
 class Recorder implements Trainer {

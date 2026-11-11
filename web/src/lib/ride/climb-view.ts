@@ -1,8 +1,8 @@
-import { heightAt } from '$lib/road/at-metre';
-import { climbCard, type ClimbCard } from '$lib/road/climb-card';
-import { classedOf, climbsOf, type ClassedClimb } from '$lib/road/climbs';
-import { turnedRound, type Road } from '$lib/road/road';
-import { gradeStep, type SkylineView } from '$lib/road/skyline';
+import { heightAt } from '#lib/road/at-metre.ts';
+import { climbCard, type ClimbCard } from '#lib/road/climb-card.ts';
+import { classedOf, climbsOf, type ClassedClimb } from '#lib/road/climbs.ts';
+import { turnedRound, type Road } from '#lib/road/road.ts';
+import { gradeStep, type SkylineView } from '#lib/road/skyline.ts';
 
 /**
  * The climb card as a surface draws it (#3645): #3089's numbers for the road

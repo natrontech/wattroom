@@ -1,6 +1,6 @@
-import { heightAt } from '$lib/road/at-metre';
-import { roadStep, type Road } from '$lib/road/road';
-import { JUMP_M } from '$lib/world/sim';
+import { heightAt } from '#lib/road/at-metre.ts';
+import { roadStep, type Road } from '#lib/road/road.ts';
+import { JUMP_M } from '#lib/world/sim.ts';
 
 /**
  * Metres climbed between two metres of a road (#3669): the rises along it

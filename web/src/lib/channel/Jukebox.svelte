@@ -1,28 +1,31 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/channel/address';
-	import { account } from '$lib/account.svelte';
+	import type { PlaceAddress } from '#lib/channel/address.ts';
+	import { account } from '#lib/account.svelte.ts';
 	import type {
 		JukeboxCommand,
 		JukeboxEntry,
 		JukeboxState,
-	} from '$lib/protocol';
-	import { toasts } from '$lib/toast.svelte';
-	import JukeboxAdd from '$lib/channel/JukeboxAdd.svelte';
+	} from '#lib/protocol.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import JukeboxAdd from '#lib/channel/JukeboxAdd.svelte';
 	import Sofa from '@lucide/svelte/icons/sofa';
-	import JukeboxDeck from '$lib/channel/JukeboxDeck.svelte';
-	import JukeboxPlaylists from '$lib/channel/JukeboxPlaylists.svelte';
-	import JukeboxTrack from '$lib/channel/JukeboxTrack.svelte';
-	import { roadsideShown } from '$lib/channel/RoadsideDeck.svelte';
-	import { IN_SYNC_SEC, playerInfo } from '$lib/channel/jukebox-player.svelte';
-	import { listening } from '$lib/channel/listening.svelte';
+	import JukeboxDeck from '#lib/channel/JukeboxDeck.svelte';
+	import JukeboxPlaylists from '#lib/channel/JukeboxPlaylists.svelte';
+	import JukeboxTrack from '#lib/channel/JukeboxTrack.svelte';
+	import { roadsideShown } from '#lib/channel/RoadsideDeck.svelte';
+	import {
+		IN_SYNC_SEC,
+		playerInfo,
+	} from '#lib/channel/jukebox-player.svelte.ts';
+	import { listening } from '#lib/channel/listening.svelte.ts';
 	import {
 		createPlaylistStore,
 		type SaveTarget,
-	} from '$lib/channel/playlists.svelte';
+	} from '#lib/channel/playlists.svelte.ts';
 	import {
 		saveEntryTo,
 		saveQueueAsPlaylist,
-	} from '$lib/channel/save-to-playlist';
+	} from '#lib/channel/save-to-playlist.ts';
 
 	// The jukebox PLAYLIST (#23, #216, #286): what's on, what's next, what
 	// just played, and every verb for changing it. The player itself is

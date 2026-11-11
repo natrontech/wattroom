@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let apiCalls: string[] = [];
 let apiResponses: unknown[] = [];
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async (path: string) => {
 		apiCalls.push(path);
 		return apiResponses.shift() ?? { ok: true, data: undefined };

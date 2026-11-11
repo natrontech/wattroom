@@ -1,4 +1,4 @@
-import type { SaveAnswers } from '$lib/ride/ride-alone-save';
+import type { SaveAnswers } from '#lib/ride/ride-alone-save.ts';
 
 /**
  * What the ride alone's save has answered so far, for the summary to draw:

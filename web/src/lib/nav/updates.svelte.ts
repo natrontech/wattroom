@@ -1,4 +1,4 @@
-import { changelog } from '$lib/changelog.svelte';
+import { changelog } from '#lib/changelog.svelte.ts';
 import {
 	isNewer,
 	latestRelease,
@@ -7,8 +7,8 @@ import {
 	shellUpdateFailed,
 	shellVersion,
 	type ShellUpdate,
-} from '$lib/desktop';
-import { versionWatch } from '$lib/version-watch.svelte';
+} from '#lib/desktop.ts';
+import { versionWatch } from '#lib/version-watch.svelte.ts';
 import { updateRowState } from './update-row';
 
 /**

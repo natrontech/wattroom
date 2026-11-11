@@ -6,7 +6,7 @@
  * bottom. Everything is at the people's scale, and only the arcade is
  * clickable (hotspots in scene.ts).
  */
-import { LOUNGE as C, shadeOf } from '$lib/lounge/palette';
+import { LOUNGE as C, shadeOf } from '#lib/lounge/palette.ts';
 import {
 	disc,
 	dot,
@@ -17,8 +17,8 @@ import {
 	rect,
 	ring,
 	type Ctx,
-} from '$lib/lounge/pixel';
-import { BIKE_GROUND, BIKE_XS, FLOOR_Y, FRONT_Y } from '$lib/lounge/scene';
+} from '#lib/lounge/pixel.ts';
+import { BIKE_GROUND, BIKE_XS, FLOOR_Y, FRONT_Y } from '#lib/lounge/scene.ts';
 
 /** The nook's lamp stands here. */
 const NOOK_X = 124;

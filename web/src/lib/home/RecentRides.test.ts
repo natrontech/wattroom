@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
 import RecentRides from './RecentRides.svelte';
-import type { ServerRide } from '$lib/ride/list';
+import type { ServerRide } from '#lib/ride/list.ts';
 
 const ride = {
 	id: 'r1',

@@ -3,10 +3,10 @@
 // rides over them. Scenery, never live data: in the road line's colour, lit
 // by the sky as the road's own paint is (ADR-0072), and nothing glows.
 import * as THREE from 'three';
-import type { Chalk } from '$lib/channel/bunch-view';
-import type { RoadsideStamp } from '$lib/protocol';
-import { at, curvature, leftOf, sampleAt } from '$lib/road/along';
-import { type Route } from '$lib/road/route';
+import type { Chalk } from '#lib/channel/bunch-view.ts';
+import type { RoadsideStamp } from '#lib/protocol.ts';
+import { at, curvature, leftOf, sampleAt } from '#lib/road/along.ts';
+import { type Route } from '#lib/road/route.ts';
 import { disposeTree } from './dispose';
 import { tag } from './family';
 import { FONT, paintedTexture } from './furniture';

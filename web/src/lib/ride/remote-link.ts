@@ -1,4 +1,4 @@
-import type { GearState, PauseState, ViewState } from '$lib/protocol';
+import type { GearState, PauseState, ViewState } from '#lib/protocol.ts';
 
 /**
  * The phone remote's way to the riding screen (#3217, #4425): a voice

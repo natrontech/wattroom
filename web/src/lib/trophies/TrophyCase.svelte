@@ -4,10 +4,10 @@
 	// own; it is the own rider's page now (identity, not settings). The
 	// numbers it used to lead with are that page's: the level sits in its
 	// header and energy beside the rides, so the case says neither twice.
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import RiderCounts from '$lib/trophies/RiderCounts.svelte';
-	import TrophyShelf from '$lib/trophies/TrophyShelf.svelte';
-	import { XP_SOURCES, type Trophies } from '$lib/trophies/trophies';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import RiderCounts from '#lib/trophies/RiderCounts.svelte';
+	import TrophyShelf from '#lib/trophies/TrophyShelf.svelte';
+	import { XP_SOURCES, type Trophies } from '#lib/trophies/trophies.ts';
 
 	let { trophies }: { trophies: Trophies } = $props();
 

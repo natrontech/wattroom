@@ -1,10 +1,10 @@
 <script lang="ts">
 	// Furnishing the room: anyone in the crew pays from their own Batzen and it
 	// goes up for everyone. What the crew owns stays free to swap.
-	import Banner from '$lib/components/Banner.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { api } from '$lib/api';
-	import { ITEM_NAMES, SLOTS, type ShopItem } from '$lib/lounge/furnish';
+	import Banner from '#lib/components/Banner.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import { api } from '#lib/api.ts';
+	import { ITEM_NAMES, SLOTS, type ShopItem } from '#lib/lounge/furnish.ts';
 
 	let {
 		crew,

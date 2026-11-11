@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
-import { worldPicture } from '$lib/world/picture.svelte';
+import { worldPicture } from '#lib/world/picture.svelte.ts';
 import WorldPicture from './WorldPicture.svelte';
 
 const card = () => render(WorldPicture).body;

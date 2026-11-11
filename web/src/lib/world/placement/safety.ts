@@ -1,6 +1,6 @@
-import { hexToOklch, hueDistance } from '$lib/color';
-import { themesFor } from '$lib/themes';
-import catalogue from '$lib/wardrobe/catalogue.json';
+import { hexToOklch, hueDistance } from '#lib/color.ts';
+import { themesFor } from '#lib/themes.ts';
+import catalogue from '#lib/wardrobe/catalogue.json';
 
 /**
  * O13, what may not stand in the world (#3221): words no banner carries and

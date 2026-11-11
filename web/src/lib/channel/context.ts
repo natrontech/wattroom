@@ -1,19 +1,19 @@
-import type { PlaceAddress } from '$lib/channel/address';
+import type { PlaceAddress } from '#lib/channel/address.ts';
 import { getContext, setContext } from 'svelte';
-import type { Segment } from '$lib/workout/types';
-import type { Block } from '$lib/workout/block';
-import type { LiveRider } from '$lib/channel/types';
-import type { CrewAnnouncement } from '$lib/channels';
-import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
-import type { StageSource } from '$lib/channel/stage';
-import type { CrewPlan } from '$lib/crew-schedule';
-import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
-import type { Road } from '$lib/road/road';
-import type { RoadReadout } from '$lib/road/readout';
-import type { PaintedGate } from '$lib/road/gates';
-import type { BunchView } from '$lib/channel/bunch-view';
-import type { RoadMate } from '$lib/channel/road-mates';
-import type { RaceReadout } from '$lib/race/race-view';
+import type { Segment } from '#lib/workout/types.ts';
+import type { Block } from '#lib/workout/block.ts';
+import type { LiveRider } from '#lib/channel/types.ts';
+import type { CrewAnnouncement } from '#lib/channels.ts';
+import type { GameState, SensorPairing, SprintState } from '#lib/protocol.ts';
+import type { StageSource } from '#lib/channel/stage.ts';
+import type { CrewPlan } from '#lib/crew-schedule.ts';
+import type { FlightRecorder } from '#lib/ride/flightrecorder.svelte.ts';
+import type { Road } from '#lib/road/road.ts';
+import type { RoadReadout } from '#lib/road/readout.ts';
+import type { PaintedGate } from '#lib/road/gates.ts';
+import type { BunchView } from '#lib/channel/bunch-view.ts';
+import type { RoadMate } from '#lib/channel/road-mates.ts';
+import type { RaceReadout } from '#lib/race/race-view.ts';
 
 /**
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RideRecord } from '$lib/history.svelte';
+import type { RideRecord } from '#lib/history.svelte.ts';
 import { bestQuery, compareRows, curveSentence } from './compare';
 
 const ride = (over: Partial<RideRecord> & { id: string }): RideRecord => ({

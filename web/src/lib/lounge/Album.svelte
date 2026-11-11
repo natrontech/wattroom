@@ -1,11 +1,11 @@
 <script lang="ts">
 	// The crew's album: everyone who has come by the room and when, and for
 	// the rest a dark shape and a hint.
-	import Modal from '$lib/components/Modal.svelte';
-	import { VISITOR_NOTES, type Sighting } from '$lib/lounge/album';
-	import { VISITORS, type Visitor } from '$lib/lounge/moments';
-	import { VISITOR_SPRITES, drawSprite } from '$lib/lounge/draw-visitors';
-	import { LOUNGE } from '$lib/lounge/palette';
+	import Modal from '#lib/components/Modal.svelte';
+	import { VISITOR_NOTES, type Sighting } from '#lib/lounge/album.ts';
+	import { VISITORS, type Visitor } from '#lib/lounge/moments.ts';
+	import { VISITOR_SPRITES, drawSprite } from '#lib/lounge/draw-visitors.ts';
+	import { LOUNGE } from '#lib/lounge/palette.ts';
 
 	let { album, onclose }: { album: Sighting[]; onclose: () => void } = $props();
 

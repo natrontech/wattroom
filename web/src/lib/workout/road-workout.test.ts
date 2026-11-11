@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { packRoad, type Road } from '$lib/road/road';
+import { packRoad, type Road } from '#lib/road/road.ts';
 import { flatten } from './engine';
 import {
 	bandOf,

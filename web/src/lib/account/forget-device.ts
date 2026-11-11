@@ -1,6 +1,6 @@
-import { forgetHistoryOf } from '$lib/history.svelte';
-import { forgetProfile } from '$lib/profile.svelte';
-import { discardRidesOf } from '$lib/ride/buffer';
+import { forgetHistoryOf } from '#lib/history.svelte.ts';
+import { forgetProfile } from '#lib/profile.svelte.ts';
+import { discardRidesOf } from '#lib/ride/buffer.ts';
 
 /**
  * The device half of deleting an account (#2805) — WATTROOM.md's full purge

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { ServerTick } from '$lib/protocol';
+import type { ServerTick } from '#lib/protocol.ts';
 import { bunchOf } from './bunch-view';
-import { levelFromXp } from '$lib/level';
+import { levelFromXp } from '#lib/level.ts';
 import type { LiveRider } from './types';
 
 const tick = (world: ServerTick['world'], game = false, loop = true) =>

@@ -1,5 +1,5 @@
-import { MaxRideSamples, MaxWorkoutNameChars } from '$lib/protocol';
-import { FREE_RIDE_NAME } from '$lib/ride/free-ride.svelte';
+import { MaxRideSamples, MaxWorkoutNameChars } from '#lib/protocol.ts';
+import { FREE_RIDE_NAME } from '#lib/ride/free-ride.svelte.ts';
 import { durationSeconds } from './engine';
 import type { Workout, WorkoutRoad, WorkoutStep } from './types';
 

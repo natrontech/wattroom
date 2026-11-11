@@ -1,5 +1,5 @@
-import { api } from '$lib/api';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 import { friends, type Friend } from './friends.svelte';
 
 /** Enough of a friend to act on: who, and what to call them in the toast. */

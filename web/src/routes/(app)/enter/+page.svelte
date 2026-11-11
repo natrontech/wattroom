@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Logo from '$lib/brand/Logo.svelte';
-	import { account } from '$lib/account.svelte';
+	import Logo from '#lib/brand/Logo.svelte';
+	import { account } from '#lib/account.svelte.ts';
 	import { goto } from '$app/navigation';
 
 	// Where a signed-in "/" goes (ADR-0061): "/" is the prerendered landing
@@ -10,7 +10,7 @@
 	// A session the server no longer knows lands back on the landing, by a
 	// client navigation: a reload of "/" would bounce here again.
 	$effect(() => {
-		if (account.loaded && !account.me) void goto('/', { replaceState: true });
+		if (account.loaded && !account.me) void goto('/', { replace: true });
 	});
 </script>
 

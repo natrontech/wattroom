@@ -2,11 +2,11 @@ import {
 	MaxRoadSpeedMps,
 	type FreeRoadPlace,
 	type ServerTick,
-} from '$lib/protocol';
-import type { LiveRider } from '$lib/channel/types';
-import type { FreeRide } from '$lib/ride/free-ride.svelte';
-import { racerHeld } from '$lib/channel/road-place';
-import { JUMP_M } from '$lib/world/sim';
+} from '#lib/protocol.ts';
+import type { LiveRider } from '#lib/channel/types.ts';
+import type { FreeRide } from '#lib/ride/free-ride.svelte.ts';
+import { racerHeld } from '#lib/channel/road-place.ts';
+import { JUMP_M } from '#lib/world/sim.ts';
 
 /** A channel-mate free-riding your road (#3117), as the world draws them. */
 export type RoadMate = {

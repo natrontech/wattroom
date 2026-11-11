@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveRider } from '$lib/channel/types';
-import { offsetWindow, pelotonRows } from '$lib/session/peloton-list';
+import type { LiveRider } from '#lib/channel/types.ts';
+import { offsetWindow, pelotonRows } from '#lib/session/peloton-list.ts';
 
 const rider = (id: string, you = false) => ({ id, you }) as LiveRider;
 const crew = ['a', 'b', 'c', 'd', 'e'].map((id) => rider(id, id === 'e'));

@@ -1,8 +1,8 @@
-import { riddenOf, climbsOnRoad } from '$lib/ride/climb-view';
-import { classedOf, type ClassedClimb } from '$lib/road/climbs';
-import type { Road } from '$lib/road/road';
-import type { SkylineView } from '$lib/road/skyline';
-import { PARTS, walk } from '$lib/world/place/stroke';
+import { riddenOf, climbsOnRoad } from '#lib/ride/climb-view.ts';
+import { classedOf, type ClassedClimb } from '#lib/road/climbs.ts';
+import type { Road } from '#lib/road/road.ts';
+import type { SkylineView } from '#lib/road/skyline.ts';
+import { PARTS, walk } from '#lib/world/place/stroke.ts';
 
 /**
  * The MAP page's road (#3645, ADR-0063): the tier a rider on any road is

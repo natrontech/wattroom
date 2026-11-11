@@ -4,14 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 // for the whole file and shapeOf could only ever take the fallback branch —
 // so the test named "either way" checked one way, and scaling the decoded
 // bars nine times out of their box passed the whole suite.
-vi.mock('$lib/sound/board.svelte', () => ({
+vi.mock('#lib/sound/board.svelte.ts', () => ({
 	peaks: vi.fn(async (_clipId: string, bars: number) =>
 		Array.from({ length: bars }, (_, i) => i / (bars - 1)),
 	),
 }));
 
-const { shapeOf, learn } = await import('$lib/board/shapes.svelte');
-const { waveform } = await import('$lib/board/waveform');
+const { shapeOf, learn } = await import('#lib/board/shapes.svelte.ts');
+const { waveform } = await import('#lib/board/waveform.ts');
 
 const BOX_H = 34;
 const BOX_W = 104;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Road } from '$lib/road/road';
+import type { Road } from '#lib/road/road.ts';
 import { BAR_M, climbView } from './climb-view';
 
 /** Flat for 2 km, then 1.5 km at 8 %, then flat again: one classed climb. */

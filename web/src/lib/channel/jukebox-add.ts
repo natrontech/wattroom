@@ -1,5 +1,8 @@
-import type { JukeboxCommand } from '$lib/protocol';
-import { titleFor, type ResolvedPlaylist } from '$lib/channel/youtube-playlist';
+import type { JukeboxCommand } from '#lib/protocol.ts';
+import {
+	titleFor,
+	type ResolvedPlaylist,
+} from '#lib/channel/youtube-playlist.ts';
 
 /** "94", "94s", "1m34s", "1h2m3s" — the forms YouTube puts in ?t=. */
 function startSecFrom(u: URL): number {

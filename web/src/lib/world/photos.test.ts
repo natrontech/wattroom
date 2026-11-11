@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MaxRidePhotos } from '$lib/protocol';
+import { MaxRidePhotos } from '#lib/protocol.ts';
 import { routeOfRoad } from './road-route';
-import { legsRoad } from '$lib/road/fixtures';
+import { legsRoad } from '#lib/road/fixtures.ts';
 import { worldPicture, type WorldShots } from './picture.svelte';
 import { dueToDraw, momentsFor } from './ride-moments';
 

@@ -2,7 +2,7 @@
 	// The curated icon set as a radiogroup (#447): a crew's mark (#1209), drawn
 	// by one control so it cannot drift from the set. Chrome, not data — the neon
 	// ring is the structural accent.
-	import { MARK_ICONS } from '$lib/icons';
+	import { MARK_ICONS } from '#lib/icons.ts';
 
 	let {
 		value,

@@ -1,5 +1,5 @@
 /** House radio's drums: three kits from one kick, filtered noise and a click. */
-import { envelope, tone, type Buses } from '$lib/lounge/radio-voices';
+import { envelope, tone, type Buses } from '#lib/lounge/radio-voices.ts';
 
 export function hiss(
 	b: Buses,

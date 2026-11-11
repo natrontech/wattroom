@@ -5,7 +5,7 @@ import House from '@lucide/svelte/icons/house';
 import Music from '@lucide/svelte/icons/music';
 import Settings from '@lucide/svelte/icons/settings';
 import Users from '@lucide/svelte/icons/users';
-import type { Icon } from '$lib/icons';
+import type { Icon } from '#lib/icons.ts';
 
 /**
  * The app's destinations, and a crew's own pages. Both live in the one

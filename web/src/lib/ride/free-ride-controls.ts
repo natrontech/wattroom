@@ -1,5 +1,5 @@
-import { MaxTrainerGrade } from '$lib/protocol';
-import { ROAD } from '$lib/ride/ride-grade';
+import { MaxTrainerGrade } from '#lib/protocol.ts';
+import { ROAD } from '#lib/ride/ride-grade.ts';
 
 /**
  * docs/SPEC.md's free ride (ADR-0059) — defaults, tune in alpha. Its grade

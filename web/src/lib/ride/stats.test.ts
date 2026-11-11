@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NormPowerMinSeconds } from '$lib/protocol';
+import { NormPowerMinSeconds } from '#lib/protocol.ts';
 import {
 	curvePoints,
 	normalizedPower,

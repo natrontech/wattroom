@@ -3,7 +3,7 @@
 	// its value right-aligned. Every row shares the widths, so the names keep
 	// one left edge and the values one right edge, mix and riders alike.
 	import type { Snippet } from 'svelte';
-	import type { Fader } from '$lib/sound/fader';
+	import type { Fader } from '#lib/sound/fader.ts';
 
 	let {
 		name,

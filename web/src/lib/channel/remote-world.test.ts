@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CAMERA_ASK, PHOTO_ASK } from '$lib/world/ride-view';
+import { CAMERA_ASK, PHOTO_ASK } from '#lib/world/ride-view.ts';
 import { createRemoteWorld } from './remote-world';
 
 const rig = () => {

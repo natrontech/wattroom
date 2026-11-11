@@ -7,7 +7,7 @@ import {
 	UnrankedUnconfirmedWeight,
 	UnrankedUntimeable,
 	type RaceBracket,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import { finishMark, unrankedWhy, yoursFirst } from './closing-card';
 
 describe('an unranked rider told why (#3779)', () => {

@@ -1,7 +1,7 @@
-import { copyText, theLinkItself } from '$lib/copy';
-import { device } from '$lib/device.svelte';
-import { downloadBlob } from '$lib/download';
-import { toasts } from '$lib/toast.svelte';
+import { copyText, theLinkItself } from '#lib/copy.ts';
+import { device } from '#lib/device.svelte.ts';
+import { downloadBlob } from '#lib/download.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /**
  * A link handed to another person (#973).

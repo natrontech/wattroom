@@ -1,10 +1,10 @@
 /**
  * The rider's own clips (#877). A board is one rider's: this is only ever
  * YOUR library, and the audio of everyone else's clips is fetched by id as
- * their fires arrive (`$lib/sound/board.svelte`).
+ * their fires arrive (`#lib/sound/board.svelte.ts`).
  */
-import { api } from '$lib/api';
-import { prefetch } from '$lib/sound/board.svelte';
+import { api } from '#lib/api.ts';
+import { prefetch } from '#lib/sound/board.svelte.ts';
 
 export interface Edit {
 	startMs: number;

@@ -1,12 +1,16 @@
 <script lang="ts">
-	import { modals } from '$lib/modals.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { playheadAt } from '$lib/channel/playhead';
-	import { playerInfo } from '$lib/channel/jukebox-player.svelte';
-	import { backIn, listening, type Play } from '$lib/channel/listening.svelte';
-	import { createJukeboxChase } from '$lib/channel/jukebox-chase';
-	import { createMusicRamp } from '$lib/channel/music-ramp';
-	import { resetServerClock, serverNow } from '$lib/server-clock';
+	import { modals } from '#lib/modals.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { playheadAt } from '#lib/channel/playhead.ts';
+	import { playerInfo } from '#lib/channel/jukebox-player.svelte.ts';
+	import {
+		backIn,
+		listening,
+		type Play,
+	} from '#lib/channel/listening.svelte.ts';
+	import { createJukeboxChase } from '#lib/channel/jukebox-chase.ts';
+	import { createMusicRamp } from '#lib/channel/music-ramp.ts';
+	import { resetServerClock, serverNow } from '#lib/server-clock.ts';
 	import {
 		BUFFERING,
 		CUED,
@@ -14,17 +18,17 @@
 		PLAYING,
 		withYouTubeApi,
 		type YTPlayer,
-	} from '$lib/channel/youtube-api';
-	import { toasts } from '$lib/toast.svelte';
-	import { mixer } from '$lib/sound/mixer.svelte';
-	import { onDuck } from '$lib/sound/duck';
-	import { setMusic as setAmbienceMusic } from '$lib/sound/ambience';
-	import { formatClockLong } from '$lib/format';
-	import { keepSize } from '$lib/pane';
-	import { onSeat, stageSlot } from '$lib/channel/stage-slot.svelte';
+	} from '#lib/channel/youtube-api.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
+	import { onDuck } from '#lib/sound/duck.ts';
+	import { setMusic as setAmbienceMusic } from '#lib/sound/ambience.ts';
+	import { formatClockLong } from '#lib/format.ts';
+	import { keepSize } from '#lib/pane.ts';
+	import { onSeat, stageSlot } from '#lib/channel/stage-slot.svelte.ts';
 	import Music from '@lucide/svelte/icons/music';
 	import VolumeX from '@lucide/svelte/icons/volume-x';
-	import { youtubeFailureIsGlobal } from '$lib/channel/playback-failure';
+	import { youtubeFailureIsGlobal } from '#lib/channel/playback-failure.ts';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
 	// as long as the channel connection is — music follows you between pages

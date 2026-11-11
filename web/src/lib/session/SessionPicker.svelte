@@ -1,34 +1,34 @@
 <script lang="ts">
-	import type { PickerIntent } from '$lib/channel/context';
+	import type { PickerIntent } from '#lib/channel/context.ts';
 	// "What are we doing tonight" (#115, redesigned on #181 feedback): workouts
 	// and games are explicit tabs — no guessing which one you're starting — and
 	// a workout answers the questions a coach actually has before committing the
 	// session to it: how long, which zones, any cadence/HR bands.
-	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import { nextHourInput } from '$lib/components/when';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import { formatClock } from '$lib/format';
+	import IntervalGraph from '#lib/components/IntervalGraph.svelte';
+	import WhenPicker from '#lib/components/WhenPicker.svelte';
+	import { nextHourInput } from '#lib/components/when.ts';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import { formatClock } from '#lib/format.ts';
 	import {
 		fetchProgression,
 		suggestedFocuses,
 		type Suggestion,
-	} from '$lib/progression';
+	} from '#lib/progression.ts';
 	import { untrack, type Snippet } from 'svelte';
-	import { countModal, modals } from '$lib/modals.svelte';
-	import { focusTrap } from '$lib/components/focus-trap';
-	import type { GameStart } from '$lib/session/modes';
-	import { durationSeconds, flatten } from '$lib/workout/engine';
-	import type { ShelfEntry } from '$lib/workout/shelf';
-	import type { Workout } from '$lib/workout/types';
-	import { api } from '$lib/api';
+	import { countModal, modals } from '#lib/modals.svelte.ts';
+	import { focusTrap } from '#lib/components/focus-trap.ts';
+	import type { GameStart } from '#lib/session/modes.ts';
+	import { durationSeconds, flatten } from '#lib/workout/engine.ts';
+	import type { ShelfEntry } from '#lib/workout/shelf.ts';
+	import type { Workout } from '#lib/workout/types.ts';
+	import { api } from '#lib/api.ts';
 	import { page } from '$app/state';
 	import { buildFromPicker } from './doors';
-	import type { ControlRoute } from '$lib/protocol';
-	import { onRoute } from '$lib/road/compile';
-	import type { Road } from '$lib/road/road';
-	import type { StoredRoute } from '$lib/road/stored';
-	import { wattroomRoads } from '$lib/ride/home-roads';
+	import type { ControlRoute } from '#lib/protocol.ts';
+	import { onRoute } from '#lib/road/compile.ts';
+	import type { Road } from '#lib/road/road.ts';
+	import type { StoredRoute } from '#lib/road/stored.ts';
+	import { wattroomRoads } from '#lib/ride/home-roads.ts';
 	import GameList from './GameList.svelte';
 	import PairFirst from './PairFirst.svelte';
 	import RaceStart from './RaceStart.svelte';

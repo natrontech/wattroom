@@ -1,14 +1,14 @@
 <script lang="ts">
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import GameModeCards from '$lib/site/GameModeCards.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import Screen from '$lib/site/Screen.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import SprintGame from '$lib/site/SprintGame.svelte';
-	import { RACE_LIST } from '$lib/site/game-modes';
-	import { GAME_MODES } from '$lib/site/seo';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import GameModeCards from '#lib/site/GameModeCards.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import Screen from '#lib/site/Screen.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import SprintGame from '#lib/site/SprintGame.svelte';
+	import { RACE_LIST } from '#lib/site/game-modes.ts';
+	import { GAME_MODES } from '#lib/site/seo.ts';
 
 	// The seven games and the three races, with their rules (#2995, #3177).
 	// Unique content — nobody else has Watt Golf — and every number is

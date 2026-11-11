@@ -1,4 +1,4 @@
-import { compressImage } from '$lib/chat/media';
+import { compressImage } from '#lib/chat/media.ts';
 
 /**
  * A picture waiting on the send button (#279) — Discord's flow: Ctrl+V (or

@@ -6,7 +6,7 @@
 	 * same control from the same list. `offer` hands it to the phone while
 	 * it is live: the phone's TV is this button.
 	 */
-	import { tooltip } from '$lib/tooltip.svelte';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
 	import { CONTROLS, type RideControl } from './ride-controls';
 	import { rideOffers, type Offered } from './ride-offers.svelte';
 

@@ -7,12 +7,17 @@
 	// track that marks the tolerance band, so "left or right of the bright
 	// slot" reads before any digit does. clamp() keeps it on screen at 0 W and
 	// at a sprint without a resize observer.
-	import { CEILING, fillPct, ZONE_NAMES, zoneOf } from '$lib/components/zones';
-	import { targetState } from '$lib/channel/types';
-	import { wkg } from '$lib/format';
-	import TabularFigures from '$lib/components/TabularFigures.svelte';
-	import ZoneDot from '$lib/components/ZoneDot.svelte';
-	import PowerTrack from '$lib/session/PowerTrack.svelte';
+	import {
+		CEILING,
+		fillPct,
+		ZONE_NAMES,
+		zoneOf,
+	} from '#lib/components/zones.ts';
+	import { targetState } from '#lib/channel/types.ts';
+	import { wkg } from '#lib/format.ts';
+	import TabularFigures from '#lib/components/TabularFigures.svelte';
+	import ZoneDot from '#lib/components/ZoneDot.svelte';
+	import PowerTrack from '#lib/session/PowerTrack.svelte';
 
 	// Primitives, not a LiveRider: the solo ride and the ramp test have watts
 	// and a target without a roster to belong to, and coupling the instrument

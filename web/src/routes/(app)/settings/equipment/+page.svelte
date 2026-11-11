@@ -7,21 +7,24 @@
 	// One card everywhere (#1000): the same `SensorOverview` /ride, /ramp and
 	// the Training place draw, so the answer reads identically wherever a
 	// rider happens to be standing.
-	import { canSimulate } from '$lib/ble/can-simulate';
-	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
-	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import { DONT_SHIFT_SETTING } from '$lib/ride/mode-copy';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import SensorOverview from '$lib/session/SensorOverview.svelte';
-	import { deviceWord } from '$lib/device.svelte';
-	import { heldTrainer, pairedElsewhereAll } from '$lib/session/sensor-status';
-	import { sensors } from '$lib/sensors.svelte';
+	import { canSimulate } from '#lib/ble/can-simulate.ts';
+	import { FtmsTrainer } from '#lib/ble/ftms.ts';
+	import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+	import { createProfileStore, PROFILE_LIMITS } from '#lib/profile.svelte.ts';
+	import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import { DONT_SHIFT_SETTING } from '#lib/ride/mode-copy.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import SensorOverview from '#lib/session/SensorOverview.svelte';
+	import { deviceWord } from '#lib/device.svelte.ts';
+	import {
+		heldTrainer,
+		pairedElsewhereAll,
+	} from '#lib/session/sensor-status.ts';
+	import { sensors } from '#lib/sensors.svelte.ts';
 	import Gauge from '@lucide/svelte/icons/gauge';
-	import { RAMP_TAKES } from '$lib/workout/ramp';
-	import VoiceAudio from '$lib/profile/VoiceAudio.svelte';
+	import { RAMP_TAKES } from '#lib/workout/ramp.ts';
+	import VoiceAudio from '#lib/profile/VoiceAudio.svelte';
 	import Controllers from './Controllers.svelte';
 
 	// A voice channel holds the trainer's BLE connection for as long as you

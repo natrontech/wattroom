@@ -1,56 +1,56 @@
 <script lang="ts">
-	import { hideSidebar, navDrawer, navFold } from '$lib/nav/drawer.svelte';
-	import { modals } from '$lib/modals.svelte';
+	import { hideSidebar, navDrawer, navFold } from '#lib/nav/drawer.svelte.ts';
+	import { modals } from '#lib/modals.svelte.ts';
 	import { untrack } from 'svelte';
-	import { dev } from '$app/environment';
+	import { dev } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { navigating, page } from '$app/state';
-	import { device } from '$lib/device.svelte';
-	import { account } from '$lib/account.svelte';
-	import { noteNewAccount } from '$lib/auth/new-account';
-	import { landing, takeNext } from '$lib/auth/next';
-	import { presence } from '$lib/presence.svelte';
-	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { device } from '#lib/device.svelte.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { noteNewAccount } from '#lib/auth/new-account.ts';
+	import { landing, takeNext } from '#lib/auth/next.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { chosenCrew } from '#lib/nav/chosen-crew.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	// Side-effect imports: both apply their stored choice to :root the moment
 	// they load, so they belong to the shell rather than to whichever screen
 	// happens to render their control. The palette reached only /profile and
 	// /dev/components before this (#329); the scheme was correct only because
 	// the rail the shell drew back then happened to import it.
-	import '$lib/palette.svelte';
-	import { theme } from '$lib/theme.svelte';
-	import { palette } from '$lib/palette.svelte';
-	import { themeFor } from '$lib/themes';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { soloRide } from '$lib/workout/ride-life.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import { drawsTheRide } from '$lib/ride/ride-screens';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import { pullProfile } from '$lib/profile-sync.svelte';
-	import { dmHeads } from '$lib/dm/heads.svelte';
-	import { divertWhileRiding } from '$lib/messages/announce';
-	import { friends } from '$lib/friends/friends.svelte';
-	import Logo from '$lib/brand/Logo.svelte';
-	import Sidebar from '$lib/nav/Sidebar.svelte';
-	import RideDock from '$lib/nav/RideDock.svelte';
-	import RideElsewhere from '$lib/ride/RideElsewhere.svelte';
-	import NowBar from '$lib/nav/NowBar.svelte';
-	import { rideBar } from '$lib/nav/ride-bar.svelte';
+	import '#lib/palette.svelte.ts';
+	import { theme } from '#lib/theme.svelte.ts';
+	import { palette } from '#lib/palette.svelte.ts';
+	import { themeFor } from '#lib/themes.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { soloRide } from '#lib/workout/ride-life.svelte.ts';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import { drawsTheRide } from '#lib/ride/ride-screens.ts';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { pullProfile } from '#lib/profile-sync.svelte.ts';
+	import { dmHeads } from '#lib/dm/heads.svelte.ts';
+	import { divertWhileRiding } from '#lib/messages/announce.ts';
+	import { friends } from '#lib/friends/friends.svelte.ts';
+	import Logo from '#lib/brand/Logo.svelte';
+	import Sidebar from '#lib/nav/Sidebar.svelte';
+	import RideDock from '#lib/nav/RideDock.svelte';
+	import RideElsewhere from '#lib/ride/RideElsewhere.svelte';
+	import NowBar from '#lib/nav/NowBar.svelte';
+	import { rideBar } from '#lib/nav/ride-bar.svelte.ts';
 	import Menu from '@lucide/svelte/icons/menu';
-	import Toasts from '$lib/components/Toasts.svelte';
-	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
-	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
-	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
-	import TooltipHost from '$lib/components/TooltipHost.svelte';
-	import RiderCardHost from '$lib/rider-card/RiderCardHost.svelte';
-	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
-	import StatusEditor from '$lib/status-line/StatusEditor.svelte';
-	import { statusEditor } from '$lib/status-line/editor.svelte';
-	import ConnectionInfo from '$lib/channel/ConnectionInfo.svelte';
-	import { guardTheRide } from '$lib/channel/ride-guard.svelte';
-	import ImageViewer from '$lib/chat/ImageViewer.svelte';
-	import DevicePicker from '$lib/ble/DevicePicker.svelte';
-	import { devicePicker } from '$lib/ble/device-picker.svelte';
+	import Toasts from '#lib/components/Toasts.svelte';
+	import NewAccountNotice from '#lib/components/NewAccountNotice.svelte';
+	import VerifyEmailGate from '#lib/components/VerifyEmailGate.svelte';
+	import ContextMenuHost from '#lib/components/ContextMenuHost.svelte';
+	import TooltipHost from '#lib/components/TooltipHost.svelte';
+	import RiderCardHost from '#lib/rider-card/RiderCardHost.svelte';
+	import ConfirmHost from '#lib/components/ConfirmHost.svelte';
+	import StatusEditor from '#lib/status-line/StatusEditor.svelte';
+	import { statusEditor } from '#lib/status-line/editor.svelte.ts';
+	import ConnectionInfo from '#lib/channel/ConnectionInfo.svelte';
+	import { guardTheRide } from '#lib/channel/ride-guard.svelte.ts';
+	import ImageViewer from '#lib/chat/ImageViewer.svelte';
+	import DevicePicker from '#lib/ble/DevicePicker.svelte';
+	import { devicePicker } from '#lib/ble/device-picker.svelte.ts';
 	import {
 		onShellHandoff,
 		onShellNavigate,
@@ -58,12 +58,12 @@
 		setShellBadge,
 		setShellPlace,
 		shellTitleBar,
-	} from '$lib/desktop';
-	import { sidebarUnread } from '$lib/nav/sidebar-unread';
-	import { hangUpOnHide } from '$lib/channel/hang-up-on-hide';
-	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
-	import { notify } from '$lib/notify.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/desktop.ts';
+	import { sidebarUnread } from '#lib/nav/sidebar-unread.ts';
+	import { hangUpOnHide } from '#lib/channel/hang-up-on-hide.ts';
+	import { keepAwakeWhile } from '#lib/workout/keep-awake.svelte.ts';
+	import { notify } from '#lib/notify.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let { children } = $props();
 
@@ -142,11 +142,11 @@
 			page.url.pathname === '/legal/licenses' ||
 			page.url.pathname === '/terms' ||
 			page.url.pathname === '/privacy' ||
-			page.url.pathname === '/download' ||
-			// The HUD says "sign in on the main window" itself (#1667).
+			page.url.pathname === '/download' || // The HUD says "sign in on the main window" itself (#1667).
 			page.url.pathname === '/hud' ||
 			(dev && page.url.pathname.startsWith('/dev')),
 	);
+
 	const gated = $derived(account.loaded && !account.me && !publicPath);
 
 	// Signing out leaves the voice channel. The connection holds the socket,
@@ -185,11 +185,13 @@
 	const alone = $derived(
 		theRide.alone ? drawsTheRide(page.url.pathname) : soloRide.active,
 	);
+
 	const riding = $derived(
 		(channelConnection.onPlacePath(page.url.pathname) &&
 			!!channelConnection.current?.riding()) ||
 			alone,
 	);
+
 	// A solo ride has no timeline to write a DM into (#1743), so it takes the
 	// line and leaves it to the unread badge in the sidebar, which was already
 	// carrying it. Registered from here rather than from /ride and /ramp:
@@ -310,7 +312,7 @@
 		if (gated) {
 			const next = page.url.pathname + page.url.search;
 			void goto(`/login?next=${encodeURIComponent(next)}`, {
-				replaceState: true,
+				replace: true,
 			});
 		}
 	});
@@ -330,7 +332,7 @@
 		const next = takeNext();
 		if (next) {
 			routed = true;
-			void goto(next, { replaceState: true });
+			void goto(next, { replace: true });
 		} else if (page.url.pathname === '/enter') {
 			// Open in the crew the sidebar would (#2144, #2576) — which needs
 			// the crew list, and /enter is outside the frame that starts it. Read
@@ -347,7 +349,7 @@
 			}
 			routed = true;
 			void goto(landing(account.me.pendingInvite, chosen, presence.crews), {
-				replaceState: true,
+				replace: true,
 			});
 		}
 	});
@@ -509,11 +511,13 @@
 					<!-- Where you are, on the voice channel's own pages: its heading is
 					     for screen readers there, and the brand word said nothing
 					     about which channel this is (#2882 L6-16). -->
+
 					<span class="font-display min-w-0 truncate text-sm font-bold"
 						>{(channelConnection.onPlacePath(page.url.pathname) &&
 							channelConnection.current?.address.name) ||
 							'WattRoom'}</span
 					>
+
 					<!-- The ride dock's short form (ADR-0093 point 5): the drawer
 					     holds the dock, this one tap opens the ride. -->
 					<RideDock pathname={page.url.pathname} short />
@@ -532,7 +536,7 @@
 				<!-- Loaded once a voice channel is joined (#1514), like the two docks
 				     below: it draws nothing before one, and its chunk has no
 				     business in the closure every route pays for. -->
-				{#await import('$lib/channel/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
+				{#await import('#lib/channel/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
 					<ScreenShareNotice
 						place={share.address}
 						inside={channelConnection.onPlacePath(page.url.pathname)}
@@ -549,7 +553,7 @@
 					     its shell never mounted (#2986). A dropped connection or a
 					     lost trainer is ride-critical wherever the rider is
 					     (errors.md). -->
-					{#await import('$lib/channel/ChannelStatus.svelte') then { default: ChannelStatus }}
+					{#await import('#lib/channel/ChannelStatus.svelte') then { default: ChannelStatus }}
 						<ChannelStatus frame />
 					{/await}
 				{/if}
@@ -594,17 +598,17 @@
 			     player, the YouTube API glue and the pool deck used to ride
 			     every route's eager closure — the signed-out landing page,
 			     /history, a phone spectator. -->
-			{#await import('$lib/channel/JukeboxDock.svelte') then { default: JukeboxDock }}
+			{#await import('#lib/channel/JukeboxDock.svelte') then { default: JukeboxDock }}
 				<JukeboxDock />
 			{/await}
 			<!-- The other half of one queue (#267): a pool track is heard here,
 			     beside the dock rather than inside it, because it needs none of
 			     the iframe's geometry. -->
-			{#await import('$lib/channel/AudioDeck.svelte') then { default: AudioDeck }}
+			{#await import('#lib/channel/AudioDeck.svelte') then { default: AudioDeck }}
 				<AudioDeck />
 			{/await}
 			<!-- And house radio, a third source on the same deck (ADR-0094). -->
-			{#await import('$lib/lounge/HouseRadioDeck.svelte') then { default: HouseRadioDeck }}
+			{#await import('#lib/lounge/HouseRadioDeck.svelte') then { default: HouseRadioDeck }}
 				<HouseRadioDeck />
 			{/await}
 		{/if}
@@ -626,6 +630,7 @@
 <!-- These mount outside the frame, so they mark the ride themselves: a
      menu, a rider card or a confirm opened mid-ride is part of it (#3788).
      `contents` leaves their fixed layout alone. -->
+
 <div class="contents" data-ride={riding ? '' : undefined}>
 	<ContextMenuHost {riding} />
 	<TooltipHost />

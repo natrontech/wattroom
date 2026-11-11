@@ -9,26 +9,26 @@
 	 */
 	import { onDestroy, type Snippet } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { apiBlob } from '$lib/api';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import RideCardChooser from '$lib/ride/RideCardChooser.svelte';
-	import RampRiding from '$lib/ride/RampRiding.svelte';
-	import RideFlags from '$lib/ride/RideFlags.svelte';
-	import RideStatus from '$lib/ride/RideStatus.svelte';
-	import RidingScreen from '$lib/ride/RidingScreen.svelte';
-	import RoadRiding from '$lib/ride/RoadRiding.svelte';
-	import SessionSummary from '$lib/ride/SessionSummary.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import WorldPicture from '$lib/ride/WorldPicture.svelte';
-	import TvOverlay from '$lib/session/TvOverlay.svelte';
-	import { shareFile } from '$lib/share';
-	import { describeBlock } from '$lib/workout/block';
-	import { customWorkouts } from '$lib/workout/custom.svelte';
-	import { skylineOf } from '$lib/workout/road-workout';
-	import { isOpenRoad } from '$lib/workout/ridden';
-	import { buildShelf } from '$lib/workout/shelf';
+	import { apiBlob } from '#lib/api.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import RideCardChooser from '#lib/ride/RideCardChooser.svelte';
+	import RampRiding from '#lib/ride/RampRiding.svelte';
+	import RideFlags from '#lib/ride/RideFlags.svelte';
+	import RideStatus from '#lib/ride/RideStatus.svelte';
+	import RidingScreen from '#lib/ride/RidingScreen.svelte';
+	import RoadRiding from '#lib/ride/RoadRiding.svelte';
+	import SessionSummary from '#lib/ride/SessionSummary.svelte';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import WorldPicture from '#lib/ride/WorldPicture.svelte';
+	import TvOverlay from '#lib/session/TvOverlay.svelte';
+	import { shareFile } from '#lib/share.ts';
+	import { describeBlock } from '#lib/workout/block.ts';
+	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
+	import { skylineOf } from '#lib/workout/road-workout.ts';
+	import { isOpenRoad } from '#lib/workout/ridden.ts';
+	import { buildShelf } from '#lib/workout/shelf.ts';
 
 	let {
 		doneHref = '/home',
@@ -61,7 +61,7 @@
 	$effect(() => {
 		const training = channelConnection.current?.address.training;
 		if (!channel && !theRide.held && theRide.channel?.riding && training)
-			void goto(training, { replaceState: true });
+			void goto(training, { replace: true });
 	});
 	// Leaving the riding screen never ends the ride (ADR-0093). A summary the
 	// rider walked away from is done with, so the next one opens on the setup.

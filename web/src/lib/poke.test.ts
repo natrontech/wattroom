@@ -2,16 +2,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const played: string[] = [];
-vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
+vi.mock('#lib/sound/cues.ts', () => ({
+	play: (id: string) => played.push(id),
+}));
 // A focused, visible window: the toast is the whole announcement.
-vi.mock('$lib/notify.svelte', () => ({
+vi.mock('#lib/notify.svelte.ts', () => ({
 	notify: { push: () => {} },
 	away: () => false,
 }));
 
-import { announce } from '$lib/messages/announce';
-import { pokeArrival } from '$lib/poke';
-import { toasts } from '$lib/toast.svelte';
+import { announce } from '#lib/messages/announce.ts';
+import { pokeArrival } from '#lib/poke.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 beforeEach(() => {
 	played.length = 0;

@@ -4,12 +4,12 @@
 	// is the shortcut to the parts you reach for while riding (ADR-0020's
 	// amendment, #477), never the only way to them, and it renders the same
 	// `GateTune` and `MixFaders` this page does.
-	import GateTune from '$lib/channel/GateTune.svelte';
-	import HandheldMicNote from '$lib/channel/HandheldMicNote.svelte';
-	import { device } from '$lib/device.svelte';
-	import MixFaders from '$lib/channel/MixFaders.svelte';
-	import RiderVolumes from '$lib/channel/RiderVolumes.svelte';
-	import DevicePickers from '$lib/channel/DevicePickers.svelte';
+	import GateTune from '#lib/channel/GateTune.svelte';
+	import HandheldMicNote from '#lib/channel/HandheldMicNote.svelte';
+	import { device } from '#lib/device.svelte.ts';
+	import MixFaders from '#lib/channel/MixFaders.svelte';
+	import RiderVolumes from '#lib/channel/RiderVolumes.svelte';
+	import DevicePickers from '#lib/channel/DevicePickers.svelte';
 
 	let {
 		micOn = false,

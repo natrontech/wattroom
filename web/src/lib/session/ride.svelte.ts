@@ -1,31 +1,34 @@
-import { pairError } from '$lib/ble/pair-error';
-import { arbitrate } from '$lib/ble/arbitrate';
-import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
-import { createActuator } from '$lib/ride/actuation.svelte';
-import { createRideGrade } from '$lib/ride/ride-grade';
-import { createDeadReckoning, DEAD_RECKONING_S } from '$lib/channel/road-place';
+import { pairError } from '#lib/ble/pair-error.ts';
+import { arbitrate } from '#lib/ble/arbitrate.ts';
+import { createFlightRecorder } from '#lib/ride/flightrecorder.svelte.ts';
+import { createActuator } from '#lib/ride/actuation.svelte.ts';
+import { createRideGrade } from '#lib/ride/ride-grade.ts';
+import {
+	createDeadReckoning,
+	DEAD_RECKONING_S,
+} from '#lib/channel/road-place.ts';
 import {
 	biasPress,
 	EASIER_HARDER_OFF,
 	ergPress,
-} from '$lib/ride/easier-harder';
-import { play } from '$lib/sound/cues';
-import { gearsEnabled } from '$lib/ride/gears-enabled';
-import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
-import { sensors } from '$lib/sensors.svelte';
-import { wireMetrics } from '$lib/session/wire';
-import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
-import { targetAt } from '$lib/workout/engine';
-import { countsToward } from '$lib/workout/ride-record.svelte';
-import type { RideDeps } from '$lib/session/ride-deps';
-import { createRideTarget } from '$lib/session/ride-target.svelte';
-import { createSessionSprint } from '$lib/session/ride-sprint.svelte';
-import type { RideEffort } from '$lib/roadside';
+} from '#lib/ride/easier-harder.ts';
+import { play } from '#lib/sound/cues.ts';
+import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+import type { Trainer, TrainerStatus } from '#lib/ble/trainer.ts';
+import { sensors } from '#lib/sensors.svelte.ts';
+import { wireMetrics } from '#lib/session/wire.ts';
+import { SIGNAL_LOST_MS } from '#lib/workout/ride-state.ts';
+import { targetAt } from '#lib/workout/engine.ts';
+import { countsToward } from '#lib/workout/ride-record.svelte.ts';
+import type { RideDeps } from '#lib/session/ride-deps.ts';
+import { createRideTarget } from '#lib/session/ride-target.svelte.ts';
+import { createSessionSprint } from '#lib/session/ride-sprint.svelte.ts';
+import type { RideEffort } from '#lib/roadside.ts';
 import {
 	mayActuate,
 	quietFault,
 	type TrainerFault,
-} from '$lib/session/sensor-status';
+} from '#lib/session/sensor-status.ts';
 
 /**
  * Riding along: the trainer, the target it holds, the trim on it, and the

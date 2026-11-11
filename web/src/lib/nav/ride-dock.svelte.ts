@@ -1,11 +1,11 @@
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
-import type { Trainer } from '$lib/ble/trainer';
-import { channelConnection } from '$lib/channel/connection.svelte';
-import { askToEndWorkout, askToStopRamp } from '$lib/ride/end-ride';
-import { dockScreen, drawsTheRide } from '$lib/ride/ride-screens';
-import { statusLine, trainerLine } from '$lib/ride/status-lines';
-import { theRide } from '$lib/ride/the-ride.svelte';
+import type { Trainer } from '#lib/ble/trainer.ts';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
+import { askToEndWorkout, askToStopRamp } from '#lib/ride/end-ride.ts';
+import { dockScreen, drawsTheRide } from '#lib/ride/ride-screens.ts';
+import { statusLine, trainerLine } from '#lib/ride/status-lines.ts';
+import { theRide } from '#lib/ride/the-ride.svelte.ts';
 
 // The riding screen the rider last had open (ADR-0093 point 5): where Open
 // and End ride go. /ride until a ride has been seen on another.

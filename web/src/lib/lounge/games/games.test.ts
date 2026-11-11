@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ArcadeBergpreis, ArcadeDarts, ArcadeFeedZone } from '$lib/protocol';
+import { ArcadeBergpreis, ArcadeDarts, ArcadeFeedZone } from '#lib/protocol.ts';
 import { GAMES } from './index';
 import {
 	type Run as FeedRun,

@@ -1,5 +1,5 @@
-import { tracePoint, type TracePoint } from '$lib/components/trace';
-import { MaxBridgedGap } from '$lib/protocol';
+import { tracePoint, type TracePoint } from '#lib/components/trace.ts';
+import { MaxBridgedGap } from '#lib/protocol.ts';
 import type { GuardSample } from './guards';
 import { toleranceBand } from './guards';
 import type { RideState } from './ride-state';

@@ -1,18 +1,21 @@
-import { account } from '$lib/account.svelte';
-import type { RoadPlace } from '$lib/channel/road-place';
-import type { createChannelLive } from '$lib/channel/live.svelte';
-import type { createProfileStore } from '$lib/profile.svelte';
+import { account } from '#lib/account.svelte.ts';
+import type { RoadPlace } from '#lib/channel/road-place.ts';
+import type { createChannelLive } from '#lib/channel/live.svelte.ts';
+import type { createProfileStore } from '#lib/profile.svelte.ts';
 import {
 	createFreeRide,
 	type FreeRideOutcome,
-} from '$lib/ride/free-ride.svelte';
-import { createOwnRide, type OwnRideOutcome } from '$lib/ride/own-ride.svelte';
-import type { SessionState } from '$lib/protocol';
-import type { createRecording } from '$lib/session/recording.svelte';
-import { createRide } from '$lib/session/ride.svelte';
-import { toasts } from '$lib/toast.svelte';
-import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
-import type { Segment } from '$lib/workout/types';
+} from '#lib/ride/free-ride.svelte.ts';
+import {
+	createOwnRide,
+	type OwnRideOutcome,
+} from '#lib/ride/own-ride.svelte.ts';
+import type { SessionState } from '#lib/protocol.ts';
+import type { createRecording } from '#lib/session/recording.svelte.ts';
+import { createRide } from '#lib/session/ride.svelte.ts';
+import { toasts } from '#lib/toast.svelte.ts';
+import { createSignalWatch } from '#lib/workout/signal-watch.svelte.ts';
+import type { Segment } from '#lib/workout/types.ts';
 
 /**
  * A voice channel's ride (ADR-0093, #4259): the trainer the channel rides,

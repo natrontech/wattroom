@@ -4,6 +4,6 @@
 	// drilldown a navigation between the two. Rides carries both now.
 	import { goto } from '$app/navigation';
 	$effect(() => {
-		void goto('/history', { replaceState: true });
+		void goto('/history', { replace: true });
 	});
 </script>

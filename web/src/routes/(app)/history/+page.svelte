@@ -1,35 +1,35 @@
 <script lang="ts">
-	import FitnessChart from '$lib/components/FitnessChart.svelte';
-	import { confirm } from '$lib/confirm.svelte';
-	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
-	import { trendSparse } from '$lib/components/ftp-trend';
-	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
-	import { account } from '$lib/account.svelte';
-	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
+	import FitnessChart from '#lib/components/FitnessChart.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import FtpTrendChart from '#lib/components/FtpTrendChart.svelte';
+	import { trendSparse } from '#lib/components/ftp-trend.ts';
+	import FtpPrompt from '#lib/components/FtpPrompt.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import LthrPrompt from '#lib/components/LthrPrompt.svelte';
 	import {
 		declineSuggestion,
 		declinedSuggestion,
 		suggestionDeclined,
-	} from '$lib/suggestion-decline';
-	import { pushProfile } from '$lib/profile-sync.svelte';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
+	} from '#lib/suggestion-decline.ts';
+	import { pushProfile } from '#lib/profile-sync.svelte.ts';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import PowerCurveChart from '#lib/components/PowerCurveChart.svelte';
 	import {
 		fetchProgression,
 		FORM_SENTENCES,
 		type Progression,
-	} from '$lib/progression';
+	} from '#lib/progression.ts';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
-	import Banner from '$lib/components/Banner.svelte';
-	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { api } from '$lib/api';
-	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
-	import DeviceRide from '$lib/ride/DeviceRide.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import RideRow from '$lib/ride/RideRow.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import RecoveredRides from '#lib/ride/RecoveredRides.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { api } from '#lib/api.ts';
+	import { createHistoryStore, type RideRecord } from '#lib/history.svelte.ts';
+	import DeviceRide from '#lib/ride/DeviceRide.svelte';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import RideRow from '#lib/ride/RideRow.svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import {
@@ -39,7 +39,7 @@
 		type RideCursor,
 		type RidesPage,
 		type ServerRide,
-	} from '$lib/ride/list';
+	} from '#lib/ride/list.ts';
 
 	let { data }: { data: PageData } = $props();
 

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AWAY_CHOICES, AWAY_STATES, awayLineFor, awayState } from '$lib/away';
+import {
+	AWAY_CHOICES,
+	AWAY_STATES,
+	awayLineFor,
+	awayState,
+} from '#lib/away.ts';
 
 describe('away states', () => {
 	// The menu is the named states only: plain Away is the button's face, and

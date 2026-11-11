@@ -3,7 +3,7 @@ import { flushSync, tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.fn();
-vi.mock('$lib/api', () => ({ api: (...args: unknown[]) => api(...args) }));
+vi.mock('#lib/api.ts', () => ({ api: (...args: unknown[]) => api(...args) }));
 
 import type { FreeRide } from './free-ride.svelte';
 import { createGhostSplit } from './ghost-split.svelte';

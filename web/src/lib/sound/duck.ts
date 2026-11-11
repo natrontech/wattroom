@@ -2,7 +2,7 @@ import {
 	DUCK_ATTACK_MS,
 	DUCK_HOLD_MS,
 	DUCK_RELEASE_MS,
-} from '$lib/sound/ducking';
+} from '#lib/sound/ducking.ts';
 
 /**
  * The one duck (#988). `ducking.ts` already owned the depth and the

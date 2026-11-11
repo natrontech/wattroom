@@ -1,4 +1,4 @@
-import { formatClock } from '$lib/format';
+import { formatClock } from '#lib/format.ts';
 
 /**
  * The frame a finished ride is shown in (#3686): the closing card wears it

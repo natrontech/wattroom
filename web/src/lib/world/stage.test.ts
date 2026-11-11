@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { at } from '$lib/road/along';
-import { toRoute, type Route } from '$lib/road/route';
+import { at } from '#lib/road/along.ts';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { RIDE } from './look.test-helper';
 import { pageGrids } from './chunks/grids';
 import { compose, type Composed } from './compose';

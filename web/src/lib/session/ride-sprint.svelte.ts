@@ -1,7 +1,7 @@
-import { serverNow } from '$lib/server-clock';
-import { targetAt } from '$lib/workout/engine';
-import { createSprintWindow } from '$lib/workout/sprint-window.svelte';
-import type { RideDeps } from '$lib/session/ride-deps';
+import { serverNow } from '#lib/server-clock.ts';
+import { targetAt } from '#lib/workout/engine.ts';
+import { createSprintWindow } from '#lib/workout/sprint-window.svelte.ts';
+import type { RideDeps } from '#lib/session/ride-deps.ts';
 
 /**
  * The sprints a session rider can be handed: the one the server armed, live

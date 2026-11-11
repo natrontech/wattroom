@@ -1,8 +1,8 @@
 import { render } from 'svelte/server';
 import { describe, expect, it, vi } from 'vitest';
-import TvOverlay from '$lib/session/TvOverlay.svelte';
+import TvOverlay from '#lib/session/TvOverlay.svelte';
 
-vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
+vi.mock('#lib/hud/feed.ts', () => ({ publishHud: () => {} }));
 
 /**
  * A free ride's TV (#3669, TARGETS ride-free-road 7): the frame a workout

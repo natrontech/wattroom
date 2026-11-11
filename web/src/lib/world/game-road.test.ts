@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import type { BunchView, GamePlay } from '$lib/channel/bunch-view';
-import { at } from '$lib/road/along';
-import { legsRoad } from '$lib/road/fixtures';
+import type { BunchView, GamePlay } from '#lib/channel/bunch-view.ts';
+import { at } from '#lib/road/along.ts';
+import { legsRoad } from '#lib/road/fixtures.ts';
 import { STYLES } from './test-styles';
 import { fogEle, makeGameRoad, nextStand, rideAhead } from './game-road';
 import { yOf } from './geometry';

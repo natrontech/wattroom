@@ -18,16 +18,19 @@
 	// devices second, so they never sit below everything else.
 	import { MediaQuery } from 'svelte/reactivity';
 	import Sliders from '@lucide/svelte/icons/sliders';
-	import Modal from '$lib/components/Modal.svelte';
-	import DevicePickers from '$lib/channel/DevicePickers.svelte';
-	import GateTune from '$lib/channel/GateTune.svelte';
-	import MixFaders from '$lib/channel/MixFaders.svelte';
-	import RiderVolumes from '$lib/channel/RiderVolumes.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { canHoldToTalk } from '$lib/channel/ptt-keys';
-	import { device } from '$lib/device.svelte';
-	import HandheldMicNote from '$lib/channel/HandheldMicNote.svelte';
-	import { openSoundPanel, soundPanel } from '$lib/channel/sound-panel.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import DevicePickers from '#lib/channel/DevicePickers.svelte';
+	import GateTune from '#lib/channel/GateTune.svelte';
+	import MixFaders from '#lib/channel/MixFaders.svelte';
+	import RiderVolumes from '#lib/channel/RiderVolumes.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { canHoldToTalk } from '#lib/channel/ptt-keys.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import HandheldMicNote from '#lib/channel/HandheldMicNote.svelte';
+	import {
+		openSoundPanel,
+		soundPanel,
+	} from '#lib/channel/sound-panel.svelte.ts';
 
 	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
 	// the mic and the camera it belongs with.

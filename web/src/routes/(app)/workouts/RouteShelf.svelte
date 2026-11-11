@@ -1,17 +1,17 @@
 <script lang="ts">
-	import WattRoomRoads from '$lib/ride/WattRoomRoads.svelte';
-	import { homeRoadsMatching } from '$lib/ride/home-roads';
+	import WattRoomRoads from '#lib/ride/WattRoomRoads.svelte';
+	import { homeRoadsMatching } from '#lib/ride/home-roads.ts';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import RouteRow from '$lib/components/RouteRow.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { confirm } from '$lib/confirm.svelte';
-	import type { MenuEntry } from '$lib/context-menu.svelte';
-	import type { StoredRoute } from '$lib/road/stored';
-	import { toasts } from '$lib/toast.svelte';
+	import { api } from '#lib/api.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import RouteRow from '#lib/components/RouteRow.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import type { MenuEntry } from '#lib/context-menu.svelte.ts';
+	import type { StoredRoute } from '#lib/road/stored.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	/**
 	 * The rider's routes (#3061), under their workouts: a route is ridden the

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { load as loadHistory, type HistoryPageData } from './history/+page';
-import { buildLine } from '$lib/build-line';
+import { buildLine } from '#lib/build-line.ts';
 import { load as loadData } from './settings/data/+page';
 import {
 	load as loadProfile,

@@ -17,8 +17,8 @@
 	// Home's This week, the crew Home's next-up card and the crew's
 	// Schedule (#2612). WattRoom opens in a crew since #2576, so Home alone
 	// was a page a rider in one crew might never visit.
-	import { toasts } from '$lib/toast.svelte';
-	import { notify } from '$lib/notify.svelte';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { notify } from '#lib/notify.svelte.ts';
 	import BellRing from '@lucide/svelte/icons/bell-ring';
 
 	// Either answer retires the offer, and waveOffer is what takes the line

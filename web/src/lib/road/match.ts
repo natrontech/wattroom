@@ -11,9 +11,9 @@ import {
 	PaceDefaultCdA,
 	ReferenceRiderKg,
 	ReferenceRiderWatts,
-} from '$lib/protocol';
-import { flatten, segmentsDuration, targetAt } from '$lib/workout/engine';
-import type { Workout } from '$lib/workout/types';
+} from '#lib/protocol.ts';
+import { flatten, segmentsDuration, targetAt } from '#lib/workout/engine.ts';
+import type { Workout } from '#lib/workout/types.ts';
 import { createPace, steadySpeed } from './pace';
 import { roadStep, type Road } from './road';
 

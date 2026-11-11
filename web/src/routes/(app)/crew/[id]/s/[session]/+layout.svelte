@@ -5,10 +5,10 @@
 	// shell with the ride in front: the same connection, so stepping between
 	// the channel and its session keeps you where you are.
 	import { page } from '$app/state';
-	import Banner from '$lib/components/Banner.svelte';
-	import VoiceChannelShell from '$lib/channel/VoiceChannelShell.svelte';
-	import CrewSessionShell from '$lib/channel/CrewSessionShell.svelte';
-	import type { SessionPageData } from '$lib/session/session-page';
+	import Banner from '#lib/components/Banner.svelte';
+	import VoiceChannelShell from '#lib/channel/VoiceChannelShell.svelte';
+	import CrewSessionShell from '#lib/channel/CrewSessionShell.svelte';
+	import type { SessionPageData } from '#lib/session/session-page.ts';
 
 	let { children } = $props();
 

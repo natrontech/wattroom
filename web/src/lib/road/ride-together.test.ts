@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { RouteHiddenEndM } from '$lib/protocol';
-import { validateWorkout } from '$lib/workout/validate';
+import { RouteHiddenEndM } from '#lib/protocol.ts';
+import { validateWorkout } from '#lib/workout/validate.ts';
 import { climbsOf } from './climbs';
 import { crewFromM, crewSeconds, rideTogether } from './ride-together';
-import { durationSeconds } from '$lib/workout/engine';
+import { durationSeconds } from '#lib/workout/engine.ts';
 import type { Road } from './road';
 
 /** A road drawn as legs of [metres, percent], a sample every 20 m. */

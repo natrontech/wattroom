@@ -5,8 +5,8 @@
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { trackClock, trackSize, type Track } from '$lib/music/pool';
+	} from '#lib/context-menu.svelte.ts';
+	import { trackClock, trackSize, type Track } from '#lib/music/pool.ts';
 
 	// One shelf row (#268, #1433): what a track is, what can be done with it,
 	// and — for your own uploads — the tag editor in place, because real-world

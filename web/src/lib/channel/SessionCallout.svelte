@@ -3,10 +3,10 @@
 	// line with Join, from the start until its count-in ends. Read off the
 	// crew's live list and the call's roster; nothing is stored.
 	import Radio from '@lucide/svelte/icons/radio';
-	import { account } from '$lib/account.svelte';
-	import { sessionPath } from '$lib/channel/address';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { sessionPath } from '#lib/channel/address.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 
 	const call = $derived(channelConnection.call);
 	const here = $derived(

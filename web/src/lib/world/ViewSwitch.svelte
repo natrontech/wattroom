@@ -10,13 +10,13 @@
 	 * Chrome, so neon and flat (ADR-0005), in the ride's one segmented
 	 * control's shape (FreeRiding's "what you set").
 	 */
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { hasChannel } from '$lib/channel/context';
-	import { rideRoom } from '$lib/channel/ride-room.svelte';
-	import { askPage } from '$lib/session/computer-pages';
-	import { tooltip } from '$lib/tooltip.svelte';
-	import { computerShown } from '$lib/session/computer-shown.svelte';
-	import { rideOffers } from '$lib/ride/ride-offers.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { hasChannel } from '#lib/channel/context.ts';
+	import { rideRoom } from '#lib/channel/ride-room.svelte.ts';
+	import { askPage } from '#lib/session/computer-pages.ts';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
+	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
+	import { rideOffers } from '#lib/ride/ride-offers.svelte.ts';
 	import {
 		flipped,
 		REASONS,

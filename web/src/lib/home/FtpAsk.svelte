@@ -15,8 +15,8 @@
 	 * claims both sources outright rather than leaving the server to infer an
 	 * answer from a value that did not change.
 	 */
-	import { account } from '$lib/account.svelte';
-	import { PROFILE_LIMITS } from '$lib/profile.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { PROFILE_LIMITS } from '#lib/profile.svelte.ts';
 
 	/** The step's own label, so the row reads the same open as struck out. */
 	let { label }: { label: string } = $props();

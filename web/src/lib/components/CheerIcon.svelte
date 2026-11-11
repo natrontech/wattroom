@@ -3,8 +3,8 @@
 		customName,
 		crewEmoji,
 		emojiCrew,
-	} from '$lib/emoji/crew-emoji.svelte';
-	import { iconFor } from '$lib/icons';
+	} from '#lib/emoji/crew-emoji.svelte.ts';
+	import { iconFor } from '#lib/icons.ts';
 
 	// One reaction, whatever it is (#223, #2643): a drawn icon from the curated
 	// set, a Unicode emoji as itself, or a crew's own `:name:` as its picture —

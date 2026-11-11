@@ -10,8 +10,8 @@
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { shareNotice } from '$lib/channel/share-notice';
+	} from '#lib/context-menu.svelte.ts';
+	import { shareNotice } from '#lib/channel/share-notice.ts';
 	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import Volume2 from '@lucide/svelte/icons/volume-2';

@@ -6,7 +6,7 @@
  * asked, and asked again next session. Servers that cannot send mail show none
  * of this — the flow would have no way to finish (capability gating).
  */
-import type { Me } from '$lib/account.svelte';
+import type { Me } from '#lib/account.svelte.ts';
 
 const SKIP_KEY = 'wattroom.verify-email.skipped';
 

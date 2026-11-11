@@ -8,14 +8,14 @@
 	 * phone's share sheet gets the fresh tap it needs (share.ts).
 	 */
 	import { ImageDown } from '@lucide/svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { tokenDeclarations, type ThemeFamily } from '$lib/palette';
-	import { palette } from '$lib/palette.svelte';
-	import { fetchRideCard } from '$lib/ride/card';
-	import { shareFile } from '$lib/share';
-	import { THEMES, themeFor } from '$lib/themes';
+	import Banner from '#lib/components/Banner.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { tokenDeclarations, type ThemeFamily } from '#lib/palette.ts';
+	import { palette } from '#lib/palette.svelte.ts';
+	import { fetchRideCard } from '#lib/ride/card.ts';
+	import { shareFile } from '#lib/share.ts';
+	import { THEMES, themeFor } from '#lib/themes.ts';
 
 	let {
 		rideId,

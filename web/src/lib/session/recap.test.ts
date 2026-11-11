@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { formatShortDate } from '$lib/format';
+import { formatShortDate } from '#lib/format.ts';
 import { recapBars, recapSummary } from './recap';
-import type { SessionRecap } from '$lib/protocol';
+import type { SessionRecap } from '#lib/protocol.ts';
 
 const START = Date.UTC(2026, 8, 7, 19, 4);
 const END = START + 67 * 60_000; // 1 h 07 m

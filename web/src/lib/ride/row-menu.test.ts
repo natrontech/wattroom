@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import type { MenuEntry, MenuItem } from '$lib/context-menu.svelte';
+import type { MenuEntry, MenuItem } from '#lib/context-menu.svelte.ts';
 import type { ServerRide } from './list';
 import { rideRowMenu } from './row-menu';
 

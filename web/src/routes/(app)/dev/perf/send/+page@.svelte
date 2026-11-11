@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { iceGathered } from '$lib/perf/ice-gathered';
+	import { iceGathered } from '#lib/perf/ice-gathered.ts';
 
 	/**
 	 * The far end of /dev/perf's screen share and camera cases (#3039). The

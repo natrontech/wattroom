@@ -1,11 +1,11 @@
-import type { Rider, SessionRoute, StartLine } from '$lib/protocol';
-import type { CueId } from '$lib/sound/cue-catalogue';
-import { climbsOf, type ClimbClass } from '$lib/road/climbs';
-import { crewDistanceM } from '$lib/road/match';
-import { turnedRound } from '$lib/road/road';
-import { classChips } from '$lib/road/route-row';
-import type { PinnedRoad } from '$lib/workout/road-workout';
-import type { Workout } from '$lib/workout/types';
+import type { Rider, SessionRoute, StartLine } from '#lib/protocol.ts';
+import type { CueId } from '#lib/sound/cue-catalogue.ts';
+import { climbsOf, type ClimbClass } from '#lib/road/climbs.ts';
+import { crewDistanceM } from '#lib/road/match.ts';
+import { turnedRound } from '#lib/road/road.ts';
+import { classChips } from '#lib/road/route-row.ts';
+import type { PinnedRoad } from '#lib/workout/road-workout.ts';
+import type { Workout } from '#lib/workout/types.ts';
 
 /**
  * The start line (#3228): a session picked on a road, before its count-in.

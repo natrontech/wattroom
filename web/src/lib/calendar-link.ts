@@ -11,8 +11,8 @@
  * and the cost paid outside the click — and an *Advanced* expander is where
  * the control is, never what it breaks (#1493).
  */
-import { confirm } from '$lib/confirm.svelte';
-import { copyText, theLinkItself } from '$lib/copy';
+import { confirm } from '#lib/confirm.svelte.ts';
+import { copyText, theLinkItself } from '#lib/copy.ts';
 
 /** Whose calendar: the rider's own feed, or a crew's schedule (#2452). */
 export type CalendarScope = 'yours' | 'crew';

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatClock } from '$lib/format';
+	import { formatClock } from '#lib/format.ts';
 	import ZoneDot from './ZoneDot.svelte';
 	import { ZONE_NAMES } from './zones';
 

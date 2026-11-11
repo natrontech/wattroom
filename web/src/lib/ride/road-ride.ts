@@ -1,8 +1,8 @@
-import { BikeKg, PaceDefaultCdA } from '$lib/protocol';
-import { gradeAt, heightAt } from '$lib/road/at-metre';
-import { createPace } from '$lib/road/pace';
-import { turnedRound, type Road } from '$lib/road/road';
-import { createRideGrade } from '$lib/ride/ride-grade';
+import { BikeKg, PaceDefaultCdA } from '#lib/protocol.ts';
+import { gradeAt, heightAt } from '#lib/road/at-metre.ts';
+import { createPace } from '#lib/road/pace.ts';
+import { turnedRound, type Road } from '#lib/road/road.ts';
+import { createRideGrade } from '#lib/ride/ride-grade.ts';
 
 /** A second on the road: where the dot is, and what the trainer rides there. */
 export interface RoadSecond {

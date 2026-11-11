@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
 	/**
 	 * Third-party notices (#1670). MIT, ISC, BSD, Apache and the OFL all require
 	 * their notice to travel with the thing they are in, and the SPA is one.

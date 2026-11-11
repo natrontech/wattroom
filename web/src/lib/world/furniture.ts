@@ -2,8 +2,8 @@
 // draws them batched (boards.ts); the set pieces batch with the props (props/batch.ts).
 import * as THREE from 'three';
 import { yOf } from './geometry';
-import { at } from '$lib/road/along';
-import { type Route } from '$lib/road/route';
+import { at } from '#lib/road/along.ts';
+import { type Route } from '#lib/road/route.ts';
 import type { Arch, Sign } from './setpieces';
 import type { Style } from './styles';
 

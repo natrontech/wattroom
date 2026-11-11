@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { at, leftOf } from '$lib/road/along';
-import { toRoute } from '$lib/road/route';
-import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
+import { at, leftOf } from '#lib/road/along.ts';
+import { toRoute } from '#lib/road/route.ts';
+import { DEFAULT_DARK_ID, themeById } from '#lib/themes.ts';
 import { KEEP_RIGHT, makeCrew } from './crew';
 import { GHOST_OPACITY, GHOST_PALE, makeGhosts, MOST_GHOSTS } from './ghosts';
 import { seededLoadout } from './loadout';

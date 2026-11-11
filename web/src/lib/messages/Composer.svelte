@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { MaxMessageChars } from '$lib/protocol';
+	import { MaxMessageChars } from '#lib/protocol.ts';
 	// The thread's composer (#468, #672): the draft, an attached or pasted
 	// image, the GIF picker, and the send. Split out of MessageThread for
 	// size; it owns the focus rule too — the box takes focus on navigation
@@ -10,20 +10,20 @@
 	import Smile from '@lucide/svelte/icons/smile';
 	import Timer from '@lucide/svelte/icons/timer';
 	import X from '@lucide/svelte/icons/x';
-	import { openMenu } from '$lib/context-menu.svelte';
-	import { TemporaryDay, TemporaryHour, TemporaryWeek } from '$lib/protocol';
+	import { openMenu } from '#lib/context-menu.svelte.ts';
+	import { TemporaryDay, TemporaryHour, TemporaryWeek } from '#lib/protocol.ts';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
-	import { account } from '$lib/account.svelte';
-	import { completeMention, mentionCompletion } from '$lib/messages/mention';
-	import Banner from '$lib/components/Banner.svelte';
-	import DraftEmoji from '$lib/chat/DraftEmoji.svelte';
-	import GifPicker from '$lib/chat/GifPicker.svelte';
-	import type { Gif } from '$lib/chat/gifs';
-	import ImageChip from '$lib/chat/ImageChip.svelte';
-	import { createPendingImage } from '$lib/chat/pending-image.svelte';
-	import { fitsText, sendsOnEnter } from '$lib/chat/textarea';
-	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { completeMention, mentionCompletion } from '#lib/messages/mention.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import DraftEmoji from '#lib/chat/DraftEmoji.svelte';
+	import GifPicker from '#lib/chat/GifPicker.svelte';
+	import type { Gif } from '#lib/chat/gifs.ts';
+	import ImageChip from '#lib/chat/ImageChip.svelte';
+	import { createPendingImage } from '#lib/chat/pending-image.svelte.ts';
+	import { fitsText, sendsOnEnter } from '#lib/chat/textarea.ts';
+	import EmojiPicker from '#lib/emoji/EmojiPicker.svelte';
 
 	let {
 		send: deliver,
@@ -35,32 +35,33 @@
 		names = [],
 		crewId,
 		poke,
-	}: {
+
 		/** Null when it went; the refusal to show when it did not. */
+		/** The smallest gap between two lines this surface accepts; 0 for none. */
+		/** A banner unrelated to the last send attempt — the thread's own error. */
+		/**
+		 * Why nothing can be sent here, when nothing can (ux.md: a box that
+		 * would refuse the line is disabled and says so, never a 403 on Send).
+		 */
+		/** Who `@` can complete to (#1766): the people in this thread. */
+		/** The crew whose own emoji the picker offers; none in a DM. */
+		/**
+		 * A DM's toggle to send the next line as a poke (#2721) — the timer's
+		 * pattern: pressed changes how the line goes, pressed again undoes it.
+		 */
+	}: {
 		send: (
 			text: string,
 			image?: Blob,
 			expiresIn?: number,
 		) => Promise<string | null>;
-		/** The smallest gap between two lines this surface accepts; 0 for none. */
 		lineGapMs?: number;
 		placeholder: string;
 		hint?: string;
-		/** A banner unrelated to the last send attempt — the thread's own error. */
 		error?: string | null;
-		/**
-		 * Why nothing can be sent here, when nothing can (ux.md: a box that
-		 * would refuse the line is disabled and says so, never a 403 on Send).
-		 */
 		lock?: string | null;
-		/** Who `@` can complete to (#1766): the people in this thread. */
 		names?: string[];
-		/** The crew whose own emoji the picker offers; none in a DM. */
 		crewId?: string;
-		/**
-		 * A DM's toggle to send the next line as a poke (#2721) — the timer's
-		 * pattern: pressed changes how the line goes, pressed again undoes it.
-		 */
 		poke?: { on: boolean; toggle: () => void };
 	} = $props();
 
@@ -104,7 +105,9 @@
 	onMount(() => composer?.focus({ preventScroll: true }));
 	// Navigation includes switching peers in the reused DM page. Live updates
 	// must never take focus back from another control the rider chose.
-	afterNavigate(async () => {
+	afterNavigate(async ({ shallow, type }) => {
+		if (shallow && type === 'goto') return;
+
 		await tick();
 		composer?.focus({ preventScroll: true });
 	});

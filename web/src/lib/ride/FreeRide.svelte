@@ -5,25 +5,25 @@
 	// surface a road free ride draws (FreeRiding, #3669), with the rider's
 	// own control where the workout's transport would be.
 	import { onDestroy, onMount, untrack } from 'svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { ridePath, sessionPath } from '$lib/channel/address';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { liveSessionId } from '$lib/channel/tick-session';
-	import Banner from '$lib/components/Banner.svelte';
-	import HrShare from '$lib/channel/HrShare.svelte';
-	import SessionControls from '$lib/session/SessionControls.svelte';
-	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
-	import { trainerTargetsNote } from '$lib/session/sensor-status';
-	import { deviceWord } from '$lib/device.svelte';
-	import { createRideFlags } from '$lib/ride/flags.svelte';
-	import FreeRiding from '$lib/ride/FreeRiding.svelte';
-	import FreeRideTv from '$lib/ride/FreeRideTv.svelte';
-	import { freeRideLabel } from '$lib/ride/free-ride.svelte';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
-	import RoadPick from '$lib/ride/RoadPick.svelte';
-	import { createRoadMates, rideWith } from '$lib/channel/road-mates';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { ridePath, sessionPath } from '#lib/channel/address.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { liveSessionId } from '#lib/channel/tick-session.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import HrShare from '#lib/channel/HrShare.svelte';
+	import SessionControls from '#lib/session/SessionControls.svelte';
+	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
+	import { trainerTargetsNote } from '#lib/session/sensor-status.ts';
+	import { deviceWord } from '#lib/device.svelte.ts';
+	import { createRideFlags } from '#lib/ride/flags.svelte.ts';
+	import FreeRiding from '#lib/ride/FreeRiding.svelte';
+	import FreeRideTv from '#lib/ride/FreeRideTv.svelte';
+	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+	import { createGhostSplit } from '#lib/ride/ghost-split.svelte.ts';
+	import RoadPick from '#lib/ride/RoadPick.svelte';
+	import { createRoadMates, rideWith } from '#lib/channel/road-mates.ts';
 	import Radio from '@lucide/svelte/icons/radio';
 	import ChartColumn from '@lucide/svelte/icons/chart-column';
 

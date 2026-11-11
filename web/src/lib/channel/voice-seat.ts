@@ -2,7 +2,7 @@ import type {
 	ClientMessage,
 	SensorPairing,
 	ServerMessage,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /**
  * How long a screen with an open socket waits to hear whether it carries its

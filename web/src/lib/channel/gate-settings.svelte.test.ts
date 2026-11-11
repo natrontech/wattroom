@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GATE_CEIL, GATE_DEFAULT } from '$lib/channel/gate-scale';
+import { GATE_CEIL, GATE_DEFAULT } from '#lib/channel/gate-scale.ts';
 
 // The project's localStorage stand-in (same shape as pane.test.ts).
 const store = new Map<string, string>();
@@ -17,7 +17,7 @@ workingStorage();
 // The one dependency, and the reason #478 is subtle: a rider with music at
 // zero hears no bleed, so their gate must not move.
 let music = $state(100);
-vi.mock('$lib/sound/mixer.svelte', () => ({
+vi.mock('#lib/sound/mixer.svelte.ts', () => ({
 	mixer: {
 		get music() {
 			return music;
@@ -26,7 +26,7 @@ vi.mock('$lib/sound/mixer.svelte', () => ({
 }));
 
 const { createGateSettings } =
-	await import('$lib/channel/gate-settings.svelte');
+	await import('#lib/channel/gate-settings.svelte.ts');
 
 describe('gate settings', () => {
 	beforeEach(() => {

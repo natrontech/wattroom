@@ -1,6 +1,6 @@
-import type { ServerTick } from '$lib/protocol';
-import { roadStep, turnedRound, type Road } from '$lib/road/road';
-import type { PinnedRoad } from '$lib/workout/road-workout';
+import type { ServerTick } from '#lib/protocol.ts';
+import { roadStep, turnedRound, type Road } from '#lib/road/road.ts';
+import type { PinnedRoad } from '#lib/workout/road-workout.ts';
 
 /** Where a rider is on the session's road. */
 export interface RoadPlace {

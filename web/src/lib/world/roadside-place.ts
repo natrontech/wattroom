@@ -10,8 +10,8 @@
 // in a gap a meadow. Where it lands is a function of the road, the world's
 // seed and the place, so every screen sees the same things in the same
 // places, whichever stretch it built first.
-import { at, leftOf } from '$lib/road/along';
-import type { Route } from '$lib/road/route';
+import { at, leftOf } from '#lib/road/along.ts';
+import type { Route } from '#lib/road/route.ts';
 import { Biome } from './biome';
 import { EXAG, yOf } from './geometry';
 import { kitSpec, PIECE_MODELS, PROP_KINDS, type KitKind } from './props/kit';

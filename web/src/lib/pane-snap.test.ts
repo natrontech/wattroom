@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SNAP, snapSpan } from '$lib/pane-snap';
+import { SNAP, snapSpan } from '#lib/pane-snap.ts';
 
 // A 1000×800 viewport with a 320px side panel, as a voice channel lays it out.
 const guides = { x: [0, 500, 680, 1000], y: [0, 400, 800] };

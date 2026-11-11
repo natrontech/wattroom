@@ -33,7 +33,7 @@ import {
 	micLiveElsewhere,
 	riderOf,
 	yieldsTo,
-} from '$lib/channel/tabs';
+} from '#lib/channel/tabs.ts';
 
 /** One participant, as much of it as the protocol needs. */
 export interface ClaimParticipant {

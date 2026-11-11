@@ -11,7 +11,7 @@ const fake = vi.hoisted(() => ({
 	}[],
 	refuse: 0,
 }));
-vi.mock('$lib/ride/flightrecorder.svelte', () => ({
+vi.mock('#lib/ride/flightrecorder.svelte.ts', () => ({
 	createFlightRecorder: () => ({
 		get flags() {
 			return fake.flags;

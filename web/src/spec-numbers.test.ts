@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULTS } from '$lib/workout/guards';
-import { COUNTDOWN_SECONDS, SIGNAL_LOST_MS } from '$lib/workout/ride-state';
-import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
+import { DEFAULTS } from '#lib/workout/guards.ts';
+import { COUNTDOWN_SECONDS, SIGNAL_LOST_MS } from '#lib/workout/ride-state.ts';
+import { SPRINT_LEAD_SECONDS } from '#lib/workout/sprint-window.svelte.ts';
 
 /**
  * The numbers docs/SPEC.md fixes, pinned to their literals.

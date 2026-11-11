@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BANDS, DARKNESS, stepAt, type Light } from '$lib/lounge/light';
+import { BANDS, DARKNESS, stepAt, type Light } from '#lib/lounge/light.ts';
 
 const room = { w: 320, h: 180, floorRow: 80 };
 const lamp: Light = { x: 90, y: 40, rx: 60, ry: 40, power: 1, on: 'wall' };

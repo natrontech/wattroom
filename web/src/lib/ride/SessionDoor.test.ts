@@ -4,14 +4,14 @@ import SessionDoor from './SessionDoor.svelte';
 
 const state = vi.hoisted(() => ({ spectator: false, crews: [] as unknown[] }));
 vi.mock('$app/navigation', () => ({ goto: () => {} }));
-vi.mock('$lib/device.svelte', () => ({
+vi.mock('#lib/device.svelte.ts', () => ({
 	device: {
 		get spectator() {
 			return state.spectator;
 		},
 	},
 }));
-vi.mock('$lib/nav/crew-live.svelte', () => ({
+vi.mock('#lib/nav/crew-live.svelte.ts', () => ({
 	crewLive: {
 		loaded: true,
 		get crews() {

@@ -1,6 +1,6 @@
-import { MaxRoadSpeedMps } from '$lib/protocol';
-import type { Road } from '$lib/road/road';
-import type { Frame } from '$lib/road/skyline';
+import { MaxRoadSpeedMps } from '#lib/protocol.ts';
+import type { Road } from '#lib/road/road.ts';
+import type { Frame } from '#lib/road/skyline.ts';
 
 /** docs/SPEC.md: a road is stored every 20 m. */
 const STEP_M = 20;

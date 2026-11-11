@@ -1,9 +1,9 @@
-import type { BufferedSample } from '$lib/ride/buffer';
+import type { BufferedSample } from '#lib/ride/buffer.ts';
 import {
 	MaxBackfillBatch,
 	type RiderMetrics,
 	type ServerTick,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 
 /**
  * A reconnect's replay, as the hub takes it (#2814, #2839).

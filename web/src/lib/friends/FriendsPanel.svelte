@@ -1,42 +1,42 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import type { Snippet } from 'svelte';
-	import { levelFromXp } from '$lib/level';
+	import { levelFromXp } from '#lib/level.ts';
 	import Copy from '@lucide/svelte/icons/copy';
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import Radio from '@lucide/svelte/icons/radio';
 	import UserX from '@lucide/svelte/icons/user-x';
-	import { api } from '$lib/api';
-	import { statusOf } from '$lib/status';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import Banner from '$lib/components/Banner.svelte';
+	import { api } from '#lib/api.ts';
+	import { statusOf } from '#lib/status.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { hoverCard } from '#lib/rider-card/rider-card.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import Banner from '#lib/components/Banner.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
-	import { dm } from '$lib/dm/dm.svelte';
-	import { dmHeads } from '$lib/dm/heads.svelte';
+	} from '#lib/context-menu.svelte.ts';
+	import { dm } from '#lib/dm/dm.svelte.ts';
+	import { dmHeads } from '#lib/dm/heads.svelte.ts';
 	import {
 		acceptRequest,
 		dismissRequest,
 		removeFriend,
 		withdrawRequest,
-	} from '$lib/friends/actions';
+	} from '#lib/friends/actions.ts';
 	import {
 		friendPlace,
 		friends,
 		type Friend,
-	} from '$lib/friends/friends.svelte';
-	import { copyText } from '$lib/copy';
-	import { FriendCodeLen } from '$lib/protocol';
-	import { UNREAD_DOT } from '$lib/messages/unread-marks';
-	import { personMenu } from '$lib/person-menu';
-	import { toasts } from '$lib/toast.svelte';
-	import { placePath } from '$lib/whereabouts';
+	} from '#lib/friends/friends.svelte.ts';
+	import { copyText } from '#lib/copy.ts';
+	import { FriendCodeLen } from '#lib/protocol.ts';
+	import { UNREAD_DOT } from '#lib/messages/unread-marks.ts';
+	import { personMenu } from '#lib/person-menu.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { placePath } from '#lib/whereabouts.ts';
 
 	// The list, my code and its load error live in the store (#876): the app
 	// refreshes it off the presence ping and announces what arrives in it,

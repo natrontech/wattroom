@@ -4,8 +4,8 @@ import {
 	createTalkOpener,
 	TALK_BEAT_MS,
 	type TalkMic,
-} from '$lib/ride/remote-talk';
-import { createRemoteRunner, TALK_KEEPALIVE_MS } from '$lib/ride/keys';
+} from '#lib/ride/remote-talk.ts';
+import { createRemoteRunner, TALK_KEEPALIVE_MS } from '#lib/ride/keys.ts';
 
 describe('the phone remote talk hold', () => {
 	beforeEach(() => vi.useFakeTimers());

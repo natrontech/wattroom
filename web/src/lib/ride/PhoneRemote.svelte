@@ -22,11 +22,11 @@
 	 * and a channel, so a ride alone draws neither (`social`).
 	 */
 	import { onDestroy, onMount, untrack } from 'svelte';
-	import { play } from '$lib/sound/cues';
-	import type { RemoteLink } from '$lib/ride/remote-link';
-	import { gearsEnabled } from '$lib/ride/gears-enabled';
-	import { createTalkHold } from '$lib/ride/remote-talk';
-	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
+	import { play } from '#lib/sound/cues.ts';
+	import type { RemoteLink } from '#lib/ride/remote-link.ts';
+	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+	import { createTalkHold } from '#lib/ride/remote-talk.ts';
+	import { keepAwakeWhile } from '#lib/workout/keep-awake.svelte.ts';
 	import {
 		answerLine,
 		CONTROLS,
@@ -35,7 +35,7 @@
 		phoneViews,
 		remoteLine,
 		type RideControl,
-	} from '$lib/ride/ride-controls';
+	} from '#lib/ride/ride-controls.ts';
 	import Mic from '@lucide/svelte/icons/mic';
 
 	let {

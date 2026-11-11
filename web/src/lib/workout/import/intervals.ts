@@ -1,4 +1,4 @@
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 import { importWorkout } from './index';
 import type { ImportOutcome } from './types';
 

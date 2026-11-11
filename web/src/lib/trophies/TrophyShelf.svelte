@@ -5,7 +5,7 @@
 	// lifetime and ADR-0024 lets that page show only the ones from crews you
 	// share (#701).
 	import Award from '@lucide/svelte/icons/award';
-	import { MEDAL_KINDS, MEDAL_META } from '$lib/medals';
+	import { MEDAL_KINDS, MEDAL_META } from '#lib/medals.ts';
 	import BadgeGrid from './BadgeGrid.svelte';
 	import { MEDAL_COUNT_KEY, type Trophies } from './trophies';
 

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { CORRIDOR } from '$lib/session/docks';
+import { CORRIDOR } from '#lib/session/docks.ts';
 import { STYLES } from './test-styles';
 import type { SimRider } from './sim';
 import { CHEVRON_Y, HEART_Y } from './crew';

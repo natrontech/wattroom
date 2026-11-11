@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { HOME_ROADS, homeRoute } from '$lib/ride/home-roads';
+import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import { compose } from './compose';
 import { RIDE } from './look.test-helper';
 import { routeOfRoad } from './road-route';

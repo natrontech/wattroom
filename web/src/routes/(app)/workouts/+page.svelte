@@ -1,10 +1,10 @@
 <script lang="ts">
 	import Copy from '@lucide/svelte/icons/copy';
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import SectionTabs from '$lib/components/SectionTabs.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { workoutSections } from '$lib/nav/pages';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import SectionTabs from '#lib/components/SectionTabs.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { workoutSections } from '#lib/nav/pages.ts';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -12,29 +12,34 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { api } from '$lib/api';
-	import { homeRoad } from '$lib/ride/home-roads';
-	import { account } from '$lib/account.svelte';
-	import { type MenuEntry } from '$lib/context-menu.svelte';
+	import { api } from '#lib/api.ts';
+	import { homeRoad } from '#lib/ride/home-roads.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { type MenuEntry } from '#lib/context-menu.svelte.ts';
 	import RideOnRoute from './RideOnRoute.svelte';
 	import RouteShelf from './RouteShelf.svelte';
 	import RouteIcon from '@lucide/svelte/icons/route';
-	import { device, isSpectator } from '$lib/device.svelte';
+	import { device, isSpectator } from '#lib/device.svelte.ts';
 	import WorkoutCard from './WorkoutCard.svelte';
-	import { durationSeconds } from '$lib/workout/engine';
-	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
+	import { durationSeconds } from '#lib/workout/engine.ts';
+	import {
+		byFocus,
+		focuses,
+		library,
+		type Focus,
+	} from '#lib/workout/library.ts';
 	import {
 		customWorkouts,
 		type CustomWorkout,
-	} from '$lib/workout/custom.svelte';
-	import type { Workout } from '$lib/workout/types';
-	import { toasts } from '$lib/toast.svelte';
-	import { RAMP_TAKES } from '$lib/workout/ramp';
+	} from '#lib/workout/custom.svelte.ts';
+	import type { Workout } from '#lib/workout/types.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { RAMP_TAKES } from '#lib/workout/ramp.ts';
 	import {
 		fetchProgression,
 		suggestedFocuses,
 		type Suggestion,
-	} from '$lib/progression';
+	} from '#lib/progression.ts';
 
 	// The same FTP the editor draws with (#1003), so one workout is not two
 	// different pictures; 265 only covers the flicker before `me` lands.

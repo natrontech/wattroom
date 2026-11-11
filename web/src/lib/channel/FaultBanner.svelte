@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { faultCopy } from '$lib/channel/fault-copy';
-	import type { Fault } from '$lib/channel/types';
+	import { faultCopy } from '#lib/channel/fault-copy.ts';
+	import type { Fault } from '#lib/channel/types.ts';
 
 	let {
 		fault,

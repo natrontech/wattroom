@@ -4,8 +4,8 @@
 	// FTP field: a rider who rides sessions, or does not scroll, never saw it,
 	// and the ride stayed in one browser's storage for good. Persistent, not a
 	// toast (errors.md), until Rides takes it.
-	import Banner from '$lib/components/Banner.svelte';
-	import { recoverableRides } from '$lib/ride/recoverable.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import { recoverableRides } from '#lib/ride/recoverable.svelte.ts';
 
 	// The signed-in rider's own (#2805): another account's ride on this
 	// browser is not one this rider lost.

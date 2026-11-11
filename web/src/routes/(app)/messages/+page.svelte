@@ -3,7 +3,7 @@
 	// (#484) — this page never repeats it. Below md the layout shows the
 	// thread list instead of this, because the sidebar is a drawer there.
 	import MessagesSquare from '@lucide/svelte/icons/messages-square';
-	import EmptyState from '$lib/components/EmptyState.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 </script>
 
 <svelte:head><title>Messages · WattRoom</title></svelte:head>

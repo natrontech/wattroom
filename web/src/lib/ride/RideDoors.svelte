@@ -10,19 +10,19 @@
 	import { goto } from '$app/navigation';
 	import User from '@lucide/svelte/icons/user';
 	import Bike from '@lucide/svelte/icons/bike';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { account } from '$lib/account.svelte';
-	import { channelAddress } from '$lib/channel/address';
-	import { askVoiceMuted } from '$lib/channel/voice-intent';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { channelAddress } from '#lib/channel/address.ts';
+	import { askVoiceMuted } from '#lib/channel/voice-intent.ts';
 	import {
 		lastDoor,
 		lounge,
 		loungeCrew,
 		rememberCrew,
 		rememberDoor,
-	} from '$lib/crew-lounge';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { liveNumbersLine } from '$lib/privacy-copy';
+	} from '#lib/crew-lounge.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { liveNumbersLine } from '#lib/privacy-copy.ts';
 
 	let {
 		onAlone,

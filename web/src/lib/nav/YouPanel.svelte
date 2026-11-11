@@ -3,20 +3,20 @@
 	// Connected on a desk, your voice, Away and Leave sit under them. Riding or
 	// on a phone the sidebar is out of reach, so the now bar carries those.
 	import { goto } from '$app/navigation';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { account } from '$lib/account.svelte';
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import { activeHref } from '$lib/nav/pages';
-	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
-	import { friends } from '$lib/friends/friends.svelte';
-	import AwayLeave from '$lib/nav/AwayLeave.svelte';
-	import VoiceControls from '$lib/nav/VoiceControls.svelte';
-	import { UNREAD_DOT } from '$lib/messages/unread-marks';
-	import { youMenu } from '$lib/nav/you-menu';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { statusOfRider } from '$lib/status';
-	import { device } from '$lib/device.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { contextMenu, MENU_HINT } from '#lib/context-menu.svelte.ts';
+	import { activeHref } from '#lib/nav/pages.ts';
+	import { chosenCrew } from '#lib/nav/chosen-crew.svelte.ts';
+	import { friends } from '#lib/friends/friends.svelte.ts';
+	import AwayLeave from '#lib/nav/AwayLeave.svelte';
+	import VoiceControls from '#lib/nav/VoiceControls.svelte';
+	import { UNREAD_DOT } from '#lib/messages/unread-marks.ts';
+	import { youMenu } from '#lib/nav/you-menu.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { statusOfRider } from '#lib/status.ts';
+	import { device } from '#lib/device.svelte.ts';
 	import Settings from '@lucide/svelte/icons/settings';
 
 	// The route is the one thing the store cannot answer.

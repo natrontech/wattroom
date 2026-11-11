@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 // tick(), not flushSync(), under vitest — the compiled module and the test
 // file do not share a scheduler.
 const heard = vi.hoisted(() => ({ cues: [] as string[] }));
-vi.mock('$lib/sound/cues', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
 	PAN_LIMIT: 0.8,
 	play: (id: string, at?: { pan?: number }) =>
 		void heard.cues.push(at?.pan ? `${id}@${at.pan}` : id),
@@ -14,11 +14,11 @@ vi.mock('$lib/sound/cues', () => ({
 }));
 // The server's clock, held by the test.
 const clock = vi.hoisted(() => ({ now: 0 }));
-vi.mock('$lib/server-clock', () => ({ serverNow: () => clock.now }));
+vi.mock('#lib/server-clock.ts', () => ({ serverNow: () => clock.now }));
 
 import { createSessionSounds, type SoundDeps } from './session-sounds.svelte';
-import type { GameState, StartLine } from '$lib/protocol';
-import type { RaceReadout } from '$lib/race/race-view';
+import type { GameState, StartLine } from '#lib/protocol.ts';
+import type { RaceReadout } from '#lib/race/race-view.ts';
 
 /** A quiet session; a test overrides the one thing it listens for. */
 function quiet(over: Partial<SoundDeps> = {}): SoundDeps {

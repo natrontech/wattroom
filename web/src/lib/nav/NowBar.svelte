@@ -8,20 +8,20 @@
 	// is the stage's tiles and the sidebar's voice rows, the jukebox and the
 	// cheers open above this bar.
 	import { goto } from '$app/navigation';
-	import { nowPanel } from '$lib/nav/now-panel.svelte';
-	import { rideBar } from '$lib/nav/ride-bar.svelte';
-	import { rideDock } from '$lib/nav/ride-dock.svelte';
-	import { rideRoom } from '$lib/channel/ride-room.svelte';
-	import AwayLeave from '$lib/nav/AwayLeave.svelte';
-	import VoiceControls from '$lib/nav/VoiceControls.svelte';
-	import { account, voiceUp } from '$lib/account.svelte';
-	import { contextMenu, openMenu } from '$lib/context-menu.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { navDrawer } from '$lib/nav/drawer.svelte';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { sessionPath } from '$lib/channel/address';
-	import { startRideTogether } from '$lib/session/crew-session';
-	import { device } from '$lib/device.svelte';
+	import { nowPanel } from '#lib/nav/now-panel.svelte.ts';
+	import { rideBar } from '#lib/nav/ride-bar.svelte.ts';
+	import { rideDock } from '#lib/nav/ride-dock.svelte.ts';
+	import { rideRoom } from '#lib/channel/ride-room.svelte.ts';
+	import AwayLeave from '#lib/nav/AwayLeave.svelte';
+	import VoiceControls from '#lib/nav/VoiceControls.svelte';
+	import { account, voiceUp } from '#lib/account.svelte.ts';
+	import { contextMenu, openMenu } from '#lib/context-menu.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { sessionPath } from '#lib/channel/address.ts';
+	import { startRideTogether } from '#lib/session/crew-session.ts';
+	import { device } from '#lib/device.svelte.ts';
 	import Bike from '@lucide/svelte/icons/bike';
 	import Radio from '@lucide/svelte/icons/radio';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';

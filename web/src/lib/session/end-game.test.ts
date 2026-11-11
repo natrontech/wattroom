@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GameState } from '$lib/protocol';
+import type { GameState } from '#lib/protocol.ts';
 
 const asked = vi.hoisted(() => ({
 	requests: [] as { title: string; action: string; cancel?: string }[],
 	answer: true,
 }));
-vi.mock('$lib/confirm.svelte', () => ({
+vi.mock('#lib/confirm.svelte.ts', () => ({
 	confirm: (request: { title: string; action: string; cancel?: string }) => {
 		asked.requests.push(request);
 		return Promise.resolve(asked.answer);

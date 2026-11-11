@@ -4,16 +4,16 @@
 	// for whoever stands beside it the roadside's deck. Split out of the
 	// Lounge when its riding sizes landed (#3890).
 	import type { Snippet } from 'svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { ridePath, sessionPath } from '$lib/channel/address';
-	import { liveSessionId } from '$lib/channel/tick-session';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import SessionControls from '$lib/session/SessionControls.svelte';
-	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
-	import { needsTrainer } from '$lib/session/sensor-status';
-	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
-	import { bottleFor } from '$lib/roadside';
-	import { device } from '$lib/device.svelte';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { ridePath, sessionPath } from '#lib/channel/address.ts';
+	import { liveSessionId } from '#lib/channel/tick-session.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import SessionControls from '#lib/session/SessionControls.svelte';
+	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
+	import { needsTrainer } from '#lib/session/sensor-status.ts';
+	import RoadsideDeck from '#lib/channel/RoadsideDeck.svelte';
+	import { bottleFor } from '#lib/roadside.ts';
+	import { device } from '#lib/device.svelte.ts';
 	import Radio from '@lucide/svelte/icons/radio';
 
 	let { freeRide }: { freeRide: Snippet } = $props();

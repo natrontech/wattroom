@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
 import { roadIndex } from './field';
-import { RouteError, parseRoute } from '$lib/road/parse';
-import { toRoute, type Route } from '$lib/road/route';
-import { at } from '$lib/road/along';
+import { RouteError, parseRoute } from '#lib/road/parse.ts';
+import { toRoute, type Route } from '#lib/road/route.ts';
+import { at } from '#lib/road/along.ts';
 import { syntheticGpx, syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
 import { BUILD_MS, folds, worstRiseThroughRoad } from './world.test-helper';

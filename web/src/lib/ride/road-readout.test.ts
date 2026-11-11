@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { climbsOf } from '$lib/road/climbs';
-import { legsRoad } from '$lib/road/fixtures';
-import { roadReadout } from '$lib/road/readout';
-import { turnedRound } from '$lib/road/road';
+import { climbsOf } from '#lib/road/climbs.ts';
+import { legsRoad } from '#lib/road/fixtures.ts';
+import { roadReadout } from '#lib/road/readout.ts';
+import { turnedRound } from '#lib/road/road.ts';
 import { aheadLine, createRoadReadout, roadLine } from './road-readout';
 
 // A synthetic ride (#3060's): a kilometre flat, two at 5 %, a flat

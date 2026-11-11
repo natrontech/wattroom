@@ -23,8 +23,8 @@ import type {
 } from './setpieces';
 import type { Line } from './terrain/lines';
 import { FORMATION, strokeRoad } from './terrain/road-profile';
-import { climbsOf, hairpinsOf } from '$lib/road/climbs';
-import { turnedRound } from '$lib/road/road';
+import { climbsOf, hairpinsOf } from '#lib/road/climbs.ts';
+import { turnedRound } from '#lib/road/road.ts';
 
 export const FLAGS = 4; // flagpoles at the summit, one colour each from the style
 

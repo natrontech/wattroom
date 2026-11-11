@@ -9,17 +9,21 @@
 	 * carry, then where on it to start. It owns the choosing; the page owns
 	 * what the choice starts, so it binds the three answers back.
 	 */
-	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { formatClock, formatKm } from '$lib/format';
-	import { gradeAt } from '$lib/road/at-metre';
-	import { classedOf, climbsOf } from '$lib/road/climbs';
-	import { feltGrade } from '$lib/ride/ride-grade';
-	import RoadPick from '$lib/ride/RoadPick.svelte';
-	import { carryOnFrom, loadRoad, type RideableRoute } from '$lib/ride/roads';
-	import SoloGames from '$lib/ride/SoloGames.svelte';
-	import { durationSeconds, flatten } from '$lib/workout/engine';
-	import type { Workout } from '$lib/workout/types';
+	import IntervalGraph from '#lib/components/IntervalGraph.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { formatClock, formatKm } from '#lib/format.ts';
+	import { gradeAt } from '#lib/road/at-metre.ts';
+	import { classedOf, climbsOf } from '#lib/road/climbs.ts';
+	import { feltGrade } from '#lib/ride/ride-grade.ts';
+	import RoadPick from '#lib/ride/RoadPick.svelte';
+	import {
+		carryOnFrom,
+		loadRoad,
+		type RideableRoute,
+	} from '#lib/ride/roads.ts';
+	import SoloGames from '#lib/ride/SoloGames.svelte';
+	import { durationSeconds, flatten } from '#lib/workout/engine.ts';
+	import type { Workout } from '#lib/workout/types.ts';
 	import { untrack } from 'svelte';
 
 	let {

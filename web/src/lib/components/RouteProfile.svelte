@@ -1,9 +1,9 @@
 <script lang="ts">
-	import ClimbTable from '$lib/components/ClimbTable.svelte';
-	import type { Climb } from '$lib/road/climbs';
-	import { kmTicks, profileArea, profilePath } from '$lib/road/draw';
-	import type { Road } from '$lib/road/road';
-	import { GRADE_FILL } from '$lib/road/skyline';
+	import ClimbTable from '#lib/components/ClimbTable.svelte';
+	import type { Climb } from '#lib/road/climbs.ts';
+	import { kmTicks, profileArea, profilePath } from '#lib/road/draw.ts';
+	import type { Road } from '#lib/road/road.ts';
+	import { GRADE_FILL } from '#lib/road/skyline.ts';
 
 	/**
 	 * A road's heights by distance (#3679): the area filled step by step in

@@ -1,17 +1,17 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
-import type { LobbyClientMessage } from '$lib/protocol';
+import type { LobbyClientMessage } from '#lib/protocol.ts';
 
-vi.mock('$lib/sound/cues', () => ({ play: () => {} }));
+vi.mock('#lib/sound/cues.ts', () => ({ play: () => {} }));
 const world = vi.hoisted(() => ({ camera: vi.fn(), photo: vi.fn() }));
-vi.mock('$lib/world/ride-view', async (actual) => ({
-	...(await actual<typeof import('$lib/world/ride-view')>()),
+vi.mock('#lib/world/ride-view.ts', async (actual) => ({
+	...(await actual<typeof import('#lib/world/ride-view.ts')>()),
 	askCamera: world.camera,
 	askPhoto: world.photo,
 }));
 
-import { riderLane } from '$lib/rider-lane.svelte';
+import { riderLane } from '#lib/rider-lane.svelte.ts';
 import { rideOffers } from './ride-offers.svelte';
 import { serveRideRemote } from './ride-remote.svelte';
 

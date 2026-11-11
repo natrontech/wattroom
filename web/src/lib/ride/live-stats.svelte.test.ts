@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createLiveStats } from './live-stats.svelte';
-import { NormPowerMinSeconds } from '$lib/protocol';
+import { NormPowerMinSeconds } from '#lib/protocol.ts';
 import { normalizedPower, zoneSeconds } from './stats';
 
 const FTP = 250;

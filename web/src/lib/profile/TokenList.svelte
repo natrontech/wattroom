@@ -3,9 +3,9 @@
 	// list Coach access keeps, and the one "Sign out everywhere else" shows
 	// for the tokens it leaves standing (#2902). One component so the two can
 	// never disagree about what a revoke asks or does.
-	import { api } from '$lib/api';
-	import { confirm } from '$lib/confirm.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	import { api } from '#lib/api.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import type { ApiToken } from '../../routes/(app)/settings/data/+page';
 
 	let {

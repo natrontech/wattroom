@@ -4,10 +4,10 @@
 	// crew's owner and admins keep its channels (ADR-0058), so only they are
 	// offered it; gating, ordering and deleting are the crew's settings (#2454).
 	import { goto } from '$app/navigation';
-	import { api } from '$lib/api';
-	import Banner from '$lib/components/Banner.svelte';
-	import { newLabel } from '$lib/channels';
-	import { MaxChannelNameChars } from '$lib/protocol';
+	import { api } from '#lib/api.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import { newLabel } from '#lib/channels.ts';
+	import { MaxChannelNameChars } from '#lib/protocol.ts';
 	import { crewLive } from './crew-live.svelte';
 
 	let {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hexToOklch, hueDistance } from '$lib/color';
+import { hexToOklch, hueDistance } from '#lib/color.ts';
 import { WATT_HUES } from './placement/safety';
 import { appCss, RIDE } from './look.test-helper';
 

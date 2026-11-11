@@ -3,10 +3,10 @@
  * page makes of it. The numbers here are sums a crew already shows —
  * never live watts, heart rate, weight or FTP.
  */
-import { api, loadApi } from '$lib/api';
-import { formatDuration } from '$lib/format';
-import type { StatusLine } from '$lib/protocol';
-import type { VoicePlace } from '$lib/whereabouts';
+import { api, loadApi } from '#lib/api.ts';
+import { formatDuration } from '#lib/format.ts';
+import type { StatusLine } from '#lib/protocol.ts';
+import type { VoicePlace } from '#lib/whereabouts.ts';
 
 export interface CrewRef {
 	id: string;

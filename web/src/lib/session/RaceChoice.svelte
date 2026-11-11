@@ -4,7 +4,7 @@
 		WheelraceDefaultMinutes,
 		WheelraceMaxMinutes,
 		WheelraceMinMinutes,
-	} from '$lib/protocol';
+	} from '#lib/protocol.ts';
 	import {
 		LAST_LIGHT_MINUTES,
 		RACES,

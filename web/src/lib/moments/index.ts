@@ -1,4 +1,4 @@
-import { DUR, HOLD_ANNOUNCE } from '$lib/motion/tokens';
+import { DUR, HOLD_ANNOUNCE } from '#lib/motion/tokens.ts';
 
 /**
  * The moments queue (#3210, ADR-0079): one celebration on the stage at a

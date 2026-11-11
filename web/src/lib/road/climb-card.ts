@@ -1,4 +1,4 @@
-import { PaceDefaultCdA } from '$lib/protocol';
+import { PaceDefaultCdA } from '#lib/protocol.ts';
 import { gradeAt, heightAt } from './at-metre';
 import { classedOf, type Climb, type ClimbClass } from './climbs';
 import { steadySpeed } from './pace';

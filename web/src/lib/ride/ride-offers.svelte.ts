@@ -1,9 +1,9 @@
 import { untrack } from 'svelte';
-import { rideRoom } from '$lib/channel/ride-room.svelte';
-import type { ViewState } from '$lib/protocol';
-import { computerShown } from '$lib/session/computer-shown.svelte';
-import { worldPicture } from '$lib/world/picture.svelte';
-import { viewSwitch } from '$lib/world/ride-view';
+import { rideRoom } from '#lib/channel/ride-room.svelte.ts';
+import type { ViewState } from '#lib/protocol.ts';
+import { computerShown } from '#lib/session/computer-shown.svelte.ts';
+import { worldPicture } from '#lib/world/picture.svelte.ts';
+import { viewSwitch } from '#lib/world/ride-view.ts';
 
 /**
  * What the riding screen's own controls offer the phone remote now (the

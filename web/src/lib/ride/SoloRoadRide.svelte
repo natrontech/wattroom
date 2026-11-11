@@ -5,13 +5,17 @@
 	 * crew will receive it. A handed trainer starts the ride once the road is
 	 * in; the ride is then `theRide`'s, and /ride draws it.
 	 */
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import RoadRiding from '$lib/ride/RoadRiding.svelte';
-	import type { Trainer } from '$lib/ble/trainer';
-	import { loadPlanRoad, loadRoad, type RideableRoute } from '$lib/ride/roads';
-	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import RoadRiding from '#lib/ride/RoadRiding.svelte';
+	import type { Trainer } from '#lib/ble/trainer.ts';
+	import {
+		loadPlanRoad,
+		loadRoad,
+		type RideableRoute,
+	} from '#lib/ride/roads.ts';
+	import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
 	import { onDestroy } from 'svelte';
 
 	let {

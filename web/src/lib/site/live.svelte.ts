@@ -1,4 +1,4 @@
-import { api } from '$lib/api';
+import { api } from '#lib/api.ts';
 
 /**
  * The public pages' live numbers: riders online right now, and the repo's

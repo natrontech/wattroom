@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { audioKey, createSeats, type Picture } from '$lib/channel/av-seats';
-import type { Owned } from '$lib/channel/av-types';
+import { audioKey, createSeats, type Picture } from '#lib/channel/av-seats.ts';
+import type { Owned } from '#lib/channel/av-types.ts';
 
 /**
  * Who is in which seat, and which connection put them there (#293, #1124),

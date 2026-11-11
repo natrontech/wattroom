@@ -2,9 +2,9 @@
 	// The rider's own settings for a crew (#1100, #2453), theirs alone: notify
 	// and the weekly board. Saves through the rider's own endpoint, so an owner
 	// editing the crew never touches them. `path` is that endpoint.
-	import { api } from '$lib/api';
-	import { toasts } from '$lib/toast.svelte';
-	import type { RiderPrefs } from '$lib/crew-types';
+	import { api } from '#lib/api.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import type { RiderPrefs } from '#lib/crew-types.ts';
 
 	let {
 		path,

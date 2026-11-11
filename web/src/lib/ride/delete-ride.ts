@@ -1,5 +1,5 @@
-import { confirm } from '$lib/confirm.svelte';
-import { toasts } from '$lib/toast.svelte';
+import { confirm } from '#lib/confirm.svelte.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 import { deleteRide } from './detail';
 import { rideTitle, type RideRoad } from './list';
 

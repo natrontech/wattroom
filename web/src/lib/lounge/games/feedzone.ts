@@ -6,9 +6,16 @@
  * mistake breaks the streak. The road gets faster, and the day's seed sets
  * who stands where.
  */
-import { hash3 } from '$lib/lounge/hash';
-import { LOUNGE as C, SKIES } from '$lib/lounge/palette';
-import { disc, rect, ring, text, textWidth, type Ctx } from '$lib/lounge/pixel';
+import { hash3 } from '#lib/lounge/hash.ts';
+import { LOUNGE as C, SKIES } from '#lib/lounge/palette.ts';
+import {
+	disc,
+	rect,
+	ring,
+	text,
+	textWidth,
+	type Ctx,
+} from '#lib/lounge/pixel.ts';
 import { SCREEN_W as W, type Game, type Sound } from './game';
 
 export const RUN_SEC = 30;

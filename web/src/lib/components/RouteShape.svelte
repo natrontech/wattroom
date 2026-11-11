@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { Climb } from '$lib/road/climbs';
-	import { kmTicks, planPoints, walk } from '$lib/road/draw';
-	import { isLoop } from '$lib/road/line';
-	import { GRADE_STROKE as STROKE, gradeStep } from '$lib/road/skyline';
+	import type { Climb } from '#lib/road/climbs.ts';
+	import { kmTicks, planPoints, walk } from '#lib/road/draw.ts';
+	import { isLoop } from '#lib/road/line.ts';
+	import { GRADE_STROKE as STROKE, gradeStep } from '#lib/road/skyline.ts';
 
 	/**
 	 * A route from above, north up, in a fixed-height panel (#3679): the

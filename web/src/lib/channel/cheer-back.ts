@@ -1,4 +1,4 @@
-import type { Cheer } from '$lib/protocol';
+import type { Cheer } from '#lib/protocol.ts';
 
 /** A cheer this recent is one the phone remote's Cheer back answers (#4253). */
 export const CHEER_BACK_MS = 60_000;

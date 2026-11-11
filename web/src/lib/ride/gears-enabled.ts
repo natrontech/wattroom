@@ -1,4 +1,4 @@
-import { canSimulate } from '$lib/ble/can-simulate';
+import { canSimulate } from '#lib/ble/can-simulate.ts';
 
 /** An input that shifts (ADR-0084 "Inputs"). */
 export type GearInput = 'screen' | 'keys' | 'phone' | 'obc' | 'obc-net';

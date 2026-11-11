@@ -8,8 +8,8 @@
  * livekit-client anywhere near it.
  */
 
-import { micBesideBluetooth } from '$lib/channel/bluetooth-mic';
-import { device } from '$lib/device.svelte';
+import { micBesideBluetooth } from '#lib/channel/bluetooth-mic.ts';
+import { device } from '#lib/device.svelte.ts';
 
 const DEVICES_KEY = 'wattroom.devices.v1';
 

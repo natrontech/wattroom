@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('$lib/presence.svelte', () => ({ presence: { reload: () => {} } }));
+vi.mock('#lib/presence.svelte.ts', () => ({ presence: { reload: () => {} } }));
 
 type Pending = {
 	path: string;
@@ -10,7 +10,7 @@ type Pending = {
 	resolve: (v: unknown) => void;
 };
 const calls: Pending[] = [];
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: (path: string, init?: { method?: string; json?: unknown }) =>
 		new Promise((resolve) =>
 			calls.push({ path, method: init?.method, json: init?.json, resolve }),

@@ -1,4 +1,4 @@
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 import {
 	momentToDraw,
 	worldPicture,

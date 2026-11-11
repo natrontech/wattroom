@@ -16,7 +16,7 @@
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import X from '@lucide/svelte/icons/x';
-	import type { Icon } from '$lib/icons';
+	import type { Icon } from '#lib/icons.ts';
 	import type { UpdateRowState } from './update-row';
 
 	let {

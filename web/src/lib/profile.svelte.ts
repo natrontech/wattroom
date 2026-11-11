@@ -5,7 +5,7 @@
  * session wrong rather than broken — it is bounds-checked on read, and a stored
  * value outside the range is discarded rather than used.
  */
-import * as protocol from '$lib/protocol';
+import * as protocol from '#lib/protocol.ts';
 
 const KEY = 'wattroom.profile.v1';
 

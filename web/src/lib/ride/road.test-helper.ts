@@ -1,4 +1,4 @@
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 
 /**
  * A straight road with these grades, one per 10 m sample — just enough of a

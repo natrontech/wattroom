@@ -10,13 +10,13 @@
 	// A bearer URL that says what you plan to ride and which crews you are in
 	// belongs with the export and the API tokens; Home keeps the pointer, where
 	// a rider is already looking at the list this mirrors.
-	import { api } from '$lib/api';
+	import { api } from '#lib/api.ts';
 	import {
 		confirmCalendarReset,
 		copyCalendarLink,
 		RESET_DONE,
-	} from '$lib/calendar-link';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/calendar-link.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 	import Copy from '@lucide/svelte/icons/copy';
 	import { onMount } from 'svelte';
 

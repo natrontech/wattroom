@@ -2,7 +2,7 @@ import { createObcController, type Controller } from './controller';
 import type { ObcAction, ObcEdge, ObcFeel } from './obc';
 import { pairError } from './pair-error';
 import type { SensorStatus } from './sensor';
-import type { GearInput } from '$lib/ride/gears-enabled';
+import type { GearInput } from '#lib/ride/gears-enabled.ts';
 
 /** How the paired shifter reached WattRoom: Web Bluetooth, or the shell's network socket (#3336). */
 export type ShifterInput = Extract<GearInput, 'obc' | 'obc-net'>;

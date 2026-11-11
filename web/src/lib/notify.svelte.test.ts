@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // An error toast plays the fault cue, and the cues are an AudioContext this
 // environment does not have.
-vi.mock('$lib/sound/cues', () => ({
+vi.mock('#lib/sound/cues.ts', () => ({
 	play: () => {},
 	playCountdownTick: () => {},
 }));
@@ -105,7 +105,7 @@ describe('in the desktop shell', () => {
 			onNotification: (cb: typeof deliver) => (deliver = cb),
 		};
 		const { notify } = await fresh();
-		const { toasts } = await import('$lib/toast.svelte');
+		const { toasts } = await import('#lib/toast.svelte.ts');
 		notify.listen(() => {});
 		notify.push('Mara', 'hi', 'dm-mara', {
 			href: '/messages/dm/mara',
@@ -143,7 +143,7 @@ describe('in the desktop shell', () => {
 			onNotification: (cb: typeof deliver) => (deliver = cb),
 		};
 		const { notify } = await fresh();
-		const { toasts } = await import('$lib/toast.svelte');
+		const { toasts } = await import('#lib/toast.svelte.ts');
 		notify.listen(() => {});
 		notify.push('Mara', 'hi', 'dm-mara', {
 			href: '/messages/dm/mara',

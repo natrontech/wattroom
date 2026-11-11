@@ -4,7 +4,7 @@
 // each keeps to the keep-clear corridor's upper half, clear of the panels
 // beside it and of the road ahead below.
 import * as THREE from 'three';
-import { CORRIDOR } from '$lib/session/docks';
+import { CORRIDOR } from '#lib/session/docks.ts';
 import { tag } from './family';
 import { CHEVRON_Y, HEART_Y } from './crew';
 import { FONT, paintedTexture } from './furniture';

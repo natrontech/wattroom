@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveChannel, LiveOccupant } from '$lib/crews-live';
+import type { LiveChannel, LiveOccupant } from '#lib/crews-live.ts';
 import { arrived, occupantsWithMoves, type MoveInFlight } from './voice-move';
 
 const rider = (name: string): LiveOccupant => ({

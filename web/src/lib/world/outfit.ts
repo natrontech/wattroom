@@ -5,9 +5,9 @@
 // never changes another's. A rider with no look wears a seeded one: the same
 // on every screen, and their own until they choose.
 import * as THREE from 'three';
-import { hexToOklch } from '$lib/color';
-import { catalogue, type Item } from '$lib/wardrobe/catalogue';
-import { guarded, type Viewer } from '$lib/wardrobe/guard';
+import { hexToOklch } from '#lib/color.ts';
+import { catalogue, type Item } from '#lib/wardrobe/catalogue.ts';
+import { guarded, type Viewer } from '#lib/wardrobe/guard.ts';
 import type { FrameId } from './figure/bikes/presets';
 import type { Palette } from './figure/figure';
 import { patternIndex } from './figure/jersey';

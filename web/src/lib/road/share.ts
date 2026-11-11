@@ -1,5 +1,5 @@
-import { api, type ApiResult } from '$lib/api';
-import { confirm } from '$lib/confirm.svelte';
+import { api, type ApiResult } from '#lib/api.ts';
+import { confirm } from '#lib/confirm.svelte.ts';
 
 /**
  * A crew listed in the directory asks first (#4149, ADR-0063): the server

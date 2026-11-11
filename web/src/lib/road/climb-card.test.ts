@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PaceDefaultCdA } from '$lib/protocol';
+import { PaceDefaultCdA } from '#lib/protocol.ts';
 import { climbCard, secondsToTop } from './climb-card';
 import { classedOf, climbsOf } from './climbs';
 import { legsRoad } from './fixtures';

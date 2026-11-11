@@ -6,9 +6,9 @@
 	// Describe, never grade (ADR-0016). A negative delta takes the muted token,
 	// never --color-danger: danger means something is wrong, and a lighter day
 	// is not wrong.
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import type { RideRecord } from '$lib/history.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import type { RideRecord } from '#lib/history.svelte.ts';
 	import { compareRows, curveSentence } from './compare';
 	import { riddenName, type RideRoad } from './list';
 

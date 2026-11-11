@@ -2,7 +2,7 @@
 	// A textarea cannot draw a picture: a draft that names a crew emoji reads
 	// here as the line will, so `:party_parrot:` in the box is not all the
 	// rider sees of it — writing a line, and rewriting one.
-	import { crewEmoji, emojiCrew } from '$lib/emoji/crew-emoji.svelte';
+	import { crewEmoji, emojiCrew } from '#lib/emoji/crew-emoji.svelte.ts';
 	import { parseInline } from './inline';
 	import MessageText from './MessageText.svelte';
 

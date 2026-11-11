@@ -2,7 +2,7 @@
  * A road's heights and turns, from its resampled line (#3023). The numbers
  * are docs/SPEC.md "Route rides"'s.
  */
-import * as protocol from '$lib/protocol';
+import * as protocol from '#lib/protocol.ts';
 
 /**
  * Heights: a 200 m rolling median, then a 120 m moving average. The median

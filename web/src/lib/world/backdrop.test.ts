@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { toRoute, type Route } from '$lib/road/route';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { backdrop, bearings } from './backdrop';
 import { yOf } from './geometry';
 import { syntheticPoints } from './synthetic';

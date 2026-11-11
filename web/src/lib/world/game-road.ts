@@ -13,13 +13,13 @@ import {
 	RoadsideStandMaxAheadM,
 	RoadsideStandMinAheadM,
 	RoadsideStandMoveSeconds,
-} from '$lib/protocol';
-import { createPace } from '$lib/road/pace';
-import type { BunchView } from '$lib/channel/bunch-view';
-import { at } from '$lib/road/along';
-import { type Route } from '$lib/road/route';
-import { DUR } from '$lib/motion/tokens';
-import { damp } from '$lib/motion/damp';
+} from '#lib/protocol.ts';
+import { createPace } from '#lib/road/pace.ts';
+import type { BunchView } from '#lib/channel/bunch-view.ts';
+import { at } from '#lib/road/along.ts';
+import { type Route } from '#lib/road/route.ts';
+import { DUR } from '#lib/motion/tokens.ts';
+import { damp } from '#lib/motion/damp.ts';
 import { disposeTree } from './dispose';
 import { tag } from './family';
 import { archOnRoad } from './furniture';

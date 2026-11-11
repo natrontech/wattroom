@@ -1,5 +1,5 @@
-import { plannedZoneSeconds } from '$lib/components/zones';
-import type { Segment } from '$lib/workout/types';
+import { plannedZoneSeconds } from '#lib/components/zones.ts';
+import type { Segment } from '#lib/workout/types.ts';
 
 /**
  * What a workout asks for, as the session picker's chips (#115): the minutes

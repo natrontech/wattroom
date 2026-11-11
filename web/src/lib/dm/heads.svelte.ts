@@ -9,14 +9,14 @@
  * a 10 s poll from every tab — six reads a minute on a session page mid-ride,
  * for a list that almost never changes. The poll is now only the fallback.
  */
-import { api } from '$lib/api';
-import { dm } from '$lib/dm/dm.svelte';
-import { announce } from '$lib/messages/announce';
-import { away } from '$lib/notify.svelte';
-import { people } from '$lib/people.svelte';
-import { dmReply, pokeArrival, pokeFriend } from '$lib/poke';
-import type { StatusLine } from '$lib/protocol';
-import { titleWithStatus } from '$lib/status-line/title';
+import { api } from '#lib/api.ts';
+import { dm } from '#lib/dm/dm.svelte.ts';
+import { announce } from '#lib/messages/announce.ts';
+import { away } from '#lib/notify.svelte.ts';
+import { people } from '#lib/people.svelte.ts';
+import { dmReply, pokeArrival, pokeFriend } from '#lib/poke.ts';
+import type { StatusLine } from '#lib/protocol.ts';
+import { titleWithStatus } from '#lib/status-line/title.ts';
 
 export interface DmHead {
 	peerId: string;

@@ -7,11 +7,11 @@
  * The rules, pure. The deck is channel/RoadsideDeck.svelte, and holding a
  * bottle until the rider can take it is channel/bottles.svelte.ts.
  */
-import { followedRider } from '$lib/channel/followed-rider';
-import type { LiveRider } from '$lib/channel/types';
-import { zoneOf } from '$lib/components/zones';
-import { BELL } from '$lib/icons';
-import type { Arrival } from '$lib/messages/announce';
+import { followedRider } from '#lib/channel/followed-rider.ts';
+import type { LiveRider } from '#lib/channel/types.ts';
+import { zoneOf } from '#lib/components/zones.ts';
+import { BELL } from '#lib/icons.ts';
+import type { Arrival } from '#lib/messages/announce.ts';
 import {
 	RoadsideStampAllez,
 	RoadsideStampArrow,
@@ -23,9 +23,9 @@ import {
 	type GameState,
 	type RoadsidePaint,
 	type RoadsideStamp,
-} from '$lib/protocol';
-import type { Climb } from '$lib/road/climbs';
-import type { CueId } from '$lib/sound/cue-catalogue';
+} from '#lib/protocol.ts';
+import type { Climb } from '#lib/road/climbs.ts';
+import type { CueId } from '#lib/sound/cue-catalogue.ts';
 
 /**
  * What one tick's cheers sound like. The bell is the roadside's one fixed

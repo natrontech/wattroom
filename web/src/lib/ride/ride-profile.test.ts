@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { climbsOf } from '$lib/road/climbs';
-import { chipsIn, tileOf } from '$lib/road/skyline';
+import { climbsOf } from '#lib/road/climbs.ts';
+import { chipsIn, tileOf } from '#lib/road/skyline.ts';
 import { rideProfile, riddenM, wholeRoadFrame } from './ride-profile';
 
 /** A synthetic ride (#3639): a second a sample at `mps`, up `pct` % from 100 m. */

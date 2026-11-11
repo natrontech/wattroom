@@ -2,26 +2,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const announced: { tag: string; reading: boolean; title: string }[] = [];
-vi.mock('$lib/messages/announce', () => ({
+vi.mock('#lib/messages/announce.ts', () => ({
 	announce: (a: { tag: string; reading: boolean; title: string }) =>
 		announced.push(a),
 }));
-vi.mock('$lib/notify.svelte', () => ({
+vi.mock('#lib/notify.svelte.ts', () => ({
 	// The real rule (ADR-0042): hidden, or not the front window.
 	away: () => document.hidden || !document.hasFocus(),
 }));
 let open: { id: string; name: string } | null = null;
-vi.mock('$lib/dm/dm.svelte', () => ({
+vi.mock('#lib/dm/dm.svelte.ts', () => ({
 	dm: {
 		get open() {
 			return open;
 		},
 	},
 }));
-vi.mock('$lib/people.svelte', () => ({ people: { learn: () => {} } }));
+vi.mock('#lib/people.svelte.ts', () => ({ people: { learn: () => {} } }));
 let conversations: unknown[] = [];
 const outage = vi.hoisted(() => ({ on: false }));
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async () =>
 		outage.on
 			? {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseProfile, type Profile } from '$lib/profile.svelte';
+import { parseProfile, type Profile } from '#lib/profile.svelte.ts';
 
 const signedIn = vi.hoisted(() => ({
 	me: null as null | {
@@ -11,9 +11,10 @@ const signedIn = vi.hoisted(() => ({
 	},
 	save: vi.fn(async (_: unknown) => null),
 }));
-vi.mock('$lib/account.svelte', () => ({ account: signedIn }));
+vi.mock('#lib/account.svelte.ts', () => ({ account: signedIn }));
 
-const { ownCachedLthr, pullProfile } = await import('$lib/profile-sync.svelte');
+const { ownCachedLthr, pullProfile } =
+	await import('#lib/profile-sync.svelte.ts');
 
 /** The browser's cache, as the root layout's store holds it. */
 function cache(stored: Partial<Profile>) {

@@ -1,8 +1,11 @@
-import type { TrainerSample } from '$lib/ble/trainer';
-import type { createActuator, SprintSetup } from '$lib/ride/actuation.svelte';
-import { biasPress } from '$lib/ride/easier-harder';
-import type { FreeMode } from '$lib/ride/free-ride-controls';
-import { ergByRoad } from '$lib/ride/ride-grade';
+import type { TrainerSample } from '#lib/ble/trainer.ts';
+import type {
+	createActuator,
+	SprintSetup,
+} from '#lib/ride/actuation.svelte.ts';
+import { biasPress } from '#lib/ride/easier-harder.ts';
+import type { FreeMode } from '#lib/ride/free-ride-controls.ts';
+import { ergByRoad } from '#lib/ride/ride-grade.ts';
 import { nudgedBias, toleranceBand } from './guards';
 import type { createHrHold } from './hr-hold.svelte';
 import type { createRideClock } from './ride-clock.svelte';

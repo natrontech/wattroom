@@ -3,15 +3,15 @@ import type {
 	Track as LiveKitTrack,
 	TrackPublication as LiveKitPublication,
 } from 'livekit-client';
-import type { ClaimantSource, LiveKitClient } from '$lib/channel/av-types';
-import type { AvConn, AvState } from '$lib/channel/av-state.svelte';
-import { type Seats, audioKey } from '$lib/channel/av-seats';
-import type { Stage } from '$lib/channel/av-stage.svelte';
-import type { RiderOutput } from '$lib/channel/av-output';
-import type { Speaking } from '$lib/channel/speaking';
-import type { Claims } from '$lib/channel/av-claim.svelte';
-import type { MicChain } from '$lib/channel/mic-chain.svelte';
-import { riderOf, yieldsTo } from '$lib/channel/tabs';
+import type { ClaimantSource, LiveKitClient } from '#lib/channel/av-types.ts';
+import type { AvConn, AvState } from '#lib/channel/av-state.svelte.ts';
+import { type Seats, audioKey } from '#lib/channel/av-seats.ts';
+import type { Stage } from '#lib/channel/av-stage.svelte.ts';
+import type { RiderOutput } from '#lib/channel/av-output.ts';
+import type { Speaking } from '#lib/channel/speaking.ts';
+import type { Claims } from '#lib/channel/av-claim.svelte.ts';
+import type { MicChain } from '#lib/channel/mic-chain.svelte.ts';
+import { riderOf, yieldsTo } from '#lib/channel/tabs.ts';
 
 /**
  * Everything LiveKit tells us, translated onto the voice channel (#1698).

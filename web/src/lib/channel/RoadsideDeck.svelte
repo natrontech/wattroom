@@ -10,15 +10,15 @@
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import GlassWater from '@lucide/svelte/icons/glass-water';
 	import Heart from '@lucide/svelte/icons/heart';
-	import CheerDeck from '$lib/channel/CheerDeck.svelte';
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import { BELL } from '$lib/icons';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { account } from '$lib/account.svelte';
-	import type { RoadsideStamp } from '$lib/protocol';
-	import { climbsOf } from '$lib/road/climbs';
-	import { nextChalkSpot, STAMPS } from '$lib/roadside';
+	import CheerDeck from '#lib/channel/CheerDeck.svelte';
+	import CheerIcon from '#lib/components/CheerIcon.svelte';
+	import { BELL } from '#lib/icons.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import type { RoadsideStamp } from '#lib/protocol.ts';
+	import { climbsOf } from '#lib/road/climbs.ts';
+	import { nextChalkSpot, STAMPS } from '#lib/roadside.ts';
 
 	// The roadside's deck (#3022, ADR-0064): the cheers and the cowbell, a
 	// bottle for the rider you are watching, and chalk for the next climb

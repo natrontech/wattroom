@@ -7,33 +7,33 @@
 	// stage above it only when someone is actually sharing. Tapping a tile
 	// focuses that rider: what "video-first" used to be a whole layout for,
 	// as a tap rather than a mode you have to remember you are in.
-	import RiderTile from '$lib/channel/RiderTile.svelte';
-	import Stage from '$lib/channel/Stage.svelte';
-	import { pickStage, pictureKey } from '$lib/channel/stage';
-	import { useChannel } from '$lib/channel/context';
-	import { endGame } from '$lib/session/end-game';
-	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
-	import MarkedIn from '$lib/announce/MarkedIn.svelte';
-	import LoungeSession from '$lib/channel/LoungeSession.svelte';
-	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
-	import PlanCard from '$lib/session/PlanCard.svelte';
-	import StartLine from '$lib/session/StartLine.svelte';
-	import HrShare from '$lib/channel/HrShare.svelte';
-	import RoomView from '$lib/channel/RoomView.svelte';
-	import SessionCallout from '$lib/channel/SessionCallout.svelte';
+	import RiderTile from '#lib/channel/RiderTile.svelte';
+	import Stage from '#lib/channel/Stage.svelte';
+	import { pickStage, pictureKey } from '#lib/channel/stage.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { endGame } from '#lib/session/end-game.ts';
+	import AnnouncementStrip from '#lib/announce/AnnouncementStrip.svelte';
+	import MarkedIn from '#lib/announce/MarkedIn.svelte';
+	import LoungeSession from '#lib/channel/LoungeSession.svelte';
+	import CountdownScreen from '#lib/session/CountdownScreen.svelte';
+	import PlanCard from '#lib/session/PlanCard.svelte';
+	import StartLine from '#lib/session/StartLine.svelte';
+	import HrShare from '#lib/channel/HrShare.svelte';
+	import RoomView from '#lib/channel/RoomView.svelte';
+	import SessionCallout from '#lib/channel/SessionCallout.svelte';
 
-	import SprintMoment from '$lib/session/SprintMoment.svelte';
-	import GamePanel from '$lib/session/GamePanel.svelte';
-	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
-	import { bottleFor } from '$lib/roadside';
-	import { device } from '$lib/device.svelte';
-	import { account } from '$lib/account.svelte';
+	import SprintMoment from '#lib/session/SprintMoment.svelte';
+	import GamePanel from '#lib/session/GamePanel.svelte';
+	import RoadsideDeck from '#lib/channel/RoadsideDeck.svelte';
+	import { bottleFor } from '#lib/roadside.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { account } from '#lib/account.svelte.ts';
 	import Bike from '@lucide/svelte/icons/bike';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { type MenuEntry } from '$lib/context-menu.svelte';
-	import { mateOnRoad, rideWith } from '$lib/channel/road-mates';
-	import { personMenu } from '$lib/person-menu';
-	import { clampSize, dividerDrag } from '$lib/divider';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { type MenuEntry } from '#lib/context-menu.svelte.ts';
+	import { mateOnRoad, rideWith } from '#lib/channel/road-mates.ts';
+	import { personMenu } from '#lib/person-menu.ts';
+	import { clampSize, dividerDrag } from '#lib/divider.ts';
 	import { goto } from '$app/navigation';
 	import Armchair from '@lucide/svelte/icons/armchair';
 	import Focus from '@lucide/svelte/icons/focus';

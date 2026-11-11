@@ -1,4 +1,4 @@
-import type { MenuEntry } from '$lib/context-menu.svelte';
+import type { MenuEntry } from '#lib/context-menu.svelte.ts';
 import { deleteRideAfterConfirm } from './delete-ride';
 import { setRideShared, shareAction } from './share';
 import Lock from '@lucide/svelte/icons/lock';

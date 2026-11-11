@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { catalogue } from '$lib/wardrobe/catalogue';
-import { DEFAULT_DARK_ID, themeById } from '$lib/themes';
+import { catalogue } from '#lib/wardrobe/catalogue.ts';
+import { DEFAULT_DARK_ID, themeById } from '#lib/themes.ts';
 import { STYLES } from './test-styles';
 import { PATTERNS, patternIndex } from './figure/jersey';
 import { resolveKit, WHEELS } from './figure/kit';

@@ -1,10 +1,10 @@
-import { climbedStep } from '$lib/ride/climbed';
-import { createRoadReadout } from '$lib/ride/road-readout';
+import { climbedStep } from '#lib/ride/climbed.ts';
+import { createRoadReadout } from '#lib/ride/road-readout.ts';
 import {
 	createRoadLaps,
 	type RoadSampleFields,
 	type RoadSecond,
-} from '$lib/ride/road-ride';
+} from '#lib/ride/road-ride.ts';
 import { roadOf, roadSecond } from './road-workout';
 import type { Segment, Workout } from './types';
 

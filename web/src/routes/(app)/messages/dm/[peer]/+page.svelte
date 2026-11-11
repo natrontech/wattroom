@@ -10,23 +10,23 @@
 	// loop in createDmThread.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import Avatar from '$lib/components/Avatar.svelte';
-	import { createDmThread } from '$lib/dm/thread.svelte';
-	import { dm } from '$lib/dm/dm.svelte';
-	import { dmHeads } from '$lib/dm/heads.svelte';
-	import MessageThread from '$lib/messages/MessageThread.svelte';
-	import type { ThreadSource } from '$lib/messages/thread-types';
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { friendPlace, friends } from '$lib/friends/friends.svelte';
-	import { fetchRider, type Rider } from '$lib/rider';
-	import { statusOf } from '$lib/status';
-	import { placePath } from '$lib/whereabouts';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import { createDmThread } from '#lib/dm/thread.svelte.ts';
+	import { dm } from '#lib/dm/dm.svelte.ts';
+	import { dmHeads } from '#lib/dm/heads.svelte.ts';
+	import MessageThread from '#lib/messages/MessageThread.svelte';
+	import type { ThreadSource } from '#lib/messages/thread-types.ts';
+	import { people } from '#lib/people.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { friendPlace, friends } from '#lib/friends/friends.svelte.ts';
+	import { fetchRider, type Rider } from '#lib/rider.ts';
+	import { statusOf } from '#lib/status.ts';
+	import { placePath } from '#lib/whereabouts.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Radio from '@lucide/svelte/icons/radio';
-	import { toasts } from '$lib/toast.svelte';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	const peerId = $derived(page.params.peer ?? '');
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));
@@ -149,10 +149,10 @@
 	// `?poke` so the menu can link straight to it.
 	const poking = $derived(page.url.searchParams.has('poke'));
 	function setPoking(on: boolean) {
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		if (on) url.searchParams.set('poke', '');
 		else url.searchParams.delete('poke');
-		void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+		void goto(url, { replace: true, reset: false });
 	}
 	async function poke() {
 		const refusal = await thread?.poke();

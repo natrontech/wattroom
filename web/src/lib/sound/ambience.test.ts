@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Biome } from '$lib/world/biome';
-import { DUCK_DEFAULT } from '$lib/sound/ducking';
+import { Biome } from '#lib/world/biome.ts';
+import { DUCK_DEFAULT } from '#lib/sound/ducking.ts';
 import {
 	AMBIENCE,
 	bedLevels,
 	busLevel,
 	createGate,
 	fromDb,
-} from '$lib/sound/ambience';
+} from '#lib/sound/ambience.ts';
 
 const top = fromDb(AMBIENCE.bedDb);
 const kmh = (v: number) => v / 3.6;

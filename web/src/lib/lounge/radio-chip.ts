@@ -8,8 +8,8 @@ import {
 	tone,
 	vibrato,
 	type Buses,
-} from '$lib/lounge/radio-voices';
-import { hiss, pump } from '$lib/lounge/radio-drums';
+} from '#lib/lounge/radio-voices.ts';
+import { hiss, pump } from '#lib/lounge/radio-drums.ts';
 
 const waves = new WeakMap<BaseAudioContext, Map<number, PeriodicWave>>();
 

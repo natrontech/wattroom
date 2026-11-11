@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { stickToBottom } from '$lib/chat/stick-to-bottom';
+import { stickToBottom } from '#lib/chat/stick-to-bottom.ts';
 
 // happy-dom lays nothing out, so the scroll box is modelled by hand: the test
 // says how tall the content is, and scrollTop clamps and fires `scroll` the way

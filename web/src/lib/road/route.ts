@@ -15,7 +15,7 @@
  *
  * Deterministic: the same points always make the same Route, byte for byte.
  */
-import * as protocol from '$lib/protocol';
+import * as protocol from '#lib/protocol.ts';
 import { climbsOf, type Climb } from './climbs';
 import {
 	despike,

@@ -4,7 +4,7 @@
  * server clock, so nothing crosses the wire. The cat's naps, what flies past
  * the window, the disco ball on a drop and the time of year.
  */
-import { hash3 } from '$lib/lounge/hash';
+import { hash3 } from '#lib/lounge/hash.ts';
 
 /** Where the cat may be, in the middle's coordinates: its centre and the row it rests on. */
 export const CAT_SPOTS = [

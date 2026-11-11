@@ -1,22 +1,22 @@
-import { channelAddress, crewSessionAddress } from '$lib/channel/address';
+import { channelAddress, crewSessionAddress } from '#lib/channel/address.ts';
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, tick } from 'svelte';
-import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
+import type { Trainer, TrainerStatus } from '#lib/ble/trainer.ts';
 
-vi.mock('$lib/api', () => ({ api: async () => ({ ok: false }) }));
+vi.mock('#lib/api.ts', () => ({ api: async () => ({ ok: false }) }));
 // Spread the real module: the mixer imports more of it than the connection
 // does, and only the two calls that would make noise need silencing.
 const played: string[] = [];
-vi.mock('$lib/sound/cues', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/sound/cues')>()),
+vi.mock('#lib/sound/cues.ts', async (importOriginal) => ({
+	...(await importOriginal<typeof import('#lib/sound/cues.ts')>()),
 	play: (id: string) => played.push(id),
 }));
-vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
+vi.mock('#lib/notify.svelte.ts', () => ({ notify: { push: () => {} } }));
 // A signed-in test fakes `me` without $state, and the profile pull that wakes
 // on it would loop on its own writes.
-vi.mock('$lib/profile-sync.svelte', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/profile-sync.svelte')>()),
+vi.mock('#lib/profile-sync.svelte.ts', async (importOriginal) => ({
+	...(await importOriginal<typeof import('#lib/profile-sync.svelte.ts')>()),
 	pullProfile: () => {},
 }));
 // A hand-driven socket: the tick is what the ride and the channel both read,
@@ -58,7 +58,7 @@ const fakeLive = {
 	claimVoice: async () => true,
 	releaseVoice() {},
 };
-vi.mock('$lib/channel/live.svelte', () => ({
+vi.mock('#lib/channel/live.svelte.ts', () => ({
 	// One socket per place, sharing the fake's tick and its records: the
 	// device's ride is told apart by its socket (docs/SESSIONS.md).
 	createChannelLive: () => Object.create(fakeLive),
@@ -79,12 +79,12 @@ vi.mock('livekit-client', () => ({
 import {
 	prepareChannelAv,
 	channelConnection,
-} from '$lib/channel/connection.svelte';
-import { listening } from '$lib/channel/listening.svelte';
-import { account } from '$lib/account.svelte';
-import { toasts } from '$lib/toast.svelte';
-import { roadHash } from '$lib/road/road';
-import { channelRide } from '$lib/ride/channel-ride.svelte';
+} from '#lib/channel/connection.svelte.ts';
+import { listening } from '#lib/channel/listening.svelte.ts';
+import { account } from '#lib/account.svelte.ts';
+import { toasts } from '#lib/toast.svelte.ts';
+import { roadHash } from '#lib/road/road.ts';
+import { channelRide } from '#lib/ride/channel-ride.svelte.ts';
 
 // The channel layouts' load does this before the shell joins (#1514).
 await prepareChannelAv();

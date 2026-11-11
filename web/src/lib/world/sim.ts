@@ -1,11 +1,11 @@
 // The ride: every rider is (distance along the route, speed). The world is
 // drawn from that pair alone, which is also all a session would ever put
 // on the wire per rider — one number more than today's tick.
-import { PaceDefaultCdA } from '$lib/protocol';
-import { createPace, type Pace } from '$lib/road/pace';
-import { type Route } from '$lib/road/route';
-import { at, lastMetre } from '$lib/road/along';
-import { damp } from '$lib/motion/damp';
+import { PaceDefaultCdA } from '#lib/protocol.ts';
+import { createPace, type Pace } from '#lib/road/pace.ts';
+import { type Route } from '#lib/road/route.ts';
+import { at, lastMetre } from '#lib/road/along.ts';
+import { damp } from '#lib/motion/damp.ts';
 import type { CheerLook } from './cheer';
 import type { Loadout } from './loadout';
 

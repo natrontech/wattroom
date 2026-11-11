@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitCPW } from '$lib/road/cpw';
+import { fitCPW } from '#lib/road/cpw.ts';
 import { createMatchGauge, matchesLeft, matchesLine } from './matches';
 
 // Only 5- and 20-minute bests: W′ = 50·300·1200/900 = 20 kJ, CP = 233⅓ W.

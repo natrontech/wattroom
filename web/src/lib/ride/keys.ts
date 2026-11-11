@@ -1,11 +1,11 @@
-import { shifterSlot } from '$lib/ble/controller-slot.svelte';
-import { isTyping } from '$lib/keys';
-import { gearsEnabled } from '$lib/ride/gears-enabled';
-import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
-import type { RemoteCommand } from '$lib/protocol';
-import { toggleMap } from '$lib/session/computer-pages';
-import { askCamera, askPhoto, askViewFlip } from '$lib/world/ride-view';
-import { CAMERA_PRESETS, type CameraPreset } from '$lib/world/cameras';
+import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+import { isTyping } from '#lib/keys.ts';
+import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+import type { ShiftDir, ShiftDriver } from '#lib/ride/shifter.ts';
+import type { RemoteCommand } from '#lib/protocol.ts';
+import { toggleMap } from '#lib/session/computer-pages.ts';
+import { askCamera, askPhoto, askViewFlip } from '#lib/world/ride-view.ts';
+import { CAMERA_PRESETS, type CameraPreset } from '#lib/world/cameras.ts';
 
 /**
  * Easier / Harder from the keyboard (ADR-0084, #3329), and from anything that

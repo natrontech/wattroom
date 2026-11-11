@@ -1,6 +1,6 @@
-import type { LiveCrew } from '$lib/crews-live';
-import { sessionPath } from '$lib/channel/address';
-import { planPath } from '$lib/crew-schedule';
+import type { LiveCrew } from '#lib/crews-live.ts';
+import { sessionPath } from '#lib/channel/address.ts';
+import { planPath } from '#lib/crew-schedule.ts';
 
 /** One row of GET /api/schedule: a plan, which crew's it is (#2440), the
  *  voice channel when it names one, and how many are in (#3689). */

@@ -1,8 +1,8 @@
 import { beforeNavigate, goto } from '$app/navigation';
-import { channelOfPath } from '$lib/channel/address';
-import { channelConnection } from '$lib/channel/connection.svelte';
-import { confirm } from '$lib/confirm.svelte';
-import { crewLive } from '$lib/nav/crew-live.svelte';
+import { channelOfPath } from '#lib/channel/address.ts';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
+import { confirm } from '#lib/confirm.svelte.ts';
+import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 
 /**
  * A ride in one voice channel is not ended by a stray tap on another (#2602).
@@ -20,6 +20,8 @@ export function guardTheRide(): void {
 	// "yes" re-issues the navigation with the guard stood down.
 	let leaving = false;
 	beforeNavigate((navigation) => {
+		if (navigation.shallow && navigation.type === 'goto') return;
+
 		const here = channelConnection.current;
 		const to = navigation.to?.url;
 		if (leaving || navigation.type === 'leave' || !here || !to) return;

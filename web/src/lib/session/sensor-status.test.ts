@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { SensorPairing } from '$lib/protocol';
+import type { SensorPairing } from '#lib/protocol.ts';
 import {
 	mayActuate,
 	pairedElsewhere,
 	trainerTargetsNote,
 	unmeasured,
-} from '$lib/session/sensor-status';
+} from '#lib/session/sensor-status.ts';
 
 describe('pairedElsewhere', () => {
 	const held = (elsewhere: Record<string, string>): SensorPairing => ({

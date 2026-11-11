@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CrewRef } from '$lib/crew-types';
+import type { CrewRef } from '#lib/crew-types.ts';
 
 // The endpoint behind every ping. Counting calls IS the assertion: #912 is
 // about how many of these one conversation costs.
@@ -11,7 +11,7 @@ let world: { crews: CrewRef[]; error?: string } = { crews: [] };
 // test can land them out of order (#2565).
 let hold = false;
 const held: (() => void)[] = [];
-vi.mock('$lib/api', () => ({
+vi.mock('#lib/api.ts', () => ({
 	api: async (path: string) => {
 		fetches += 1;
 		read.push(path);
@@ -39,7 +39,7 @@ class FakeSocket {
 }
 vi.stubGlobal('WebSocket', FakeSocket);
 
-const { presence } = await import('$lib/presence.svelte');
+const { presence } = await import('#lib/presence.svelte.ts');
 
 /** One ping from the hub. */
 function ping() {

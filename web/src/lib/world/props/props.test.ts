@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
-import { toRoute, type Route } from '$lib/road/route';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { WORLD_SALT } from '../place/network.test-helper';
 import { unmatched, type Thing } from '../place/shared';
 import { admit, crowd } from '../placement/check';

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { countModal, modals, stackedZ } from '$lib/modals.svelte';
+	import { countModal, modals, stackedZ } from '#lib/modals.svelte.ts';
 	import { focusTrap } from './focus-trap';
-	import { enter } from '$lib/motion/transitions';
+	import { enter } from '#lib/motion/transitions.ts';
 	import type { Snippet } from 'svelte';
 
 	// The one modal (#230). Call sites keep their {#if} — mounting IS opening.

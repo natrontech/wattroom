@@ -1,4 +1,4 @@
-import { loadApi } from '$lib/api';
+import { loadApi } from '#lib/api.ts';
 import type { PageLoad } from './$types';
 
 export interface ApiToken {

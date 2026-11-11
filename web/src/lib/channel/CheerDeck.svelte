@@ -1,8 +1,8 @@
 <script lang="ts">
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
-	import { account } from '$lib/account.svelte';
-	import { BELL } from '$lib/icons';
-	import { unlockCues } from '$lib/sound/cues';
+	import CheerIcon from '#lib/components/CheerIcon.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { BELL } from '#lib/icons.ts';
+	import { unlockCues } from '#lib/sound/cues.ts';
 
 	// The deck (#2722, #3022): the rider's own four cheers, then the
 	// roadside's bell — one row of bike-side targets, 44 px each way (TARGETS

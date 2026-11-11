@@ -7,10 +7,10 @@
 	 * class at its top. No north, no names, no coordinates: the shape a crew is sent
 	 * (ADR-0063).
 	 */
-	import { heightAt } from '$lib/road/at-metre';
-	import { planPoints, walk } from '$lib/road/draw';
-	import { GRADE_STROKE, gradeStep } from '$lib/road/skyline';
-	import { bestTurn, shapeOf, type MapView } from '$lib/ride/map-view';
+	import { heightAt } from '#lib/road/at-metre.ts';
+	import { planPoints, walk } from '#lib/road/draw.ts';
+	import { GRADE_STROKE, gradeStep } from '#lib/road/skyline.ts';
+	import { bestTurn, shapeOf, type MapView } from '#lib/ride/map-view.ts';
 
 	let { view }: { view: MapView } = $props();
 

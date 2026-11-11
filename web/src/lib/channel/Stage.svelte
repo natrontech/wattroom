@@ -9,16 +9,16 @@
 	import VideoIcon from '@lucide/svelte/icons/video';
 	import ZoomIn from '@lucide/svelte/icons/zoom-in';
 	import ZoomOut from '@lucide/svelte/icons/zoom-out';
-	import { dragPane } from '$lib/pane';
-	import { offerSeat, STAGE_SEAT } from '$lib/channel/stage-slot.svelte';
-	import { contextMenu } from '$lib/context-menu.svelte';
+	import { dragPane } from '#lib/pane.ts';
+	import { offerSeat, STAGE_SEAT } from '#lib/channel/stage-slot.svelte.ts';
+	import { contextMenu } from '#lib/context-menu.svelte.ts';
 	import {
 		FIT,
 		MAX_ZOOM,
 		panBy,
 		type StageView,
 		zoomAbout,
-	} from '$lib/channel/stage';
+	} from '#lib/channel/stage.ts';
 
 	/**
 	 * The stage (#280): the one big surface, and the rider decides what is on

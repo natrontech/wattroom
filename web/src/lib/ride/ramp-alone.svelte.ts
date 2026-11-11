@@ -1,7 +1,7 @@
-import { stampFtpAfter } from '$lib/ride/save';
-import { RAMP, rampOver } from '$lib/workout/ramp';
-import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
-import type { createRideSession } from '$lib/workout/session.svelte';
+import { stampFtpAfter } from '#lib/ride/save.ts';
+import { RAMP, rampOver } from '#lib/workout/ramp.ts';
+import { SIGNAL_LOST_MS } from '#lib/workout/ride-state.ts';
+import type { createRideSession } from '#lib/workout/session.svelte.ts';
 
 type Session = ReturnType<typeof createRideSession>;
 

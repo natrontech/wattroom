@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { tick } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dropClock } from '$lib/channel/drop-clock.svelte';
-import type { LiveStatus } from '$lib/channel/live.svelte';
+import { dropClock } from '#lib/channel/drop-clock.svelte.ts';
+import type { LiveStatus } from '#lib/channel/live.svelte.ts';
 
 /**
  * The connection banner's one number (#2855): how long the socket has been

@@ -1,8 +1,12 @@
-import { api } from '$lib/api';
-import type { PlaceAddress } from '$lib/channel/address';
-import type { JukeboxCommand, JukeboxEntry, JukeboxTrack } from '$lib/protocol';
-import { readLink } from '$lib/channel/jukebox-add';
-import { resolvePlaylist, titleFor } from '$lib/channel/youtube-playlist';
+import { api } from '#lib/api.ts';
+import type { PlaceAddress } from '#lib/channel/address.ts';
+import type {
+	JukeboxCommand,
+	JukeboxEntry,
+	JukeboxTrack,
+} from '#lib/protocol.ts';
+import { readLink } from '#lib/channel/jukebox-add.ts';
+import { resolvePlaylist, titleFor } from '#lib/channel/youtube-playlist.ts';
 
 /**
  * Saved playlists (#627): crew playlists (several per crew, each voice
@@ -10,7 +14,7 @@ import { resolvePlaylist, titleFor } from '$lib/channel/youtube-playlist';
  * own, usable in any voice channel). A
  * saved playlist is a saved queue (ADR-0045): its entries are what the live
  * queue holds. Distinct from a queued-whole YouTube playlist
- * (`$lib/channel/jukebox-add`'s `PastedLink['playlist']`) — that is one live
+ * (`#lib/channel/jukebox-add`'s `PastedLink['playlist']`) — that is one live
  * queue entry; this is a saved list of entries.
  */
 

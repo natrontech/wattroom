@@ -6,7 +6,7 @@
  * (drawBack); drawLive adds what moves over it, and drawShade the dark that
  * falls when the lamp is off.
  */
-import { LOUNGE as C } from '$lib/lounge/palette';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
 import {
 	bigGlyph,
 	disc,
@@ -20,8 +20,8 @@ import {
 	text,
 	textWidth,
 	type Ctx,
-} from '$lib/lounge/pixel';
-import type { Sky } from '$lib/lounge/palette';
+} from '#lib/lounge/pixel.ts';
+import type { Sky } from '#lib/lounge/palette.ts';
 import {
 	FLOOR_Y,
 	FRONT_Y,
@@ -30,20 +30,20 @@ import {
 	hasFront,
 	pulseOf,
 	type SceneInput,
-} from '$lib/lounge/scene';
-import { hash3 } from '$lib/lounge/hash';
-import { paintSides } from '$lib/lounge/draw-sides';
-import { WINDOW } from '$lib/lounge/draw-window';
-import { bakeLight, type Light } from '$lib/lounge/light';
-import { plantStage, wearStage } from '$lib/lounge/memory';
-import { RUGS, SOFAS } from '$lib/lounge/furnish';
-import { drawFondue, momentDressing } from '$lib/lounge/draw-moments';
+} from '#lib/lounge/scene.ts';
+import { hash3 } from '#lib/lounge/hash.ts';
+import { paintSides } from '#lib/lounge/draw-sides.ts';
+import { WINDOW } from '#lib/lounge/draw-window.ts';
+import { bakeLight, type Light } from '#lib/lounge/light.ts';
+import { plantStage, wearStage } from '#lib/lounge/memory.ts';
+import { RUGS, SOFAS } from '#lib/lounge/furnish.ts';
+import { drawFondue, momentDressing } from '#lib/lounge/draw-moments.ts';
 import {
 	FRONT_LAMPS,
 	foreground,
 	frontRow,
 	mats,
-} from '$lib/lounge/draw-floor';
+} from '#lib/lounge/draw-floor.ts';
 
 /** The sign's five bars trace the equalizer W (ADR-0005). */
 const SIGN_BARS = [20, 9, 14, 9, 20];

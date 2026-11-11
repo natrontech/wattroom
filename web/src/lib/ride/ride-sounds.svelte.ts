@@ -1,9 +1,9 @@
-import type { SprintState } from '$lib/protocol';
-import { serverNow } from '$lib/server-clock';
-import { changes } from '$lib/sound/changes';
-import { play, playCountdownTick } from '$lib/sound/cues';
-import type { GuardPhase } from '$lib/workout/guards';
-import type { RideState } from '$lib/workout/ride-state';
+import type { SprintState } from '#lib/protocol.ts';
+import { serverNow } from '#lib/server-clock.ts';
+import { changes } from '#lib/sound/changes.ts';
+import { play, playCountdownTick } from '#lib/sound/cues.ts';
+import type { GuardPhase } from '#lib/workout/guards.ts';
+import type { RideState } from '#lib/workout/ride-state.ts';
 
 /**
  * What a ride says out loud to the rider on it: a block change, their own

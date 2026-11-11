@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { audioSrc } from '$lib/music/pool';
+	import { audioSrc } from '#lib/music/pool.ts';
 	// A pool track on the deck (#267, ADR-0015): an <audio> element chasing the
 	// same anchor the YouTube player chases, so one queue plays from two
 	// sources without the shared clock knowing the difference.
@@ -15,15 +15,18 @@
 	// Drift is corrected by assignment — `currentTime = target`. The seek-first
 	// machinery in playhead.ts exists because an iframe seek lands on a
 	// keyframe and reads back stale; a media element seeks where you tell it.
-	import { mixer } from '$lib/sound/mixer.svelte';
-	import { onDuck } from '$lib/sound/duck';
-	import { playheadAt } from '$lib/channel/playhead';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { serverNow } from '$lib/server-clock';
-	import { listening } from '$lib/channel/listening.svelte';
-	import { deckDuration, playerInfo } from '$lib/channel/jukebox-player.svelte';
-	import { toasts } from '$lib/toast.svelte';
-	import { trackFailureIsGlobal } from '$lib/channel/playback-failure';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
+	import { onDuck } from '#lib/sound/duck.ts';
+	import { playheadAt } from '#lib/channel/playhead.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { serverNow } from '#lib/server-clock.ts';
+	import { listening } from '#lib/channel/listening.svelte.ts';
+	import {
+		deckDuration,
+		playerInfo,
+	} from '#lib/channel/jukebox-player.svelte.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { trackFailureIsGlobal } from '#lib/channel/playback-failure.ts';
 
 	/** Past this, assign rather than let it ride. SPEC's in-sync bar is 0.6 s. */
 	const DRIFT_SEC = 0.6;

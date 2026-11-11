@@ -8,12 +8,12 @@
  * Reversible, so it runs at once with an undo (errors.md): nothing between
  * the two riders is deleted, and showing them again puts it all back.
  */
-import { api } from '$lib/api';
-import { dmHeads } from '$lib/dm/heads.svelte';
-import { friends } from '$lib/friends/friends.svelte';
-import { cachedRider } from '$lib/rider-card/cache';
-import { fetchRider } from '$lib/rider';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import { dmHeads } from '#lib/dm/heads.svelte.ts';
+import { friends } from '#lib/friends/friends.svelte.ts';
+import { cachedRider } from '#lib/rider-card/cache.ts';
+import { fetchRider } from '#lib/rider.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 export interface HiddenRider {
 	id: string;

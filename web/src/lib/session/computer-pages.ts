@@ -1,14 +1,14 @@
-import { hrZoneOf } from '$lib/components/zones';
-import { computerShown } from '$lib/session/computer-shown.svelte';
-import { wkg } from '$lib/format';
-import type { ClimbView } from '$lib/ride/climb-view';
-import type { MapView } from '$lib/ride/map-view';
-import { formatSplit, gapWords } from '$lib/road/ghost';
-import { ordinal, type RaceReadout } from '$lib/race/race-view';
-import { MATCHES, type MatchesReadout } from '$lib/race/matches';
-import { isTyping } from '$lib/keys';
-import type { LiveStats } from '$lib/ride/live-stats.svelte';
-import type { PacerGap } from '$lib/ride/pacer.svelte';
+import { hrZoneOf } from '#lib/components/zones.ts';
+import { computerShown } from '#lib/session/computer-shown.svelte.ts';
+import { wkg } from '#lib/format.ts';
+import type { ClimbView } from '#lib/ride/climb-view.ts';
+import type { MapView } from '#lib/ride/map-view.ts';
+import { formatSplit, gapWords } from '#lib/road/ghost.ts';
+import { ordinal, type RaceReadout } from '#lib/race/race-view.ts';
+import { MATCHES, type MatchesReadout } from '#lib/race/matches.ts';
+import { isTyping } from '#lib/keys.ts';
+import type { LiveStats } from '#lib/ride/live-stats.svelte.ts';
+import type { PacerGap } from '#lib/ride/pacer.svelte.ts';
 
 /**
  * The bike computer's page table (ADR-0071, docs/SPEC.md "The bike

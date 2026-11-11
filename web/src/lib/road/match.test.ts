@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Workout } from '$lib/workout/types';
+import type { Workout } from '#lib/workout/types.ts';
 import { alpineLoop, legsRoad as road } from './fixtures';
 import { matchTerrain } from './match';
 

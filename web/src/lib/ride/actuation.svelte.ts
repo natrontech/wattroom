@@ -1,20 +1,20 @@
-import { encodeSimulation } from '$lib/ble/ftms';
-import type { SimParams, Trainer, TrainerSample } from '$lib/ble/trainer';
-import { MaxTrainerGrade, MinTrainerGrade } from '$lib/protocol';
+import { encodeSimulation } from '#lib/ble/ftms.ts';
+import type { SimParams, Trainer, TrainerSample } from '#lib/ble/trainer.ts';
+import { MaxTrainerGrade, MinTrainerGrade } from '#lib/protocol.ts';
 import {
 	gearSpace,
 	ratioState,
 	simTransform,
 	trackRatio,
 	type Clamp,
-} from '$lib/ride/drivetrain';
-import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { ROAD } from '$lib/ride/ride-grade';
+} from '#lib/ride/drivetrain.ts';
+import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
+import { ROAD } from '#lib/ride/ride-grade.ts';
 import {
 	EASIER_HARDER_OFF,
 	type EasierHarder,
 	type ErgPress,
-} from '$lib/ride/easier-harder';
+} from '#lib/ride/easier-harder.ts';
 
 /** The rider's sprint setup (#30/#41), read per sprint so a change on /settings lands mid-ride. */
 export interface SprintSetup {

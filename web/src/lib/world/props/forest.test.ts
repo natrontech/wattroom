@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
-import { toRoute, type Route } from '$lib/road/route';
+import { toRoute, type Route } from '#lib/road/route.ts';
 import { syntheticPoints } from '../synthetic';
 import { generate, type World } from '../world';
 import { FAMILY } from './batch';

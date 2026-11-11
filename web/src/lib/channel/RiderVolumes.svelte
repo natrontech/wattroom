@@ -3,11 +3,11 @@
 	// appear. Here so it is never ONLY in a menu (ux.md), and so the riders
 	// you have moved are in one list to undo: the first few, the rest folded,
 	// and one Reset all (#4170).
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import FaderRow from '$lib/channel/FaderRow.svelte';
-	import { mixer } from '$lib/sound/mixer.svelte';
-	import { RIDER_FADER } from '$lib/sound/fader';
+	import { people } from '#lib/people.svelte.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import FaderRow from '#lib/channel/FaderRow.svelte';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
+	import { RIDER_FADER } from '#lib/sound/fader.ts';
 
 	let {
 		onRiderGain,

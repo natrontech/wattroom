@@ -5,7 +5,7 @@
  * note, varied bar to bar and block to block from the same seed; the sound
  * is house-radio.ts's.
  */
-import { hashSeed, prng } from '$lib/world/rand';
+import { hashSeed, prng } from '#lib/world/rand.ts';
 import {
 	ARPS,
 	BASSES,
@@ -28,7 +28,7 @@ import {
 	SCALES,
 	SECOND,
 	TEMPOS,
-} from '$lib/lounge/station-tables';
+} from '#lib/lounge/station-tables.ts';
 
 /** One tune per slot, in seconds. */
 export const SLOT_SEC = 150;

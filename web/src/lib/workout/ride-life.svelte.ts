@@ -1,4 +1,8 @@
-import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
+import type {
+	Trainer,
+	TrainerSample,
+	TrainerStatus,
+} from '#lib/ble/trainer.ts';
 import { COUNTDOWN_SECONDS, type RideState } from './ride-state';
 import { createTicker, type Ticker } from './ticker';
 import { acquireWakeLock, type WakeLock } from './wakelock';

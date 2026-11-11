@@ -9,25 +9,25 @@
 	import Target from '@lucide/svelte/icons/target';
 	import Trophy from '@lucide/svelte/icons/trophy';
 	import { untrack } from 'svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import { api } from '$lib/api';
-	import { play } from '$lib/sound/cues';
-	import type { CueId } from '$lib/sound/cue-catalogue';
-	import { GAMES, gameOf } from '$lib/lounge/games';
+	import Modal from '#lib/components/Modal.svelte';
+	import { api } from '#lib/api.ts';
+	import { play } from '#lib/sound/cues.ts';
+	import type { CueId } from '#lib/sound/cue-catalogue.ts';
+	import { GAMES, gameOf } from '#lib/lounge/games/index.ts';
 	import {
 		SCREEN_H as H,
 		SCREEN_W as W,
 		type GameId,
 		type Sound,
-	} from '$lib/lounge/games/game';
-	import type { ArcadeEntry, ArcadeView } from '$lib/lounge/memory';
-	import { loadPref, savePref, type Tab } from '$lib/lounge/arcade-pick';
-	import ToeggeliTable from '$lib/lounge/ToeggeliTable.svelte';
+	} from '#lib/lounge/games/game.ts';
+	import type { ArcadeEntry, ArcadeView } from '#lib/lounge/memory.ts';
+	import { loadPref, savePref, type Tab } from '#lib/lounge/arcade-pick.ts';
+	import ToeggeliTable from '#lib/lounge/ToeggeliTable.svelte';
 	import type {
 		ToeggeliCommand,
 		ToeggeliInvite,
 		ToeggeliState,
-	} from '$lib/protocol';
+	} from '#lib/protocol.ts';
 
 	let {
 		crew,

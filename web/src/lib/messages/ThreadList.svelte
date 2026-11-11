@@ -2,21 +2,21 @@
 	// The list: every direct message, unread on top, one line each (#468) —
 	// what was said last, and by whom. A crew's chat is its text channels, in
 	// the crew's column (ADR-0058).
-	import Avatar from '$lib/components/Avatar.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
-	import { dmHeads } from '$lib/dm/heads.svelte';
+	import Avatar from '#lib/components/Avatar.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { contextMenu, MENU_HINT } from '#lib/context-menu.svelte.ts';
+	import { dmHeads } from '#lib/dm/heads.svelte.ts';
 	import { goto } from '$app/navigation';
-	import { personMenu } from '$lib/person-menu';
-	import { formatThreadWhen, orderThreads } from '$lib/messages/threads';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { UNREAD_DOT } from '$lib/messages/unread-marks';
-	import { friends } from '$lib/friends/friends.svelte';
-	import { presence } from '$lib/presence.svelte';
-	import { statusOf } from '$lib/status';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { personMenu } from '#lib/person-menu.ts';
+	import { formatThreadWhen, orderThreads } from '#lib/messages/threads.ts';
+	import StatusMark from '#lib/status-line/StatusMark.svelte';
+	import { UNREAD_DOT } from '#lib/messages/unread-marks.ts';
+	import { friends } from '#lib/friends/friends.svelte.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { statusOf } from '#lib/status.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	import Search from '@lucide/svelte/icons/search';
 
 	let { active = '' }: { active?: string } = $props();

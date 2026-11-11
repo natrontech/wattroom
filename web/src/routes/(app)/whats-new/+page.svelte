@@ -1,9 +1,9 @@
 <script lang="ts">
-	import Banner from '$lib/components/Banner.svelte';
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { changelog } from '$lib/changelog.svelte';
-	import MessageText from '$lib/chat/MessageText.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { changelog } from '#lib/changelog.svelte.ts';
+	import MessageText from '#lib/chat/MessageText.svelte';
 
 	// What's new (#345): the changelog the running build shipped with. Reading
 	// it acknowledges the current version, so the home notice stops nagging.

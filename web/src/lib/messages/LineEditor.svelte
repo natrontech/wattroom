@@ -3,9 +3,9 @@
 	// modal for a typo, and the message stays where it is on screen while you
 	// fix it. The thread mounts one at a time, so the draft lives here and dies
 	// with the box; a second editor cannot leave a first one half-typed.
-	import DraftEmoji from '$lib/chat/DraftEmoji.svelte';
-	import { fitsText, sendsOnEnter } from '$lib/chat/textarea';
-	import { MaxMessageChars } from '$lib/protocol';
+	import DraftEmoji from '#lib/chat/DraftEmoji.svelte';
+	import { fitsText, sendsOnEnter } from '#lib/chat/textarea.ts';
+	import { MaxMessageChars } from '#lib/protocol.ts';
 
 	let {
 		original,

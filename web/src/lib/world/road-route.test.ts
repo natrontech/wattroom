@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { at } from '$lib/road/along';
-import { heightAt } from '$lib/road/at-metre';
-import { HAIRPINS, hairpinClimb, legsRoad } from '$lib/road/fixtures';
-import { toRoute, type Route } from '$lib/road/route';
-import type { Road } from '$lib/road/road';
-import { HOME_ROADS, homeRoute } from '$lib/ride/home-roads';
+import { at } from '#lib/road/along.ts';
+import { heightAt } from '#lib/road/at-metre.ts';
+import { HAIRPINS, hairpinClimb, legsRoad } from '#lib/road/fixtures.ts';
+import { toRoute, type Route } from '#lib/road/route.ts';
+import type { Road } from '#lib/road/road.ts';
+import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import { routeOfRoad } from './road-route';
 
 /** A road's heights and turns become the route its world is built on (#3663). */

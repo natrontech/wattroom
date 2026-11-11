@@ -5,7 +5,7 @@
  * the meter. One `QuickAudio` is mounted at a time, so this still draws one
  * modal.
  */
-import { channelConnection } from '$lib/channel/connection.svelte';
+import { channelConnection } from '#lib/channel/connection.svelte.ts';
 
 export const soundPanel = $state({ open: false });
 

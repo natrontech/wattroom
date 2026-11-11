@@ -2,8 +2,8 @@
 // racers on a race's (#3778): each at their own metre, moved by their own
 // watts on their own screen, never by this one, and never in a bunch. It
 // draws nothing: crew.ts does.
-import type { RoadMate } from '$lib/channel/road-mates';
-import type { Route } from '$lib/road/route';
+import type { RoadMate } from '#lib/channel/road-mates.ts';
+import type { Route } from '#lib/road/route.ts';
 import { LANE } from './bunch';
 import { KEEP_RIGHT } from './crew';
 import { MOST_ABREAST } from './lanes';

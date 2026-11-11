@@ -7,7 +7,7 @@ import {
 	zoneBands,
 	zoneOf,
 } from './zones';
-import type { Segment } from '$lib/workout/types';
+import type { Segment } from '#lib/workout/types.ts';
 
 describe('zoneOf', () => {
 	it('keeps SPEC boundaries inclusive on the low side', () => {

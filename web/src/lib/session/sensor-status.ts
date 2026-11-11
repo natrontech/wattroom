@@ -1,8 +1,8 @@
-import type { SensorKind } from '$lib/ble/sensor';
-import type { SensorPairing } from '$lib/protocol';
-import type { createRide } from '$lib/session/ride.svelte';
-import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
-import type { Trainer } from '$lib/ble/trainer';
+import type { SensorKind } from '#lib/ble/sensor.ts';
+import type { SensorPairing } from '#lib/protocol.ts';
+import type { createRide } from '#lib/session/ride.svelte.ts';
+import { SENSOR_KINDS, sensors } from '#lib/sensors.svelte.ts';
+import type { Trainer } from '#lib/ble/trainer.ts';
 
 /**
  * The pairing state machine, in one place: `/settings/equipment` and the Training place's

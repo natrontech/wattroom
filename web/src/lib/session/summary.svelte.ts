@@ -1,11 +1,11 @@
-import { account } from '$lib/account.svelte';
-import { api } from '$lib/api';
-import type { Medal } from '$lib/components/MedalCard.svelte';
-import { MEDAL_META } from '$lib/medals';
-import { MinRideSamples, type RaceBracket } from '$lib/protocol';
-import type { LiveRider } from '$lib/channel/types';
-import type { RideKind } from '$lib/ride/recap-frame';
-import type { createRecording } from '$lib/session/recording.svelte';
+import { account } from '#lib/account.svelte.ts';
+import { api } from '#lib/api.ts';
+import type { Medal } from '#lib/components/MedalCard.svelte';
+import { MEDAL_META } from '#lib/medals.ts';
+import { MinRideSamples, type RaceBracket } from '#lib/protocol.ts';
+import type { LiveRider } from '#lib/channel/types.ts';
+import type { RideKind } from '#lib/ride/recap-frame.ts';
+import type { createRecording } from '#lib/session/recording.svelte.ts';
 import { untrack } from 'svelte';
 
 /**

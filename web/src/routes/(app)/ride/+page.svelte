@@ -1,39 +1,39 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { canSimulate } from '$lib/ble/can-simulate';
-	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import type { Trainer } from '$lib/ble/trainer';
-	import { byId } from '$lib/workout/library';
-	import { customWorkouts } from '$lib/workout/custom.svelte';
-	import { pushProfile } from '$lib/profile-sync.svelte';
-	import { createProfileStore } from '$lib/profile.svelte';
-	import { createHistoryStore } from '$lib/history.svelte';
+	import { canSimulate } from '#lib/ble/can-simulate.ts';
+	import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
+	import { SimulatedTrainer } from '#lib/ble/simulated.ts';
+	import type { Trainer } from '#lib/ble/trainer.ts';
+	import { byId } from '#lib/workout/library.ts';
+	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
+	import { pushProfile } from '#lib/profile-sync.svelte.ts';
+	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { createHistoryStore } from '#lib/history.svelte.ts';
 	import { page } from '$app/state';
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { account } from '$lib/account.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import TheRide from '$lib/ride/TheRide.svelte';
-	import { withProfile } from '$lib/workout/road-workout';
-	import PreRide from '$lib/ride/PreRide.svelte';
-	import RideDoors from '$lib/ride/RideDoors.svelte';
-	import FigureCard from '$lib/ride/FigureCard.svelte';
-	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
-	import type { RideableRoute } from '$lib/ride/roads';
-	import type { RideKind } from '$lib/ride/RideCard.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import TheRide from '#lib/ride/TheRide.svelte';
+	import { withProfile } from '#lib/workout/road-workout.ts';
+	import PreRide from '#lib/ride/PreRide.svelte';
+	import RideDoors from '#lib/ride/RideDoors.svelte';
+	import FigureCard from '#lib/ride/FigureCard.svelte';
+	import SoloRoadRide from '#lib/ride/SoloRoadRide.svelte';
+	import type { RideableRoute } from '#lib/ride/roads.ts';
+	import type { RideKind } from '#lib/ride/RideCard.svelte';
 	import {
 		lastRoad,
 		lastWorkout,
 		rememberRoad,
 		rememberWorkout,
-	} from '$lib/ride/last-ride';
-	import { onRoute } from '$lib/road/compile';
-	import { legsOf, nextLeg } from '$lib/road/leg';
-	import { formatKm } from '$lib/format';
-	import { doorsFor } from '$lib/crew-lounge';
-	import { ownRoad } from '$lib/ride/free-ride-controls';
-	import { crewLive } from '$lib/nav/crew-live.svelte';
+	} from '#lib/ride/last-ride.ts';
+	import { onRoute } from '#lib/road/compile.ts';
+	import { legsOf, nextLeg } from '#lib/road/leg.ts';
+	import { formatKm } from '#lib/format.ts';
+	import { doorsFor } from '#lib/crew-lounge.ts';
+	import { ownRoad } from '#lib/ride/free-ride-controls.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -145,7 +145,7 @@
 	// ride, so /ride does not draw that choice a second time.
 	$effect(() => {
 		if (doors && setup && !shelfPending && !shelfMissing && !askFigure)
-			void goto('/home', { replaceState: true });
+			void goto('/home', { replace: true });
 	});
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).

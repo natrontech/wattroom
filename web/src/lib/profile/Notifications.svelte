@@ -3,9 +3,9 @@
 	// things a browser can say and the section says each of them: on, off,
 	// blocked — the rider once pressed Block and no prompt will ever show
 	// again — and not supported at all, as on iOS Safari in a tab.
-	import { account } from '$lib/account.svelte';
-	import { shellVersion } from '$lib/desktop';
-	import { notify } from '$lib/notify.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { shellVersion } from '#lib/desktop.ts';
+	import { notify } from '#lib/notify.svelte.ts';
 
 	// The one email switch (ADR-0030's `notify_planned`) lives here with the
 	// other notifications, not in the profile form (#1828). A toggle saves

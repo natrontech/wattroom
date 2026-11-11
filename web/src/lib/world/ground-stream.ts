@@ -1,5 +1,5 @@
-import { at } from '$lib/road/along';
-import type { Route } from '$lib/road/route';
+import { at } from '#lib/road/along.ts';
+import type { Route } from '#lib/road/route.ts';
 import { CHUNK_M } from './place/lattice';
 import {
 	disc,

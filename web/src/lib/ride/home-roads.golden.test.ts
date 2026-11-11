@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { packRoad } from '$lib/road/road';
+import { packRoad } from '#lib/road/road.ts';
 import { HOME_ROADS, homeRoute } from './home-roads';
 
 /**

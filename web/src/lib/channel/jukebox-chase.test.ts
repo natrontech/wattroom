@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { JukeboxEntry, JukeboxState } from '$lib/protocol';
+import type { JukeboxEntry, JukeboxState } from '#lib/protocol.ts';
 import { createJukeboxChase, type ChaseHost } from './jukebox-chase';
 import { playerInfo } from './jukebox-player.svelte';
 import { listening, type Play } from './listening.svelte';

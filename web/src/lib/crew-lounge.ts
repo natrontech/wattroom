@@ -9,7 +9,7 @@
  * where they last rode in each, and which door they took last. Storage can
  * be missing or refuse (a private window); every read falls back to the rule.
  */
-import type { LiveChannel, LiveCrew } from '$lib/crews-live';
+import type { LiveChannel, LiveCrew } from '#lib/crews-live.ts';
 
 const KEY = 'wattroom.lounge.v1';
 

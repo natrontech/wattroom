@@ -16,18 +16,18 @@
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
+	} from '#lib/context-menu.svelte.ts';
 	import {
 		board,
 		movePad,
 		remove,
 		rename,
 		type Clip,
-	} from '$lib/board/clips.svelte';
-	import { boardPanel } from '$lib/board/panel.svelte';
-	import { learn, shapeOf } from '$lib/board/shapes.svelte';
-	import { previewing } from '$lib/sound/board.svelte';
-	import { confirm } from '$lib/confirm.svelte';
+	} from '#lib/board/clips.svelte.ts';
+	import { boardPanel } from '#lib/board/panel.svelte.ts';
+	import { learn, shapeOf } from '#lib/board/shapes.svelte.ts';
+	import { previewing } from '#lib/sound/board.svelte.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
 
 	let {
 		mine,

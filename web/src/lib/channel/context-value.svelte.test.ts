@@ -1,11 +1,11 @@
-import { channelAddress } from '$lib/channel/address';
-import { device } from '$lib/device.svelte';
+import { channelAddress } from '#lib/channel/address.ts';
+import { device } from '#lib/device.svelte.ts';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	channelContextValue,
 	type ContextDeps,
 	type ChannelShellProps,
-} from '$lib/channel/context-value.svelte';
+} from '#lib/channel/context-value.svelte.ts';
 
 /**
  * The one risk in lifting ADR-0020's contract out of ChannelShell (#686): the

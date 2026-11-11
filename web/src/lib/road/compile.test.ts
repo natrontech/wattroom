@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MaxLegSeconds } from '$lib/protocol';
-import { durationSeconds } from '$lib/workout/engine';
-import { validateWorkout } from '$lib/workout/validate';
+import { MaxLegSeconds } from '#lib/protocol.ts';
+import { durationSeconds } from '#lib/workout/engine.ts';
+import { validateWorkout } from '#lib/workout/validate.ts';
 import { climbsOf } from './climbs';
 import { compileRoad, targetFor } from './compile';
 import { hairpinClimb } from './fixtures';

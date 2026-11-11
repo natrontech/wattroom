@@ -12,15 +12,15 @@
 	 * metres on any window (docs/spec/riding.md).
 	 */
 	import { untrack, type Snippet } from 'svelte';
-	import { ZONE_BG, ZONE_NAMES, zoneOf } from '$lib/components/zones';
-	import { formatClock, wkg } from '$lib/format';
-	import { pulse } from '$lib/motion/transitions';
-	import type { LiveStats } from '$lib/ride/live-stats.svelte';
-	import { aheadLine } from '$lib/ride/road-readout';
-	import type { RoadReadout } from '$lib/road/readout';
-	import { computerShown } from '$lib/session/computer-shown.svelte';
-	import PowerTrack from '$lib/session/PowerTrack.svelte';
-	import { nextText, ridesTheRoad, type Block } from '$lib/workout/block';
+	import { ZONE_BG, ZONE_NAMES, zoneOf } from '#lib/components/zones.ts';
+	import { formatClock, wkg } from '#lib/format.ts';
+	import { pulse } from '#lib/motion/transitions.ts';
+	import type { LiveStats } from '#lib/ride/live-stats.svelte.ts';
+	import { aheadLine } from '#lib/ride/road-readout.ts';
+	import type { RoadReadout } from '#lib/road/readout.ts';
+	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
+	import PowerTrack from '#lib/session/PowerTrack.svelte';
+	import { nextText, ridesTheRoad, type Block } from '#lib/workout/block.ts';
 
 	let {
 		watts,

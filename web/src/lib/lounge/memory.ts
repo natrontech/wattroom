@@ -4,10 +4,10 @@
  * corkboard, and a plant that grows with every session ridden together.
  * Counts only: nothing here names a rider or a number from a ride.
  */
-import { api } from '$lib/api';
-import type { SessionRecap } from '$lib/protocol';
-import type { ShopItem } from '$lib/lounge/furnish';
-import type { ArcadeRecord } from '$lib/lounge/scene';
+import { api } from '#lib/api.ts';
+import type { SessionRecap } from '#lib/protocol.ts';
+import type { ShopItem } from '#lib/lounge/furnish.ts';
+import type { ArcadeRecord } from '#lib/lounge/scene.ts';
 
 export interface RoomMemory {
 	/** Sessions the crew has ridden together. */

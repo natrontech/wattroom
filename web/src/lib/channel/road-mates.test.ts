@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { LiveRider } from '$lib/channel/types';
-import type { FreeRoadPlace } from '$lib/protocol';
-import { JUMP_M } from '$lib/world/sim';
+import type { LiveRider } from '#lib/channel/types.ts';
+import type { FreeRoadPlace } from '#lib/protocol.ts';
+import { JUMP_M } from '#lib/world/sim.ts';
 import {
 	createRoadMates,
 	mateOnRoad,

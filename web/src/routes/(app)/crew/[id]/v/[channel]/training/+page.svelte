@@ -5,13 +5,13 @@
 	// starts one moves to its address (#2450, SessionLayers). A phone cannot
 	// ride, so it keeps the Training place's words.
 	import { page } from '$app/state';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { device } from '$lib/device.svelte';
-	import FreeRide from '$lib/ride/FreeRide.svelte';
-	import OwnRide from '$lib/ride/OwnRide.svelte';
-	import TheRide from '$lib/ride/TheRide.svelte';
-	import { theRide } from '$lib/ride/the-ride.svelte';
-	import Training from '$lib/session/Training.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import FreeRide from '#lib/ride/FreeRide.svelte';
+	import OwnRide from '#lib/ride/OwnRide.svelte';
+	import TheRide from '#lib/ride/TheRide.svelte';
+	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import Training from '#lib/session/Training.svelte';
 
 	const doneHref = $derived(`/crew/${page.params.id}/v/${page.params.channel}`);
 </script>

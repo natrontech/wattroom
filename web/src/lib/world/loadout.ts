@@ -1,7 +1,7 @@
 // A look for a rider who has chosen none (#3156), apart from three.js so a
 // route can seed one without pulling the world into its chunk.
-import { hexToOklch, perceptualDistance } from '$lib/color';
-import { catalogue } from '$lib/wardrobe/catalogue';
+import { hexToOklch, perceptualDistance } from '#lib/color.ts';
+import { catalogue } from '#lib/wardrobe/catalogue.ts';
 import { PATTERNS } from './figure/jersey';
 import { prng } from './rand';
 

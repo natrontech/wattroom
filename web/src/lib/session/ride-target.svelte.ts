@@ -1,7 +1,7 @@
-import { nudgedBias, type GuardSample } from '$lib/workout/guards';
-import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
-import { targetAt } from '$lib/workout/engine';
-import type { RideDeps } from '$lib/session/ride-deps';
+import { nudgedBias, type GuardSample } from '#lib/workout/guards.ts';
+import { createRiderGuards } from '#lib/workout/rider-guards.svelte.ts';
+import { targetAt } from '#lib/workout/engine.ts';
+import type { RideDeps } from '#lib/session/ride-deps.ts';
 
 /**
  * What the session asks of this rider's trainer, and the say the rider has

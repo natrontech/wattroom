@@ -1,5 +1,5 @@
 import { beforeNavigate, goto } from '$app/navigation';
-import { confirm, type ConfirmRequest } from '$lib/confirm.svelte';
+import { confirm, type ConfirmRequest } from '#lib/confirm.svelte.ts';
 
 /**
  * A stray tap on the rail mid-effort must not eat the effort (#126): one
@@ -15,6 +15,7 @@ export function guardLeaving(live: () => boolean, ask: ConfirmRequest): void {
 	// "yes" re-issues the navigation with the guard stood down.
 	let leaving = false;
 	beforeNavigate((navigation) => {
+		if (navigation.shallow && navigation.type === 'goto') return;
 		if (!live() || navigation.type === 'leave' || leaving) return;
 		navigation.cancel();
 		void confirm(ask).then((ok) => {

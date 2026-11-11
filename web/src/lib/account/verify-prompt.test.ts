@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Me } from '$lib/account.svelte';
+import type { Me } from '#lib/account.svelte.ts';
 import { canSkipEmailPrompt, shouldPromptEmail } from './verify-prompt';
 
 const me = (over: Partial<Me> = {}): Me =>

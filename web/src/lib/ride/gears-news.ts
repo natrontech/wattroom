@@ -1,4 +1,4 @@
-import { GEARS_NEWS_LINE } from '$lib/ride/mode-copy';
+import { GEARS_NEWS_LINE } from '#lib/ride/mode-copy.ts';
 
 const SEEN = 'wattroom.gears-news.v1';
 

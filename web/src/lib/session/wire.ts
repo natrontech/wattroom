@@ -1,5 +1,5 @@
-import type { Metrics } from '$lib/ble/arbitrate';
-import type { RiderMetrics } from '$lib/protocol';
+import type { Metrics } from '#lib/ble/arbitrate.ts';
+import type { RiderMetrics } from '#lib/protocol.ts';
 
 /**
  * Build the sample that leaves this browser for the session, bar its seq — the

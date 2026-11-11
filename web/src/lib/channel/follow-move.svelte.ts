@@ -1,9 +1,9 @@
 import { goto } from '$app/navigation';
 import { untrack } from 'svelte';
-import { channelAddress, type PlaceAddress } from '$lib/channel/address';
-import { askVoice, type CallNow } from '$lib/channel/voice-intent';
-import { toasts } from '$lib/toast.svelte';
-import type { Moved } from '$lib/protocol';
+import { channelAddress, type PlaceAddress } from '#lib/channel/address.ts';
+import { askVoice, type CallNow } from '#lib/channel/voice-intent.ts';
+import { toasts } from '#lib/toast.svelte.ts';
+import type { Moved } from '#lib/protocol.ts';
 
 /**
  * Moved by the crew's owner or an admin (#2730, Discord's drag): go where

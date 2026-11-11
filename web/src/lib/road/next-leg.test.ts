@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LostRoad } from '$lib/channel/lost-road';
+import type { LostRoad } from '#lib/channel/lost-road.ts';
 import { nextLeg, nextLegAt } from './next-leg';
 import { crewFromM, ownerFromM } from './ride-together';
 import type { Road } from './road';

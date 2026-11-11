@@ -2,16 +2,16 @@
 	// The Training place before and after a session runs (ADR-0020): a game
 	// with no session behind it, the empty state that teaches, and the end.
 	// Lifted out of Training.svelte along its phase seam.
-	import GamePanel from '$lib/session/GamePanel.svelte';
-	import HrShare from '$lib/channel/HrShare.svelte';
-	import SessionControls from '$lib/session/SessionControls.svelte';
-	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
-	import RemoteOffer from '$lib/ride/RemoteOffer.svelte';
-	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { device } from '$lib/device.svelte';
-	import { endGame } from '$lib/session/end-game';
+	import GamePanel from '#lib/session/GamePanel.svelte';
+	import HrShare from '#lib/channel/HrShare.svelte';
+	import SessionControls from '#lib/session/SessionControls.svelte';
+	import SessionRecapCard from '#lib/session/SessionRecapCard.svelte';
+	import RemoteOffer from '#lib/ride/RemoteOffer.svelte';
+	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { endGame } from '#lib/session/end-game.ts';
 
 	let {
 		targetsNote,

@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { flushSync, tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
-import { SimulatedTrainer } from '$lib/ble/simulated';
+import { SimulatedTrainer } from '#lib/ble/simulated.ts';
 import { createRideSession } from './session.svelte';
 import { COUNTDOWN_SECONDS } from './ride-state';
 import type { Workout } from './types';
 
-vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
+vi.mock('#lib/hud/feed.ts', () => ({ publishHud: () => {} }));
 
 /**
  * The solo ride's live execution, as a screen reads it (#2769): from inside an

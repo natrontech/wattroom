@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render } from 'svelte/server';
-import type { Road } from '$lib/road/road';
+import type { Road } from '#lib/road/road.ts';
 import ComputerMap from './ComputerMap.svelte';
 import { bestTurn, mapView, shapeOf } from './map-view';
 

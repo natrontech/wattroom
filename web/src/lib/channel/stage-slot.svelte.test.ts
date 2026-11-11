@@ -15,7 +15,7 @@ import {
 	stageSlot,
 	STAGE_SEAT,
 	TV_SEAT,
-} from '$lib/channel/stage-slot.svelte';
+} from '#lib/channel/stage-slot.svelte.ts';
 
 // happy-dom lays nothing out: the hole's rect is scripted, and the
 // re-measure timer is stepped by hand — `tick()` runs one of its rounds.

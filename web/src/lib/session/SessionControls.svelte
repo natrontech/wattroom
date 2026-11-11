@@ -10,14 +10,14 @@
 	// 44 px target ends the session for everyone in it, and there is no undo to
 	// offer (errors.md's confirm exception), so it confirms the way the solo
 	// ride does. Cancelling a countdown loses nothing and does not ask.
-	import { account } from '$lib/account.svelte';
-	import { confirm } from '$lib/confirm.svelte';
-	import { device } from '$lib/device.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import { leaveChannel } from '$lib/channel/leave';
-	import { controlsFor } from '$lib/session/controls';
-	import { endGame } from '$lib/session/end-game';
-	import Modal from '$lib/components/Modal.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { confirm } from '#lib/confirm.svelte.ts';
+	import { device } from '#lib/device.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import { leaveChannel } from '#lib/channel/leave.ts';
+	import { controlsFor } from '#lib/session/controls.ts';
+	import { endGame } from '#lib/session/end-game.ts';
+	import Modal from '#lib/components/Modal.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Play from '@lucide/svelte/icons/play';
@@ -25,7 +25,7 @@
 	import Square from '@lucide/svelte/icons/square';
 	import Zap from '@lucide/svelte/icons/zap';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
-	import { tooltip } from '$lib/tooltip.svelte';
+	import { tooltip } from '#lib/tooltip.svelte.ts';
 
 	let { compact = false }: { compact?: boolean } = $props();
 

@@ -16,7 +16,7 @@ import { CHUNK_M } from './place/lattice';
 import { keyer, type Salt } from './place/keyed';
 import { forest } from './props/forest';
 import { hashSeed } from './rand';
-import type { Route } from '$lib/road/route';
+import type { Route } from '#lib/road/route.ts';
 import type { Names } from './names';
 import { setPieces, type Arch, type Piece, type Sign } from './setpieces';
 import type { Passing } from './placement/stream';

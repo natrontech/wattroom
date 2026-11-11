@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatThreadWhen, orderThreads } from './threads';
-import type { DmHead } from '$lib/dm/heads.svelte';
+import type { DmHead } from '#lib/dm/heads.svelte.ts';
 
 const head = (over: Partial<DmHead>): DmHead => ({
 	peerId: 'p',

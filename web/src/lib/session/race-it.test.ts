@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
-import type { StoredRoute } from '$lib/road/stored';
+import type { StoredRoute } from '#lib/road/stored.ts';
 import GameList from './GameList.svelte';
 import RaceStart from './RaceStart.svelte';
 import RoutePicker from './RoutePicker.svelte';
 import { RACES, raceStart } from './modes';
 
-vi.mock('$lib/ride/roads', () => ({ loadRoad: () => new Promise(() => {}) }));
+vi.mock('#lib/ride/roads.ts', () => ({
+	loadRoad: () => new Promise(() => {}),
+}));
 
 describe('a race asked of the hub (#3777)', () => {
 	it.each([

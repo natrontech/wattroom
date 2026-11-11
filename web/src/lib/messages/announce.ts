@@ -1,7 +1,7 @@
-import { away, notify, type ReplyTo } from '$lib/notify.svelte';
-import { shouldAnnounce } from '$lib/notify-once';
-import { play } from '$lib/sound/cues';
-import { toasts, type ToastAction } from '$lib/toast.svelte';
+import { away, notify, type ReplyTo } from '#lib/notify.svelte.ts';
+import { shouldAnnounce } from '#lib/notify-once.ts';
+import { play } from '#lib/sound/cues.ts';
+import { toasts, type ToastAction } from '#lib/toast.svelte.ts';
 import MessageCircle from '@lucide/svelte/icons/message-circle';
 
 /**

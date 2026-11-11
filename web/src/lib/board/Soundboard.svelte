@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { isTyping } from '$lib/keys';
-	import { shiftsGears } from '$lib/ride/keys';
+	import { isTyping } from '#lib/keys.ts';
+	import { shiftsGears } from '#lib/ride/keys.ts';
 	/**
 	 * The floating soundboard (#877), dragged where the rider wants it — the
 	 * same `dragPane` the popped-out stage uses, so a board and a stage behave
@@ -22,14 +22,14 @@
 		Volume2,
 		X,
 	} from '@lucide/svelte';
-	import { dragPane, keepSize } from '$lib/pane';
-	import { edgeDivider } from '$lib/divider';
-	import { account } from '$lib/account.svelte';
-	import { board, keptMillis, type Clip } from '$lib/board/clips.svelte';
-	import { isToggle } from '$lib/board/toggle-key.svelte';
-	import { boardPanel } from '$lib/board/panel.svelte';
-	import { modals } from '$lib/modals.svelte';
-	import { mixer } from '$lib/sound/mixer.svelte';
+	import { dragPane, keepSize } from '#lib/pane.ts';
+	import { edgeDivider } from '#lib/divider.ts';
+	import { account } from '#lib/account.svelte.ts';
+	import { board, keptMillis, type Clip } from '#lib/board/clips.svelte.ts';
+	import { isToggle } from '#lib/board/toggle-key.svelte.ts';
+	import { boardPanel } from '#lib/board/panel.svelte.ts';
+	import { modals } from '#lib/modals.svelte.ts';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
 	import {
 		applyLevels,
 		catchUp,
@@ -39,12 +39,12 @@
 		preview,
 		stop,
 		stopAll,
-	} from '$lib/sound/board.svelte';
-	import { UNIT_FADER } from '$lib/sound/fader';
-	import BoardFace from '$lib/board/BoardFace.svelte';
-	import ClipsFace from '$lib/board/ClipsFace.svelte';
-	import TrimFace from '$lib/board/TrimFace.svelte';
-	import type { Board, Rider } from '$lib/protocol';
+	} from '#lib/sound/board.svelte.ts';
+	import { UNIT_FADER } from '#lib/sound/fader.ts';
+	import BoardFace from '#lib/board/BoardFace.svelte';
+	import ClipsFace from '#lib/board/ClipsFace.svelte';
+	import TrimFace from '#lib/board/TrimFace.svelte';
+	import type { Board, Rider } from '#lib/protocol.ts';
 
 	let {
 		fires,

@@ -1,4 +1,4 @@
-import type { LiveRider } from '$lib/channel/types';
+import type { LiveRider } from '#lib/channel/types.ts';
 
 /**
  * Who the Training place's crew strip draws, you first when you are in it.

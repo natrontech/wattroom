@@ -13,11 +13,11 @@
 	 * Both layouts draw this band: over the world and flat (#3670); the words are
 	 * block.ts's.
 	 */
-	import { formatClock } from '$lib/format';
-	import { roadLine } from '$lib/ride/road-readout';
-	import type { RoadReadout } from '$lib/road/readout';
-	import { nextText, trainerChip, type Block } from '$lib/workout/block';
-	import CountChips from '$lib/session/CountChips.svelte';
+	import { formatClock } from '#lib/format.ts';
+	import { roadLine } from '#lib/ride/road-readout.ts';
+	import type { RoadReadout } from '#lib/road/readout.ts';
+	import { nextText, trainerChip, type Block } from '#lib/workout/block.ts';
+	import CountChips from '#lib/session/CountChips.svelte';
 	import type { Snippet } from 'svelte';
 
 	let {

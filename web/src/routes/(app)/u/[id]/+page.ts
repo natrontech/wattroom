@@ -1,6 +1,6 @@
-import { loadApi } from '$lib/api';
-import { fetchRider, type Rider } from '$lib/rider';
-import { fetchTrophies, type Trophies } from '$lib/trophies/trophies';
+import { loadApi } from '#lib/api.ts';
+import { fetchRider, type Rider } from '#lib/rider.ts';
+import { fetchTrophies, type Trophies } from '#lib/trophies/trophies.ts';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch, params }) => {

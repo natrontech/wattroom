@@ -6,22 +6,22 @@
 	// the crew's, the plan is its schedule, members and their numbers are its
 	// Members page. Voice connects on a tap, never on arrival.
 	import { untrack, type Snippet } from 'svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import { account } from '$lib/account.svelte';
-	import { takeDownAnnouncement } from '$lib/announce/take-down';
-	import { setCrewRole } from '$lib/crew';
-	import { planCrewSession } from '$lib/crew-schedule';
-	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
-	import { learnCrewFaces } from '$lib/crew';
-	import { presence } from '$lib/presence.svelte';
-	import { channelAddress } from '$lib/channel/address';
-	import ChannelShell from '$lib/channel/ChannelShell.svelte';
+	import Banner from '#lib/components/Banner.svelte';
+	import { account } from '#lib/account.svelte.ts';
+	import { takeDownAnnouncement } from '#lib/announce/take-down.ts';
+	import { setCrewRole } from '#lib/crew.ts';
+	import { planCrewSession } from '#lib/crew-schedule.ts';
+	import { provideCrewEmoji } from '#lib/emoji/crew-emoji.svelte.ts';
+	import { learnCrewFaces } from '#lib/crew.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { channelAddress } from '#lib/channel/address.ts';
+	import ChannelShell from '#lib/channel/ChannelShell.svelte';
 	import {
 		liveRoleOf,
 		loadVoiceChannel,
 		type VoiceChannelData,
-	} from '$lib/channel/voice-channel';
-	import { toasts } from '$lib/toast.svelte';
+	} from '#lib/channel/voice-channel.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
 
 	let {
 		crewId,

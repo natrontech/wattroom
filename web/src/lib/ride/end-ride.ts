@@ -1,4 +1,4 @@
-import { confirm } from '$lib/confirm.svelte';
+import { confirm } from '#lib/confirm.svelte.ts';
 
 /**
  * End ride on a workout asks first (#2623): the rest of the workout cannot

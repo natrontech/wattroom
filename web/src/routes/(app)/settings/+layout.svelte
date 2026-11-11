@@ -5,9 +5,9 @@
 	// linked to from wherever it is needed — the voice channel's Sound panel, a
 	// suggested FTP, the first-run card.
 	import { page } from '$app/state';
-	import { api } from '$lib/api';
-	import { buildLine } from '$lib/build-line';
-	import SectionTabs from '$lib/components/SectionTabs.svelte';
+	import { api } from '#lib/api.ts';
+	import { buildLine } from '#lib/build-line.ts';
+	import SectionTabs from '#lib/components/SectionTabs.svelte';
 
 	let { children }: { children: import('svelte').Snippet } = $props();
 

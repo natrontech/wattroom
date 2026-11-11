@@ -6,15 +6,22 @@
 	// styles are generated. A rider who opted out on this device, sat out the
 	// deck or stepped away hears nothing, and their browser builds no audio
 	// for it at all.
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { listening } from '$lib/channel/listening.svelte';
-	import { serverNow } from '$lib/server-clock';
-	import { mixer } from '$lib/sound/mixer.svelte';
-	import { onDuck } from '$lib/sound/duck';
-	import { createHouseRadio, type HouseRadio } from '$lib/lounge/house-radio';
-	import { radioHeard } from '$lib/lounge/radio-heard.svelte';
-	import { radioSrc, recordAt, type RecordPosition } from '$lib/lounge/records';
-	import { radioPickOf, stationPick, weatherOf } from '$lib/lounge/state';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { listening } from '#lib/channel/listening.svelte.ts';
+	import { serverNow } from '#lib/server-clock.ts';
+	import { mixer } from '#lib/sound/mixer.svelte.ts';
+	import { onDuck } from '#lib/sound/duck.ts';
+	import {
+		createHouseRadio,
+		type HouseRadio,
+	} from '#lib/lounge/house-radio.ts';
+	import { radioHeard } from '#lib/lounge/radio-heard.svelte.ts';
+	import {
+		radioSrc,
+		recordAt,
+		type RecordPosition,
+	} from '#lib/lounge/records.ts';
+	import { radioPickOf, stationPick, weatherOf } from '#lib/lounge/state.ts';
 
 	/** Past this, assign rather than let it ride: AudioDeck's bar. */
 	const DRIFT_SEC = 0.6;

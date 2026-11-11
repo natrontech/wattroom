@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { copyText, theLinkItself } from '$lib/copy';
+	import { copyText, theLinkItself } from '#lib/copy.ts';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Link from '@lucide/svelte/icons/link';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
-	} from '$lib/context-menu.svelte';
+	} from '#lib/context-menu.svelte.ts';
 	import { openImage } from './viewer.svelte';
 
 	// One picture in a message (#279): a pasted upload or an allowlisted GIF.

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { formatClockLong, formatKm } from '$lib/format';
-	import type { ClimbBest } from '$lib/road/attempts';
-	import { withBack } from '$lib/back-link';
-	import { classedOf, type Climb } from '$lib/road/climbs';
+	import { formatClockLong, formatKm } from '#lib/format.ts';
+	import type { ClimbBest } from '#lib/road/attempts.ts';
+	import { withBack } from '#lib/back-link.ts';
+	import { classedOf, type Climb } from '#lib/road/climbs.ts';
 
 	/**
 	 * A road's classed climbs, one row each (#3680): its name, class, length

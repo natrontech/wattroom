@@ -1,4 +1,4 @@
-import { referenceSpeed } from '$lib/road/pace';
+import { referenceSpeed } from '#lib/road/pace.ts';
 import type { Line } from '../terrain/lines';
 import { walker } from './roads';
 

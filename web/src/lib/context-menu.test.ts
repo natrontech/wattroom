@@ -7,7 +7,7 @@ import {
 	placeMenu,
 	placeRidingMenu,
 	scrollClosesMenu,
-} from '$lib/context-menu.svelte';
+} from '#lib/context-menu.svelte.ts';
 
 describe('placeMenu', () => {
 	it('opens at the pointer when there is space', () => {

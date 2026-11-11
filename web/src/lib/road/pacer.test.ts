@@ -4,7 +4,7 @@ import {
 	PaceDefaultCdA,
 	ParWkgC,
 	ReferenceRiderKg,
-} from '$lib/protocol';
+} from '#lib/protocol.ts';
 import { legsRoad } from './fixtures';
 import { finishedIn } from './ghost';
 import { createPace, steadySpeed } from './pace';

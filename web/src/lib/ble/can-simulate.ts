@@ -1,5 +1,5 @@
-import { dev } from '$app/environment';
-import { account } from '$lib/account.svelte';
+import { dev } from '$app/env';
+import { account } from '#lib/account.svelte.ts';
 
 /**
  * May this screen offer a simulated trainer (#123)?

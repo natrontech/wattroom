@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { KEY_TABLE } from '$lib/ride/keys';
-	import Modal from '$lib/components/Modal.svelte';
+	import { KEY_TABLE } from '#lib/ride/keys.ts';
+	import Modal from '#lib/components/Modal.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
 

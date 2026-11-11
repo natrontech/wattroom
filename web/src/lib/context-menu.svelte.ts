@@ -5,7 +5,7 @@
  * in the root layout draws it, `contextMenu(items)` attaches it to a node.
  */
 import type { Component } from 'svelte';
-import type { Fader } from '$lib/sound/fader';
+import type { Fader } from '#lib/sound/fader.ts';
 
 export interface MenuItem {
 	/** Discriminates a plain item from a slider; items may leave it out. */

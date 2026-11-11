@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { fieldDimmer } from '$lib/session/field-dim';
+import { fieldDimmer } from '#lib/session/field-dim.ts';
 
 it('dims after 20 s unchanged and wakes on a change', () => {
 	const d = fieldDimmer();

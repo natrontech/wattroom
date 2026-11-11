@@ -3,10 +3,10 @@
  * light is a few small spots drifting over the walls, never a change in the
  * room's brightness: nothing here can flash the view (WCAG 2.3.1).
  */
-import { LOUNGE as C } from '$lib/lounge/palette';
-import { disc, dot, rect, type Ctx } from '$lib/lounge/pixel';
-import type { SceneInput } from '$lib/lounge/scene';
-import { hash3 } from '$lib/lounge/hash';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
+import { disc, dot, rect, type Ctx } from '#lib/lounge/pixel.ts';
+import type { SceneInput } from '#lib/lounge/scene.ts';
+import { hash3 } from '#lib/lounge/hash.ts';
 
 const SPOTS = 18;
 

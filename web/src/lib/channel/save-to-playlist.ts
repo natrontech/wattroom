@@ -1,10 +1,10 @@
-import type { JukeboxCommand, JukeboxEntry } from '$lib/protocol';
+import type { JukeboxCommand, JukeboxEntry } from '#lib/protocol.ts';
 import {
 	commandFromEntry,
 	type PlaylistStore,
 	type SaveTarget,
-} from '$lib/channel/playlists.svelte';
-import { toasts } from '$lib/toast.svelte';
+} from '#lib/channel/playlists.svelte.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /**
  * Putting what everyone is hearing onto a shelf (#1427, #1517). A saved

@@ -4,7 +4,7 @@
 // photograph of a model railway. The people in it are the room's sprites
 // (avatar.ts), crisp at any size. Words draw after, sharp.
 import * as THREE from 'three';
-import { LOUNGE } from '$lib/lounge/palette';
+import { LOUNGE } from '#lib/lounge/palette.ts';
 import { DIORAMA, MOTION, rampAll, WORDS } from './pixel';
 import { SPRITE_SCREEN } from './rider-sprite';
 import type { Style } from './styles';

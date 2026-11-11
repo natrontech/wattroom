@@ -1,14 +1,14 @@
-import { createCadenceSensor } from '$lib/ble/cadence';
-import { pairError } from '$lib/ble/pair-error';
-import { createHeartRateSensor } from '$lib/ble/heartrate';
-import { createPowerMeterSensor } from '$lib/ble/cyclingpower';
-import { createSimulatedSensor } from '$lib/ble/simulated-sensor';
+import { createCadenceSensor } from '#lib/ble/cadence.ts';
+import { pairError } from '#lib/ble/pair-error.ts';
+import { createHeartRateSensor } from '#lib/ble/heartrate.ts';
+import { createPowerMeterSensor } from '#lib/ble/cyclingpower.ts';
+import { createSimulatedSensor } from '#lib/ble/simulated-sensor.ts';
 import type {
 	Sensor,
 	SensorKind,
 	SensorReading,
 	SensorStatus,
-} from '$lib/ble/sensor';
+} from '#lib/ble/sensor.ts';
 
 /**
  * The connected sensors, shared across the app (#11).

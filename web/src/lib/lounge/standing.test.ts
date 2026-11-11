@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { xpForLevel } from '$lib/level';
-import { cheerWords, cheersOf, type SeenStanding } from '$lib/lounge/standing';
+import { xpForLevel } from '#lib/level.ts';
+import {
+	cheerWords,
+	cheersOf,
+	type SeenStanding,
+} from '#lib/lounge/standing.ts';
 
 describe('cheersOf', () => {
 	it('never celebrates a rider the room sees for the first time', () => {

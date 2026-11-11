@@ -1,8 +1,8 @@
 import { flushSync } from 'svelte';
-import { api } from '$lib/api';
-import type { MenuEntry } from '$lib/context-menu.svelte';
-import type { LiveChannel, LiveOccupant } from '$lib/crews-live';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import type { MenuEntry } from '#lib/context-menu.svelte.ts';
+import type { LiveChannel, LiveOccupant } from '#lib/crews-live.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 import ArrowRight from '@lucide/svelte/icons/arrow-right';
 import {
 	ARRIVAL_MS,

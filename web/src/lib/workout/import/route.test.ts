@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { MaxLegSeconds } from '$lib/protocol';
-import type { TrackPoint } from '$lib/road/parse';
-import { toGpx } from '$lib/road/fixtures';
+import { MaxLegSeconds } from '#lib/protocol.ts';
+import type { TrackPoint } from '#lib/road/parse.ts';
+import { toGpx } from '#lib/road/fixtures.ts';
 import { base64Of, importRoute, isRouteFile, readRouteFile } from './index';
 
 // Invented, in the South Atlantic: no fixture here is anyone's road (#3054).

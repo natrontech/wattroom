@@ -1,5 +1,5 @@
-import { api } from '$lib/api';
-import { toasts } from '$lib/toast.svelte';
+import { api } from '#lib/api.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 
 /**
  * Takes a text channel's announcement down — from the channel itself, the

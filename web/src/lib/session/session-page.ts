@@ -1,10 +1,10 @@
-import { loadApi } from '$lib/api';
-import { fetchCrewRecaps } from '$lib/crew';
-import type { LiveSession } from '$lib/protocol';
+import { loadApi } from '#lib/api.ts';
+import { fetchCrewRecaps } from '#lib/crew.ts';
+import type { LiveSession } from '#lib/protocol.ts';
 import {
 	loadVoiceChannel,
 	type VoiceChannelData,
-} from '$lib/channel/voice-channel';
+} from '#lib/channel/voice-channel.ts';
 
 /**
  * A session's page (#2450): the session, and the voice channel it runs in,

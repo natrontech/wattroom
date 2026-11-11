@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MenuItem } from '$lib/context-menu.svelte';
-import { micMenu } from '$lib/channel/mic-menu';
-import { soundPanel } from '$lib/channel/sound-panel.svelte';
+import type { MenuItem } from '#lib/context-menu.svelte.ts';
+import { micMenu } from '#lib/channel/mic-menu.ts';
+import { soundPanel } from '#lib/channel/sound-panel.svelte.ts';
 
 // Opening the panel asks the browser for devices on the way in (#658).
-vi.mock('$lib/channel/connection.svelte', () => ({
+vi.mock('#lib/channel/connection.svelte.ts', () => ({
 	channelConnection: { current: { av: { refreshDevices: () => {} } } },
 }));
 
 // A phone is the pointer, not the width (#2142) — the one thing the gate
 // entries below branch on.
 const env = vi.hoisted(() => ({ coarse: false }));
-vi.mock('$lib/device.svelte', () => ({
+vi.mock('#lib/device.svelte.ts', () => ({
 	device: env,
 	deviceWord: () => (env.coarse ? 'phone' : 'desktop'),
 }));

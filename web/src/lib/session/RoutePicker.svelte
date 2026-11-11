@@ -1,6 +1,6 @@
 <script lang="ts" module>
-	import type { ControlRoute } from '$lib/protocol';
-	import type { Workout } from '$lib/workout/types';
+	import type { ControlRoute } from '#lib/protocol.ts';
+	import type { Workout } from '#lib/workout/types.ts';
 	import type { GameStart } from './modes';
 
 	/** The road picked, ridden together as its own workout or raced (#3777). */
@@ -11,15 +11,15 @@
 
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import RouteProfile from '$lib/components/RouteProfile.svelte';
-	import RouteRow from '$lib/components/RouteRow.svelte';
-	import { formatDuration } from '$lib/format';
-	import { MaxLegSeconds } from '$lib/protocol';
-	import { loadRoad } from '$lib/ride/roads';
-	import { crewSeconds, rideTogether } from '$lib/road/ride-together';
-	import { roadStep, type Road } from '$lib/road/road';
-	import type { StoredRoute } from '$lib/road/stored';
-	import { durationSeconds } from '$lib/workout/engine';
+	import RouteProfile from '#lib/components/RouteProfile.svelte';
+	import RouteRow from '#lib/components/RouteRow.svelte';
+	import { formatDuration } from '#lib/format.ts';
+	import { MaxLegSeconds } from '#lib/protocol.ts';
+	import { loadRoad } from '#lib/ride/roads.ts';
+	import { crewSeconds, rideTogether } from '#lib/road/ride-together.ts';
+	import { roadStep, type Road } from '#lib/road/road.ts';
+	import type { StoredRoute } from '#lib/road/stored.ts';
+	import { durationSeconds } from '#lib/workout/engine.ts';
 	import RaceChoice from './RaceChoice.svelte';
 
 	/**

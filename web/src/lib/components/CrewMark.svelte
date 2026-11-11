@@ -2,8 +2,8 @@
 	// A crew's face, everywhere it is drawn (#1237): the picture when there
 	// is one, else the icon, else the initial — one component so the
 	// switcher, the crew page and the door cannot disagree. Chrome, not data.
-	import MarkIcon from '$lib/components/MarkIcon.svelte';
-	import { iconFor } from '$lib/icons';
+	import MarkIcon from '#lib/components/MarkIcon.svelte';
+	import { iconFor } from '#lib/icons.ts';
 
 	let {
 		name,

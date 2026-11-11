@@ -3,9 +3,9 @@
  * walking to its next place or jumping on and off the furniture. A pet anyone in the channel gives wakes it on
  * every screen. Drawn as it sat on the sill, moved to where it is.
  */
-import { LOUNGE as C } from '$lib/lounge/palette';
-import { dot, outlined, rect, sprite, type Ctx } from '$lib/lounge/pixel';
-import type { SceneInput } from '$lib/lounge/scene';
+import { LOUNGE as C } from '#lib/lounge/palette.ts';
+import { dot, outlined, rect, sprite, type Ctx } from '#lib/lounge/pixel.ts';
+import type { SceneInput } from '#lib/lounge/scene.ts';
 
 const Z = ['111', '010', '111'];
 /** The sill spot the drawing below was made at. */

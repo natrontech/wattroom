@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { confirm } from '$lib/confirm.svelte';
+import { confirm } from '#lib/confirm.svelte.ts';
 import {
 	crewCalendarLink,
 	mayRearrange,
@@ -7,7 +7,7 @@ import {
 	planPlace,
 } from './crew-schedule';
 
-vi.mock('$lib/confirm.svelte', () => ({ confirm: vi.fn() }));
+vi.mock('#lib/confirm.svelte.ts', () => ({ confirm: vi.fn() }));
 
 describe('crew schedule (#2452)', () => {
 	it('says where a plan runs, or that it names no channel yet', () => {

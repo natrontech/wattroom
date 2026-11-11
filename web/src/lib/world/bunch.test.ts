@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBunch, formation, LANE, PULL_LANE, VERGE_LANE } from './bunch';
 import { ROAD_W } from './terrain/road-profile';
-import type { BunchView } from '$lib/channel/bunch-view';
+import type { BunchView } from '#lib/channel/bunch-view.ts';
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `r${i}`);
 

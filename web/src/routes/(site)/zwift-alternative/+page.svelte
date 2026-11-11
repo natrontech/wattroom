@@ -1,17 +1,17 @@
 <script lang="ts">
-	import CompareTable from '$lib/site/CompareTable.svelte';
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import { RIVALS } from '$lib/site/rivals';
+	import CompareTable from '#lib/site/CompareTable.svelte';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import { RIVALS } from '#lib/site/rivals.ts';
 	import {
 		article,
 		CHECKED,
 		monthYear,
 		ZWIFT_ALTERNATIVE,
-	} from '$lib/site/seo';
+	} from '#lib/site/seo.ts';
 
 	// The hub for "zwift alternative" (#2995). What ranks for it is honest
 	// comparison: a table, dated prices, sources, and saying plainly when

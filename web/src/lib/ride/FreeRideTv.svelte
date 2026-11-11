@@ -5,10 +5,10 @@
 	 * the clock and the road line, no block and no NEXT. One frame for the
 	 * road ride at /ride and a voice channel's free ride (ADR-0046).
 	 */
-	import type { LiveRider } from '$lib/channel/types';
-	import type { FreeRide } from '$lib/ride/free-ride.svelte';
-	import TvOverlay from '$lib/session/TvOverlay.svelte';
-	import { skylineOf } from '$lib/workout/road-workout';
+	import type { LiveRider } from '#lib/channel/types.ts';
+	import type { FreeRide } from '#lib/ride/free-ride.svelte.ts';
+	import TvOverlay from '#lib/session/TvOverlay.svelte';
+	import { skylineOf } from '#lib/workout/road-workout.ts';
 
 	let {
 		free,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recapEyebrow, recapTiles, rideKind } from '$lib/ride/recap-frame';
+import { recapEyebrow, recapTiles, rideKind } from '#lib/ride/recap-frame.ts';
 
 describe('recapTiles (#3686)', () => {
 	const full = {

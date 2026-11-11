@@ -13,9 +13,9 @@
 	 * A session is left by walking away, so the tap sends. That is what the
 	 * button says before it is pressed, and what the line under it says after.
 	 */
-	import FlagButton from '$lib/ride/FlagButton.svelte';
-	import { FLAG_SAID } from '$lib/ride/flag';
-	import { useChannel } from '$lib/channel/context';
+	import FlagButton from '#lib/ride/FlagButton.svelte';
+	import { FLAG_SAID } from '#lib/ride/flag.ts';
+	import { useChannel } from '#lib/channel/context.ts';
 
 	const channel = useChannel();
 	// The ride's ring, not this component's (#2657): it ticks from pairing on,

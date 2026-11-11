@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { SprintState } from '$lib/protocol';
-	import type { LiveRider } from '$lib/channel/types';
-	import { PLACES } from '$lib/session/podium';
-	import { serverNow } from '$lib/server-clock';
-	import { wkg } from '$lib/format';
-	import { sprintPhase } from '$lib/session/sprint-phase';
+	import type { SprintState } from '#lib/protocol.ts';
+	import type { LiveRider } from '#lib/channel/types.ts';
+	import { PLACES } from '#lib/session/podium.ts';
+	import { serverNow } from '#lib/server-clock.ts';
+	import { wkg } from '#lib/format.ts';
+	import { sprintPhase } from '#lib/session/sprint-phase.ts';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
 	// mini-podium. Visual only since #1412 — the klaxon, the gun and the

@@ -3,11 +3,11 @@
 	// (#2576), so your week has to reach you here, not only on your own Home.
 	// Decorative context, like Home's form line: a read that fails leaves the
 	// line away rather than saying "0 rides" it does not know.
-	import { account, unchosen } from '$lib/account.svelte';
-	import { api } from '$lib/api';
-	import { formatDuration } from '$lib/format';
-	import type { ServerRide } from '$lib/ride/list';
-	import { weekTotals } from '$lib/ride/week';
+	import { account, unchosen } from '#lib/account.svelte.ts';
+	import { api } from '#lib/api.ts';
+	import { formatDuration } from '#lib/format.ts';
+	import type { ServerRide } from '#lib/ride/list.ts';
+	import { weekTotals } from '#lib/ride/week.ts';
 	import ChartColumn from '@lucide/svelte/icons/chart-column';
 
 	let week = $state<ReturnType<typeof weekTotals> | null>(null);

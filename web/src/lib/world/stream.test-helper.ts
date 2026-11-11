@@ -1,5 +1,5 @@
-import type { TrackPoint } from '$lib/road/parse';
-import { toRoute } from '$lib/road/route';
+import type { TrackPoint } from '#lib/road/parse.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { landUse } from './land';
 import { createTerrain, gridAt, placeLevel } from './terrain-mesh';
 import { makeGround } from './terrain/ground';

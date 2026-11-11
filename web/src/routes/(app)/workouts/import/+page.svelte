@@ -2,17 +2,17 @@
 	import FileUp from '@lucide/svelte/icons/file-up';
 	import Info from '@lucide/svelte/icons/info';
 	import { onMount } from 'svelte';
-	import { goto, replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { account } from '$lib/account.svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
-	import { fileDrop, takeHandedFiles } from '$lib/file-drop.svelte';
-	import { formatClock } from '$lib/format';
-	import { toasts } from '$lib/toast.svelte';
-	import { customWorkouts } from '$lib/workout/custom.svelte';
-	import { durationSeconds, flatten } from '$lib/workout/engine';
+	import { account } from '#lib/account.svelte.ts';
+	import Banner from '#lib/components/Banner.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import WorkoutPreview from '#lib/components/WorkoutPreview.svelte';
+	import { fileDrop, takeHandedFiles } from '#lib/file-drop.svelte.ts';
+	import { formatClock } from '#lib/format.ts';
+	import { toasts } from '#lib/toast.svelte.ts';
+	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
+	import { durationSeconds, flatten } from '#lib/workout/engine.ts';
 	import {
 		IMPORT_EXTENSIONS,
 		importWorkoutFile,
@@ -20,13 +20,13 @@
 		readRouteFile,
 		ROUTE_EXTENSIONS,
 		type Imported,
-	} from '$lib/workout/import';
+	} from '#lib/workout/import/index.ts';
 	import {
 		importPlanned,
 		intervalsAvailable,
 		openPull,
 		type PlannedWorkout,
-	} from '$lib/workout/import/intervals';
+	} from '#lib/workout/import/intervals.ts';
 	import RouteImport from './RouteImport.svelte';
 
 	/**
@@ -105,7 +105,7 @@
 		const landing = page.url.searchParams.get('intervals');
 		if (!landing) return;
 		// A reload must not ask again for a pull that is already spent.
-		replaceState(page.url.pathname, {});
+		goto(page.url.pathname, { shallow: true, replace: true });
 		pull = { state: 'opening' };
 		void openPull(landing).then((result) => {
 			pull = result.ok
@@ -348,6 +348,7 @@
 								>{formatClock(total)}</span
 							>
 						</div>
+
 						<div class="mt-3">
 							<WorkoutPreview {segments} ftp={previewFtp} />
 						</div>

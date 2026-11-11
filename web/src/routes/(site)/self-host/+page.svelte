@@ -1,10 +1,10 @@
 <script lang="ts">
-	import CtaBand from '$lib/site/CtaBand.svelte';
-	import Faq from '$lib/site/Faq.svelte';
-	import PageHero from '$lib/site/PageHero.svelte';
-	import SectionHead from '$lib/site/SectionHead.svelte';
-	import Seo from '$lib/site/Seo.svelte';
-	import { REPO, SELF_HOST } from '$lib/site/seo';
+	import CtaBand from '#lib/site/CtaBand.svelte';
+	import Faq from '#lib/site/Faq.svelte';
+	import PageHero from '#lib/site/PageHero.svelte';
+	import SectionHead from '#lib/site/SectionHead.svelte';
+	import Seo from '#lib/site/Seo.svelte';
+	import { REPO, SELF_HOST } from '#lib/site/seo.ts';
 
 	// For clubs and tinkerers (#2995): what running your own WattRoom takes.
 	// deploy/README.md is the reference; this page points at it rather than

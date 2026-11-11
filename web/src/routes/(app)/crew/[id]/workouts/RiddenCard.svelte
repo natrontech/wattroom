@@ -5,12 +5,12 @@
 	// sessions themselves behind a fold. Presence and time only (ADR-0034):
 	// who and when, never anybody's numbers but your own, behind the recap.
 	import type { Snippet } from 'svelte';
-	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
-	import type { RiddenWorkout } from '$lib/crew-workouts';
-	import { formatClock, formatDuration, formatShortDate } from '$lib/format';
-	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
-	import { segmentsDuration } from '$lib/workout/engine';
-	import { parseSharedSegments } from '$lib/workout/shared';
+	import WorkoutPreview from '#lib/components/WorkoutPreview.svelte';
+	import type { RiddenWorkout } from '#lib/crew-workouts.ts';
+	import { formatClock, formatDuration, formatShortDate } from '#lib/format.ts';
+	import SessionRecapCard from '#lib/session/SessionRecapCard.svelte';
+	import { segmentsDuration } from '#lib/workout/engine.ts';
+	import { parseSharedSegments } from '#lib/workout/shared.ts';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 
 	let {

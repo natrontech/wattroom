@@ -2,12 +2,12 @@
 	// The room with what is shared on its wall: a voice channel's page and a
 	// ride's Room view. A phone's wall cannot hold YouTube's 200 × 200, so
 	// there the picture hangs above the room (LoungeScene).
-	import type { MenuEntry } from '$lib/context-menu.svelte';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { useChannel } from '$lib/channel/context';
-	import Stage from '$lib/channel/Stage.svelte';
-	import { pickStage, pictureKey } from '$lib/channel/stage';
-	import LoungeScene from '$lib/lounge/LoungeScene.svelte';
+	import type { MenuEntry } from '#lib/context-menu.svelte.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
+	import { useChannel } from '#lib/channel/context.ts';
+	import Stage from '#lib/channel/Stage.svelte';
+	import { pickStage, pictureKey } from '#lib/channel/stage.ts';
+	import LoungeScene from '#lib/lounge/LoungeScene.svelte';
 
 	let { menuOf }: { menuOf: (id: string) => MenuEntry[] } = $props();
 

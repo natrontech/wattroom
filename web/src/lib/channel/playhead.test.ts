@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { MaxSeekSeconds } from '$lib/protocol';
+import { MaxSeekSeconds } from '#lib/protocol.ts';
 import {
 	chase,
 	clampSeek,
 	pausedChase,
 	playheadAt,
-} from '$lib/channel/playhead';
+} from '#lib/channel/playhead.ts';
 
 describe('chase', () => {
 	it('seeks a real gap, in either direction', () => {

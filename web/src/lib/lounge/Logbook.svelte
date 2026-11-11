@@ -4,13 +4,13 @@
 	// time, read from GET /api/me/logbook and seen by nobody else. The
 	// arcade's game bests are its next page: `arcade` is where they go.
 	import type { Snippet } from 'svelte';
-	import Banner from '$lib/components/Banner.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import Skeleton from '$lib/components/Skeleton.svelte';
-	import { api } from '$lib/api';
-	import { formatDuration } from '$lib/format';
-	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
+	import Banner from '#lib/components/Banner.svelte';
+	import Modal from '#lib/components/Modal.svelte';
+	import ProgressBar from '#lib/components/ProgressBar.svelte';
+	import Skeleton from '#lib/components/Skeleton.svelte';
+	import { api } from '#lib/api.ts';
+	import { formatDuration } from '#lib/format.ts';
+	import { levelFromXp, levelProgress, xpForLevel } from '#lib/level.ts';
 
 	interface Book {
 		totalXp: number;
