@@ -1,6 +1,7 @@
 import { homeRoad, homeRoute } from '#lib/ride/home-roads.ts';
 import { api } from '#lib/api.ts';
 import type { Road } from '#lib/road/road.ts';
+import type { ClimbBest } from '#lib/road/attempts.ts';
 import { fetchCrewSchedule } from '#lib/crew-schedule.ts';
 import { roadOf, type StoredRoute } from '#lib/road/stored.ts';
 import { roadOf as attachedRoadOf } from '#lib/workout/road-workout.ts';
@@ -52,6 +53,20 @@ export async function carryOnFrom(
 }
 
 type CarryAttempt = { fromM?: number; distanceM?: number; kind: string };
+
+/**
+ * Your best time up each classed climb of your own road (#3033), for the
+ * closing card's PR flags (#4516). Empty when there is nothing to read: a
+ * home road keeps no attempts (#4248), and a best that could not be read
+ * flags nothing rather than failing the card.
+ */
+export async function climbBests(routeId: string): Promise<ClimbBest[]> {
+	if (homeRoad(routeId)) return [];
+	const res = await api<{ climbBests?: ClimbBest[] }>(
+		`/api/routes/${encodeURIComponent(routeId)}/attempts`,
+	);
+	return res.ok ? (res.data.climbBests ?? []) : [];
+}
 
 /** carryOnFrom over attempts already read, newest first as the server sends them. */
 export function carryOnOf(

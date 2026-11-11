@@ -211,6 +211,9 @@ export const theRide = {
 	get savedXp() {
 		return outcome.xp;
 	},
+	get savedBatzen() {
+		return outcome.batzen;
+	},
 	get flags() {
 		return ensureRoot().flags;
 	},

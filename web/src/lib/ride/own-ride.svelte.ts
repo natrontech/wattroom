@@ -2,6 +2,7 @@ import { byReference } from '#lib/workout/road-workout.ts';
 import { account } from '#lib/account.svelte.ts';
 import { pairError } from '#lib/ble/pair-error.ts';
 import type { Trainer } from '#lib/ble/trainer.ts';
+import type { RideBatzen } from '#lib/ride/batzen.ts';
 import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
 import {
 	recordingUpload,
@@ -17,7 +18,7 @@ import type { Workout } from '#lib/workout/types.ts';
 type RideSession = ReturnType<typeof createRideSession>;
 
 export type OwnRideOutcome =
-	| { saved: string | null; xp?: number }
+	| { saved: string | null; xp?: number; batzen?: RideBatzen }
 	| { failure: SaveFailure }
 	| { nothing: true };
 
@@ -91,7 +92,11 @@ export function createOwnRide(deps: {
 		saving = false;
 		if ('saved' in result) {
 			ended?.end();
-			outcome = { saved: result.saved.id || null, xp: result.saved.xp };
+			outcome = {
+				saved: result.saved.id || null,
+				xp: result.saved.xp,
+				batzen: result.saved.batzen,
+			};
 			return outcome;
 		}
 		// Kept in the crash buffer unless the server will refuse it again, so

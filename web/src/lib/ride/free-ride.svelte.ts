@@ -15,6 +15,7 @@ import { createRoadReadout } from '#lib/ride/road-readout.ts';
 import { wayUp } from '#lib/ride/climb-repeats.ts';
 import { createRoadLaps, type RoadSecond } from '#lib/ride/road-ride.ts';
 import type { RideableRoute } from '#lib/ride/roads.ts';
+import type { RideBatzen } from '#lib/ride/batzen.ts';
 import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
 import { createLiveStats } from '#lib/ride/live-stats.svelte.ts';
 import {
@@ -37,7 +38,7 @@ export const FREE_RIDE_JSON = JSON.stringify({
 });
 
 export type FreeRideOutcome =
-	| { saved: { id: string; xp?: number } }
+	| { saved: { id: string; xp?: number; batzen?: RideBatzen } }
 	| { failure: SaveFailure }
 	| { short: true };
 

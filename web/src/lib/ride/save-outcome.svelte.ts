@@ -1,3 +1,4 @@
+import type { RideBatzen } from '#lib/ride/batzen.ts';
 import type { SaveAnswers } from '#lib/ride/ride-alone-save.ts';
 
 /**
@@ -15,6 +16,7 @@ export function createSaveOutcome() {
 	// The ride on the account, once it is: the summary's way forward (#1331).
 	let id = $state<string | null>(null);
 	let xp = $state<number | undefined>(undefined);
+	let batzen = $state<RideBatzen | undefined>(undefined);
 	return {
 		get saving() {
 			return saving;
@@ -31,6 +33,10 @@ export function createSaveOutcome() {
 		get xp() {
 			return xp;
 		},
+		/** What the ride put in the wallet (#4515), once saved. */
+		get batzen() {
+			return batzen;
+		},
 		/** A new ride: nothing answered yet. */
 		reset() {
 			saving = false;
@@ -38,6 +44,7 @@ export function createSaveOutcome() {
 			retry = null;
 			id = null;
 			xp = undefined;
+			batzen = undefined;
 		},
 		/** Where one save's answers land: here while `current` holds. */
 		answers(current: () => boolean, seen: () => boolean): SaveAnswers {
@@ -52,9 +59,10 @@ export function createSaveOutcome() {
 					status = text;
 					retry = again;
 				},
-				saved: (savedId, savedXp) => {
+				saved: (savedId, savedXp, savedBatzen) => {
 					id = savedId;
 					xp = savedXp;
+					batzen = savedBatzen;
 				},
 			};
 		},

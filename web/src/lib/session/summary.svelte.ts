@@ -4,6 +4,8 @@ import type { Medal } from '#lib/components/MedalCard.svelte';
 import { MEDAL_META } from '#lib/medals.ts';
 import { MinRideSamples, type RaceBracket } from '#lib/protocol.ts';
 import type { LiveRider } from '#lib/channel/types.ts';
+import type { RideBatzen } from '#lib/ride/batzen.ts';
+import type { RoadSample } from '#lib/ride/road-recap.ts';
 import type { RideKind } from '#lib/ride/recap-frame.ts';
 import type { createRecording } from '#lib/session/recording.svelte.ts';
 import { untrack } from 'svelte';
@@ -76,6 +78,8 @@ export function createSummary(deps: {
 	// The pipeline's XP for the ride the session saved (#1411): the card said
 	// "0 XP" to everyone. Shown once the ride is found, never as a placeholder.
 	let rideXp = $state<number | null>(null);
+	let rideBatzen = $state<RideBatzen | null>(null);
+	let roadSamples = $state.raw<RoadSample[] | null>(null);
 	const medal = $derived<Medal | undefined>(
 		medalBase
 			? rideXp === null
@@ -127,7 +131,21 @@ export function createSummary(deps: {
 	/** A medal hangs off the ride it was won on (medals.ride_id), so it is
 	 *  read from that ride — mine, by construction, and this session's. */
 	async function readMedal(id: string) {
-		const res = await api<{ medals?: { kind: string }[] }>(`/api/rides/${id}`);
+		const res = await api<{
+			medals?: { kind: string }[];
+			batzen?: RideBatzen;
+			samples?: RoadSample[];
+		}>(`/api/rides/${id}`);
+		// What the ride paid and where it rode ride the same read (#4515,
+		// #4516): the rider's own. The session's recording keeps watts alone;
+		// the saved ride keeps the metres the bunch placed them at.
+		if (res.ok && rideId === id) {
+			rideBatzen = res.data.batzen ?? null;
+			const samples = res.data.samples ?? [];
+			roadSamples = samples.some((s) => (s.m ?? 0) > 0)
+				? samples.map(({ watts, m, alt }) => ({ watts, m, alt }))
+				: null;
+		}
 		const won = res.ok ? res.data.medals?.[0] : undefined;
 		if (!won) return;
 		const meta = MEDAL_META[won.kind];
@@ -167,6 +185,8 @@ export function createSummary(deps: {
 			fetched = false;
 			medalBase = undefined;
 			rideXp = null;
+			rideBatzen = null;
+			roadSamples = null;
 			rideId = null;
 			rideLate = false;
 			sessionStart = deps.startedAt() ?? Date.now();
@@ -215,6 +235,14 @@ export function createSummary(deps: {
 		/** The saved ride's XP, streak bonus included (#3753). */
 		get rideXp() {
 			return rideXp ?? undefined;
+		},
+		/** What the saved ride put in the wallet (#4515), once it is read. */
+		get rideBatzen() {
+			return rideBatzen ?? undefined;
+		},
+		/** The saved ride's seconds on its road (#4516); absent off one. */
+		get roadSamples() {
+			return roadSamples ?? undefined;
 		},
 		/** The ride's own page, once the session has saved it. */
 		get rideId() {
