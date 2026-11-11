@@ -12,6 +12,7 @@
 	import SessionControls from '#lib/session/SessionControls.svelte';
 	import FreeRide from '#lib/ride/FreeRide.svelte';
 	import { device } from '#lib/device.svelte.ts';
+	import { rideFrame } from '#lib/ride/ride-frame.svelte.ts';
 	import {
 		joinIntent,
 		shouldAskJoin,
@@ -65,21 +66,30 @@
 {#if channelConnection.at(channel.address)?.live.tick?.state.together}
 	<!-- Riding together (docs/SESSIONS.md): the crew's numbers on top, the
 	     coach's End, and your own free ride underneath driving your trainer. -->
-	<div class="flex min-h-full flex-col gap-4 px-4 py-5 sm:px-6">
-		<CrewStrip
-			riders={channel.riders.filter((r) => r.inSession && !r.you)}
-			pad=""
-		/>
-		<div class="flex flex-wrap items-center gap-2">
-			{#if !channel.you.inSession && !device.spectator}
-				<button
-					onclick={() => channel.control('join')}
-					class="btn btn-accent btn-lg">Join the ride</button
-				>
-			{/if}
-			<SessionControls />
+	<!-- A definite height, with the ride taking what is left: under a
+	     min-height the free ride's own h-full had nothing to fill and the
+	     ride shrank to a sliver on a desk, its rail cut off. -->
+	<div class="flex h-full min-h-0 flex-col">
+		<div class="shrink-0 px-4 pt-3 sm:px-6">
+			<CrewStrip
+				riders={channel.riders.filter((r) => r.inSession && !r.you)}
+				pad=""
+			/>
 		</div>
-		<FreeRide />
+		<!-- Riding, the coach's controls are the now bar's (WATTROOM.md: never
+		     on the ride); before the ride they sit here. -->
+		{#if !rideFrame.riding || (!channel.you.inSession && !device.spectator)}
+			<div class="flex shrink-0 flex-wrap items-center gap-2 px-4 pt-3 sm:px-6">
+				{#if !channel.you.inSession && !device.spectator}
+					<button
+						onclick={() => channel.control('join')}
+						class="btn btn-accent btn-lg">Join the ride</button
+					>
+				{/if}
+				{#if !rideFrame.riding}<SessionControls />{/if}
+			</div>
+		{/if}
+		<div class="min-h-0 flex-1"><FreeRide /></div>
 	</div>
 {:else}
 	<Training />
