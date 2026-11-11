@@ -173,7 +173,7 @@ is in [deploy/README.md](deploy/README.md).
 
 ## Develop
 
-Requirements: Go 1.26+, Node 22+, pnpm, Docker. The pnpm version is pinned in
+Requirements: Go 1.27+, Node 26+, pnpm, Docker. The pnpm version is pinned in
 `web/package.json` (`packageManager`), and pnpm 10+ or corepack installs it for you.
 
 ```sh

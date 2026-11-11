@@ -9,7 +9,7 @@
 # repository changing. Dependabot moves the digests monthly. A new node or
 # golang tag stays a human's edit — the Node major tracks ci.yml's `web` job
 # and the Go version tracks go.mod.
-FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS web
+FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS web
 RUN corepack enable
 WORKDIR /src/web
 # pnpm-workspace.yaml is part of the install's input, not a convenience:
@@ -25,7 +25,7 @@ COPY web/ ./
 COPY CHANGELOG.md ./static/changelog.md
 RUN pnpm build
 
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 AS server
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:eb61c3873c97416fff0116553fff65d67a3549f72e11d9758849a689cdd8b523 AS server
 WORKDIR /src/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download
@@ -45,7 +45,7 @@ RUN mkdir -p /mountpoints/data/tracks /mountpoints/data/feedback
 # House radio's records (scripts/house-radio.py): 86 MB of CC0 tracks kept
 # out of git as a release asset, pinned by checksum like every base image. A
 # stage of its own, so the layer stays cached until the records change.
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 AS radio
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine@sha256:eb61c3873c97416fff0116553fff65d67a3549f72e11d9758849a689cdd8b523 AS radio
 ADD --checksum=sha256:9130e7bebecf9d6b788b0b6d490056d43641da98f97e950fe85326fdda9e1dfe \
     https://github.com/natrontech/wattroom/releases/download/house-radio-1/house-radio.tar /radio.tar
 RUN mkdir /radio && tar -xf /radio.tar -C /radio
