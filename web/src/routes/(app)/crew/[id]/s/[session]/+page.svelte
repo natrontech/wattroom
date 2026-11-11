@@ -3,6 +3,7 @@
 	// interval strip, the coach's controls, sprints, games, the countdown.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { untrack } from 'svelte';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { useChannel } from '#lib/channel/context.ts';
 	import { liveSessionId } from '#lib/channel/tick-session.ts';
@@ -23,12 +24,16 @@
 	// (a "Join the ride" link's door, the page's Join, the coach's Start)
 	// puts this rider on its timeline. The door comes off the address, so a
 	// reload or a shared link watches.
+	// Only the address is tracked: the goto changes page.state, and a read of
+	// it here looped the page solid.
 	$effect(() => {
 		const door = takeJoinDoor(page.url);
 		if (!door) return;
-		const here = page.params.session;
-		if (here && !device.spectator) joinIntent.choose(here);
-		void goto(door.rest, { shallow: true, replace: true, state: page.state });
+		untrack(() => {
+			const here = page.params.session;
+			if (here && !device.spectator) joinIntent.choose(here);
+			void goto(door.rest, { replace: true, reset: false });
+		});
 	});
 
 	// A join a reconnect lost is not a choice to watch: asked again while
