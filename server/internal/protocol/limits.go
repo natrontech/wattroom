@@ -217,6 +217,15 @@ const (
 	MinRoadAltM     = -500
 	MaxRoadAltM     = 9000
 
+	// Everest together (docs/spec/roads.md "Road stats", #3193): the most one
+	// rider climbs in a second, MaxRoadSpeedMps up the stored grade's +20 %
+	// top. The hub counts no more of a rider's climb than this allows.
+	MaxClimbMps = MaxRoadSpeedMps * 20 / 100
+	// The most one free ride can say it climbed: a day at MaxClimbMps.
+	MaxRideClimbedM = MaxClimbMps * 24 * 60 * 60
+	// Everest, in metres (docs/spec/roads.md "Road stats"): the 2020 survey.
+	EverestM = 8849
+
 	// docs/SPEC.md "Road times": an effort whose mean shelter exceeds 5 % is
 	// untimeable (ADR-0074, ADR-0077), as a fraction of the air.
 	MaxTimeableShelter = 0.05

@@ -32,7 +32,8 @@ export interface RideDeps {
 	};
 	recording: ReturnType<typeof createRecording>;
 	myId: () => string | undefined;
-	shared: () => { phase: string; elapsed: number } | undefined;
+	shared: () =>
+		{ phase: string; elapsed: number; together?: boolean } | undefined;
 	segments: () => Segment[];
 	/** Your place on the session's road, while the session rides one (#3553). */
 	road?: () => RoadPlace | null;
@@ -41,6 +42,9 @@ export interface RideDeps {
 	joined: () => boolean;
 	/** What an armed free ride asks of the trainer while no session drives
 	 *  it, and where its seconds go (ADR-0059). */
+	/** Metres the free ride has climbed on its road (#3193): said riding
+	 *  together, where the hub sums the crew's toward Everest. */
+	climbed?: () => number;
 	free: Pick<
 		FreeRide,
 		| 'armed'

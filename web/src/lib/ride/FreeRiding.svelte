@@ -52,7 +52,7 @@
 	import RideNarrator from '#lib/ride/RideNarrator.svelte';
 	import Skyline from '#lib/ride/Skyline.svelte';
 	import { climbView, raced } from '#lib/ride/climb-view.ts';
-	import { EVEREST_M } from '#lib/ride/climb-repeats.ts';
+	import { EVEREST_M, togetherLine } from '#lib/ride/climb-repeats.ts';
 	import { play } from '#lib/sound/cues.ts';
 	import { mapView } from '#lib/ride/map-view.ts';
 	import { watchClimbCues } from '#lib/ride/climb-cues.svelte.ts';
@@ -96,6 +96,7 @@
 		worldClass = '',
 		mates,
 		climbed,
+		together,
 		ride,
 		class: extra = '',
 	}: {
@@ -139,6 +140,8 @@
 		mates?: () => readonly RoadMate[];
 		/** Metres climbed, from a ride that outlives this screen (ADR-0093); absent, it counts its own. */
 		climbed?: number;
+		/** Riding together (#3193): the crew's metres climbed on the session, summed by the hub. */
+		together?: number;
 		/** That ride, so its world reopened mid-ride keeps the picture's moments; absent, each world is its own. */
 		ride?: object;
 		class?: string;
@@ -250,6 +253,13 @@
 		if (summited && !wasSummited) play('fanfare');
 		wasSummited = summited;
 	});
+	// The crew past Everest together (#3193): the same fanfare, once a session.
+	const crewSummited = $derived((together ?? 0) >= EVEREST_M);
+	let wasCrewSummited = untrack(() => crewSummited);
+	$effect(() => {
+		if (crewSummited && !wasCrewSummited) play('fanfare');
+		wasCrewSummited = crewSummited;
+	});
 
 	const WORDS = 'text-2xl leading-6';
 	// M and V from a key or a bridged controller (#4236).
@@ -291,6 +301,15 @@
 	{#if summited}
 		<p data-testid="everest-line" class="text-neon truncate font-bold">
 			The height of Everest, climbed
+		</p>
+	{/if}
+	{#if together !== undefined && road}
+		<p
+			data-testid="everest-together"
+			class="num truncate {crewSummited ? 'text-neon font-bold' : ''}"
+			aria-live="polite"
+		>
+			{togetherLine(together)}
 		</p>
 	{/if}
 	{#if flagNotice}

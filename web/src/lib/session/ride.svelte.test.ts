@@ -548,6 +548,40 @@ describe('the personal guards in a group ride (#788)', () => {
 		live.close();
 	});
 
+	// Everest together (#3193): riding together, each sample says the free
+	// ride's metres climbed for the hub's crew sum; anywhere else, never.
+	it.each([
+		{ together: true, want: [12.3] },
+		{ together: false, want: [] },
+	])(
+		'says its climb on a road only riding together: $together',
+		async ({ together, want }) => {
+			const { live, deps, socket } = inASession();
+			const free = { ...idleFree, armed: true, road: { m: 640 } as never };
+			let ride!: ReturnType<typeof createRide>;
+			const dispose = $effect.root(() => {
+				ride = createRide({
+					...deps,
+					joined: () => false,
+					shared: () => ({ phase: 'running', elapsed: 10, together }),
+					climbed: () => 12.34,
+					free,
+				});
+			});
+			const trainer = new FakeTrainer();
+			await ride.ride(trainer);
+			trainer.pedal(250, 90);
+			await settle();
+			const sent = socket.sent.flatMap((s) => JSON.parse(s).metrics ?? []);
+			expect(sent.length).toBeGreaterThan(0);
+			expect([
+				...new Set(sent.flatMap((s: { climbed?: number }) => s.climbed ?? [])),
+			]).toEqual(want);
+			dispose();
+			live.close();
+		},
+	);
+
 	it('rides a spectator’s free ride on the grade or the watts they set (ADR-0059)', async () => {
 		const { live, deps } = inASession();
 		const free = { ...idleFree, armed: true, grade: 4 };

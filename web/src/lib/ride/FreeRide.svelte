@@ -226,6 +226,9 @@
 			ontv={() => (tv = true)}
 			worldClass="-mx-4 -my-6 sm:-mx-8 sm:-my-8"
 			mates={() => mates}
+			together={conn.live.tick?.state.together
+				? (conn.live.tick.everestTogether ?? 0)
+				: undefined}
 		/>
 		{#if tv}
 			<FreeRideTv
