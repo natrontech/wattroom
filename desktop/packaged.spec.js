@@ -37,8 +37,8 @@ const path = require('node:path');
 const BINARY = process.env.WATTROOM_APP_BINARY;
 const APP_URL = process.env.WATTROOM_URL;
 // One rider per run's purpose, reused (e2e/signin.ts): a fresh name per run
-// would grow the user table forever.
-const RIDER = 'desktop-packaged';
+// would grow the user table forever. Letters and spaces: the dev door's rule.
+const RIDER = 'Packaged Shell';
 
 /** Start the built shell. `extra` goes after the switches every launch shares. */
 function start(userData, extra = []) {
@@ -141,7 +141,10 @@ test('the packaged shell signs in through the hand-off, rides the simulated trai
 
 		// The browser half: sign in there, mint the token for that nonce.
 		const browserSide = await request.newContext({ baseURL: APP_URL });
-		await browserSide.get(`/api/auth/dev/start?as=${RIDER}`);
+		const signedIn = await browserSide.get(
+			`/api/auth/dev/start?as=${encodeURIComponent(RIDER)}`,
+		);
+		expect(signedIn.ok(), await signedIn.text()).toBe(true);
 		const handoff = await browserSide.post('/api/auth/desktop/handoff', {
 			headers: { Origin: APP_URL },
 			data: { nonce },
