@@ -579,12 +579,17 @@ describe('channel live lost (#1500)', () => {
 		vi.useRealTimers();
 	});
 
-	it('spends 1, 2, 4, 8 s before settling at 10 s, as the spec says', async () => {
+	it('redials at once, then after about 1, 2 and 5 s, never longer (docs/spec/voice.md)', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5); // no spread: the waits as written
 		createChannelLive(channelAddress('c', 'backoff', 'backoff'));
 		await vi.advanceTimersByTimeAsync(0);
 		FakeSocket.last!.open();
-		const dials: number[] = [];
-		for (const wait of [1_000, 2_000, 4_000, 8_000, 10_000]) {
+		// The live socket drops: the first redial is in the same task.
+		const live = FakeSocket.last!;
+		live.close();
+		live.onclose?.();
+		expect(FakeSocket.last).not.toBe(live);
+		for (const wait of [1_000, 2_000, 5_000, 5_000]) {
 			const socket = FakeSocket.last!;
 			socket.close();
 			socket.onclose?.();
@@ -592,9 +597,27 @@ describe('channel live lost (#1500)', () => {
 			expect(FakeSocket.last).toBe(socket);
 			await vi.advanceTimersByTimeAsync(1);
 			expect(FakeSocket.last).not.toBe(socket);
-			dials.push(wait);
 		}
-		expect(dials).toHaveLength(5);
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+	});
+
+	it('redials at once when the tab comes back to the front', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		const live = createChannelLive(channelAddress('c', 'front', 'front'));
+		await vi.advanceTimersByTimeAsync(0);
+		FakeSocket.last!.open();
+		for (let i = 0; i < 4; i++) {
+			const s = FakeSocket.last!;
+			s.close();
+			s.onclose?.();
+		}
+		// Waiting out a 5 s turn, the timer late in a background tab.
+		const waiting = FakeSocket.last!;
+		expect(live.status).toBe('reconnecting');
+		document.dispatchEvent(new Event('visibilitychange'));
+		expect(FakeSocket.last).not.toBe(waiting);
+		vi.restoreAllMocks();
 		vi.useRealTimers();
 	});
 
@@ -606,7 +629,7 @@ describe('channel live lost (#1500)', () => {
 		const waiting = FakeSocket.last!;
 		waiting.close();
 		waiting.onclose?.();
-		// The backoff is at its 10 s ceiling; the button does not wait for it.
+		// The backoff is at its 5 s ceiling; the button does not wait for it.
 		live.retry();
 		expect(FakeSocket.last).not.toBe(waiting);
 		// And the timer it cancelled dials nothing on top of the new socket.

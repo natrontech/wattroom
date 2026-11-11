@@ -28,6 +28,7 @@ import {
 	type RoadsideStamp,
 } from '$lib/protocol';
 import type { PlaceAddress } from '$lib/channel/address';
+import { reconnectDelay } from '$lib/reconnect';
 import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
@@ -74,12 +75,13 @@ export const SILENCE_MS = 10_000;
 
 /**
  * Reconnects failed before the banner turns from "reconnecting" to "lost".
- * The backoff spends 1+2+4+8 s before it settles at its 10 s ceiling, the
- * same 15 s the roster waits before announcing the rider gone (docs/SPEC.md):
- * past it the channel has said goodbye, and the rider gets the one big button
- * (#1500) while the automatic retry keeps running underneath.
+ * The backoff (reconnect.ts) dials at once, then after about 1, 2, 5 and 5 s:
+ * the sixth redial is about the same 15 s the roster waits before announcing
+ * the rider gone (docs/spec/voice.md). Past it the channel has said goodbye,
+ * and the rider gets the one big button (#1500) while the automatic retry
+ * keeps running underneath.
  */
-export const SETTLED_ATTEMPTS = 5;
+export const SETTLED_ATTEMPTS = 6;
 
 export function createChannelLive(address: PlaceAddress) {
 	let status = $state<LiveStatus>('connecting');
@@ -340,11 +342,17 @@ export function createChannelLive(address: PlaceAddress) {
 		// that believed it would never come back.
 		status = navigator.onLine ? 'reconnecting' : 'offline';
 		if (reconnectTimer !== null) clearTimeout(reconnectTimer);
-		reconnectTimer = setTimeout(
-			connect,
-			Math.min(1000 * 2 ** attempts, 10_000),
+		reconnectTimer = null;
+		// Offline, an at-once dial only fails: 'online' dials the moment the
+		// network is back, and the timer stays as the fallback.
+		const wait = reconnectDelay(
+			status === 'offline' ? Math.max(1, attempts) : attempts,
 		);
 		attempts += 1;
+		// The first redial runs in this task, not on a timer: a background
+		// tab's timers run late, and a blip is often over by the time it dials.
+		if (wait === 0) connect();
+		else reconnectTimer = setTimeout(connect, wait);
 	}
 
 	/** Dial now instead of waiting out the backoff. */
@@ -365,6 +373,13 @@ export function createChannelLive(address: PlaceAddress) {
 		if (status === 'live') return;
 		status = 'reconnecting';
 		dialNow();
+	}
+	// A tab coming back to the front dials at once too: in the background
+	// its timers ran late or not at all (a frozen tab runs none), so the
+	// backoff's next turn may be long overdue.
+	function cameBack() {
+		if (document.visibilityState !== 'visible') return;
+		if (status === 'reconnecting' || status === 'offline') dialNow();
 	}
 
 	function connect() {
@@ -517,6 +532,7 @@ export function createChannelLive(address: PlaceAddress) {
 	connect();
 	window.addEventListener('offline', wentOffline);
 	window.addEventListener('online', cameOnline);
+	document.addEventListener('visibilitychange', cameBack);
 
 	// Commands sent during a reconnect wait here and flush on reopen (audit
 	// #219). Metrics are continuous and never queued; stale watts help nobody.
@@ -924,6 +940,7 @@ export function createChannelLive(address: PlaceAddress) {
 			if (silenceTimer !== null) clearTimeout(silenceTimer);
 			window.removeEventListener('offline', wentOffline);
 			window.removeEventListener('online', cameOnline);
+			document.removeEventListener('visibilitychange', cameBack);
 			socket?.close();
 		},
 	};
