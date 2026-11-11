@@ -159,7 +159,9 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
 {#if session}
-	<h1 class="page-title">Ramp test</h1>
+	<!-- Read out, and drawn over the result only: the count-in and the riding
+	     surface already name the test, and riding is the whole screen (#4235). -->
+	<h1 class="page-title {done ? '' : 'sr-only'}">Ramp test</h1>
 	<!-- A riding surface has no sentences but its status line (G4). -->
 	{#if done}
 		<p class="text-muted mt-2 max-w-xl text-sm">
@@ -172,7 +174,7 @@
 	{#if session.state === 'countdown'}
 		<!-- One count-in for the surface (ADR-0046, #1800): the same screen a
 		     session and /ride draw, so the test starts the way every ride does. -->
-		<div class="mt-8 min-h-[24rem]">
+		<div class="min-h-[24rem]">
 			<CountdownScreen
 				remaining={session.countdownRemaining}
 				title={session.workout.name}
@@ -195,7 +197,7 @@
 		<!-- The bottom padding is the floating navigation button's, as
 		     RidingScreen has it (ux.md: the last item clears the chrome) — the
 		     graph's bottom-left corner sat under it at 375 px (#2161). -->
-		<RidingSurface class="mt-8 min-h-[32rem] flex-1 pb-16 sm:pb-0">
+		<RidingSurface class="min-h-[32rem] flex-1 pb-16 sm:pb-0">
 			{#snippet header()}
 				<RideBand
 					{block}

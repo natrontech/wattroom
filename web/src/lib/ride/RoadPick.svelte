@@ -172,6 +172,12 @@
 					</li>
 				{/each}
 			</ul>
+			<!-- The next road is an import away too, not only the first (#4235). -->
+			<a
+				href="/workouts/import?as=route"
+				class="btn btn-secondary mt-3 {onpick ? 'btn-lg' : 'btn-xs'}"
+				>Import a route</a
+			>
 		{/if}
 	{/if}
 {/if}

@@ -162,9 +162,9 @@
 		<div class="flex items-end justify-between gap-x-[max(1.5rem,2.6vw)]">
 			<div class={CELL} data-cell="Watts">
 				<span class={LABEL}
-					>Watts{#if target > 0}
-						· <span class="text-neon">{target}</span>{:else if zone}
-						· Z{zone} {ZONE_NAMES[zone]}{/if}</span
+					>Watts{#if target > 0}{' '}·
+						<span class="text-neon">{target}</span>{:else if zone}{' '}· Z{zone}
+						{ZONE_NAMES[zone]}{/if}</span
 				>
 				<span
 					data-testid="rail-watts"
