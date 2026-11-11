@@ -1,3 +1,4 @@
+import { reattachDelay } from './reattach';
 import { CPS_SERVICE } from './cyclingpower';
 import {
 	resolveSim,
@@ -236,7 +237,8 @@ export class FtmsTrainer implements Trainer {
 
 	/** Set on rider-initiated disconnect, so the retry loop stands down. */
 	#closed = false;
-	#retryDelayMs = 1000;
+	/** Reattaches since the link was last up: the next one waits reattachDelay of it. */
+	#reattaches = 0;
 
 	async connect(): Promise<void> {
 		if (!navigator.bluetooth)
@@ -259,7 +261,7 @@ export class FtmsTrainer implements Trainer {
 		});
 		this.name = this.#device.name ?? 'FTMS trainer';
 		// Recovery is automatic (#37): the granted device persists in-page, so a
-		// dropout re-attaches with backoff — the rider is three meters away and
+		// dropout re-attaches at once, then every few seconds (reattach.ts) — the rider is three meters away and
 		// mid-interval, not at the keyboard. One listener per device, for life.
 		this.#device.addEventListener('gattserverdisconnected', () => {
 			this.#settlePending(new Error('trainer disconnected'));
@@ -283,12 +285,10 @@ export class FtmsTrainer implements Trainer {
 	}
 
 	#scheduleReattach(): void {
-		const delay = this.#retryDelayMs;
-		this.#retryDelayMs = Math.min(delay * 2, 30_000);
 		setTimeout(() => {
 			if (this.#closed || this.#status === 'connected') return;
 			void this.#attach().catch(() => this.#scheduleReattach());
-		}, delay);
+		}, reattachDelay(this.#reattaches++));
 	}
 
 	async #attach(): Promise<void> {
@@ -405,7 +405,7 @@ export class FtmsTrainer implements Trainer {
 		// One grant covers every procedure until disconnect.
 		await this.#write(Uint8Array.of(OP_REQUEST_CONTROL).buffer);
 		if (this.#abandoned(signal)) return;
-		this.#retryDelayMs = 1000;
+		this.#reattaches = 0;
 		this.#setStatus('connected');
 	}
 

@@ -288,6 +288,40 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(device.connects).toBe(attached + 1);
 	});
 
+	it('reattaches at once after a dropout, and every few seconds while the trainer is gone', async () => {
+		const { trainer, device } = await paired();
+		const connect = device.gatt.connect;
+		let away = true;
+		device.gatt.connect = () =>
+			away ? Promise.reject(new Error('out of range')) : connect();
+		const before = device.connects;
+		device.drop();
+		await vi.advanceTimersByTimeAsync(0);
+		// Tried at once: the attempt itself failed, out of range.
+		expect(trainer.status).toBe('connecting');
+		// A minute away: 0, 1, 2, then every 5 s, never a half-minute wait.
+		away = true;
+		const tried: number[] = [];
+		device.gatt.connect = () => {
+			tried.push(Date.now());
+			return away ? Promise.reject(new Error('out of range')) : connect();
+		};
+		await vi.advanceTimersByTimeAsync(60_000);
+		const gaps = tried.slice(1).map((t, i) => t - tried[i]);
+		expect(Math.max(...gaps)).toBeLessThanOrEqual(5_000);
+		// Back in range: the next try has it, at most five seconds on.
+		away = false;
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(trainer.status).toBe('connected');
+		expect(device.connects).toBeGreaterThan(before);
+		// Up again, the next dropout starts at once again.
+		const up = device.connects;
+		device.drop();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(device.connects).toBe(up + 1);
+		expect(trainer.status).toBe('connected');
+	});
+
 	it('runs the next queued write after one has failed', async () => {
 		// The issue's reduction: with target-200 failing, 250 and 300 never reached
 		// the trainer again for the rest of the session. Written one at a time,
