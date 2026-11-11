@@ -21,7 +21,7 @@ Voice is built in, so you talk the whole way.
 
 </div>
 
-<img src="web/static/screens/world-crew.webp" alt="Two riders of a crew in a session on a road in the 3D world: the road climbing ahead, the riders' tiles, the bike computer and the interval graph at the edges" width="100%" />
+<img src="web/static/screens/world-crew.webp" alt="Two riders of a crew side by side in a session on a road in the 3D world, a parrot on one rider's shoulder and a hamster on the other's head; the watts and the block's clock above, the riders' w/kg at the right, the workout's graph below" width="100%" />
 
 <p align="center"><sub>A crew session on an imported road, in the 3D world.</sub></p>
 
@@ -55,7 +55,7 @@ WattRoom answers it with **your crew**:
 three blocks are painted on the asphalt, each with its name and your target.
 A sprint gets a banner across the road from 1 km out.
 
-<img src="web/static/screens/world-blocks.webp" alt="A workout on a road in the 3D world: the next block painted across the road ahead with its target" />
+<img src="web/static/screens/world-blocks.webp" alt="A workout on a road in the 3D world: chevrons leading to the next block, painted across the road ahead with its name and target" />
 
 </td>
 <td width="50%" valign="top">
@@ -72,10 +72,10 @@ the shelf, and a [free ramp test](https://wattroom.ch/ftp-test) finds your FTP.
 <td width="50%" valign="top">
 
 **Your ghost.** Ride a road of yours again from its start and the rider you
-were last time rides beside you, a see-through figure in your own kit. The
-bike computer says the gap in words.
+were last time rides with you, a see-through figure up the road. At each
+quarter of the road you hear the gap.
 
-<img src="web/static/screens/world-ghost.webp" alt="A free ride on a road: the rider's ghost from an earlier ride just ahead in the 3D world, the bike computer reading 4 s behind" />
+<img src="web/static/screens/world-ghost.webp" alt="A free ride on a road: the rider's see-through ghost from an earlier ride just up the road in the 3D world, its day named on the profile below" />
 
 </td>
 <td width="50%" valign="top">
@@ -84,7 +84,7 @@ bike computer says the gap in words.
 from the screen, the `−` and `+` keys or a Zwift Cog. Open WattRoom on your
 phone while the desk rides and the phone becomes your remote.
 
-<p align="center"><img src="web/static/screens/phone-remote.webp" alt="A phone as the rider's remote while the desk rides: big Easier and Harder buttons" width="220" /></p>
+<p align="center"><img src="web/static/screens/phone-remote.webp" alt="A phone as the rider's remote during a workout: 3D, Flat and Map; Camera, Photo, TV, Flag, Pause, +1 min, Skip and End; big Easier and Harder buttons" width="220" /></p>
 
 </td>
 </tr>

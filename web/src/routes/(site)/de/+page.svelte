@@ -79,7 +79,7 @@
 		<Screen
 			name="world-crew"
 			eager
-			alt="Zwei Fahrer einer Crew nebeneinander in einer Session auf einer Bergstrasse in der 3D-Welt, die Uhr des Workouts oben, der Velocomputer links und die Watt pro Kilo der Fahrer rechts"
+			alt="Zwei Fahrerinnen einer Crew nebeneinander in einer Session auf einer Strasse durch den Bergwald in der 3D-Welt, die eine mit einem Papagei auf der Schulter, die andere mit einem Hamster auf dem Kopf; oben die Watt und die Uhr des Blocks, rechts die Watt pro Kilo, unten die Grafik des Workouts"
 			width={1440}
 			height={900}
 			caption="Eure Strecke in 3D, die Zahlen aller Fahrer, und der Sprachkanal, in dem ihr fahrt. (Die App ist auf Englisch.)"

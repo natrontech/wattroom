@@ -21,6 +21,16 @@
 //   workout-editor  the workout editor with the interval graph
 //   phone           375x812 touch, no Web Bluetooth: the session, spectated
 //
+// and the 3D world's, 1440x900 at 1x, by daylight (worldShots below):
+//   world-blocks    a workout on the Pass loop, its next blocks painted ahead
+//   world-ghost     a free ride on a road of Mara's own, her ghost just ahead
+//   world-crew      a session on the Pass loop, two riders side by side
+//   world-sprint    the same session during a sprint
+//   phone-remote    375x812 at 2x: Mara's phone as the remote of her workout
+//
+// SHOTS=world-blocks,phone-remote takes only those (and whatever the run
+// needs to reach them); unset takes every one.
+//
 // Nothing is heard: the browser runs with --mute-audio and every context
 // zeroes the mixer before a page mounts. The deck plays synthesized beats,
 // never a real song, and YouTube's player hosts are blocked outright.
@@ -45,15 +55,31 @@ const TMP = mkdtempSync(join(tmpdir(), 'wattroom-screens-'));
 
 const DESKTOP = { width: 1280, height: 800 };
 const PHONE = { width: 375, height: 812 };
+/** The world's shots: the size the site's Screen frames them at. */
+const WORLD = { width: 1440, height: 900 };
+/**
+ * Where on the Pass loop (WattRoom's own road, $lib/ride/home-roads.ts) the
+ * world's shots ride: the workout on the valley's long straight, where its
+ * painted blocks read from afar; the session up the valley, the pass ahead.
+ */
+const BLOCKS_FROM_KM = 4;
+const SESSION_FROM_KM = 10;
+/** The name Mara's own copy of the Pass loop goes by, so a rerun finds it. */
+const OWN_ROAD = 'Hairpin Pass';
 
 const CREW = 'Tuesday Pain Cave';
-/** The crew's second text and voice channel, beside the Lounge it opens with. */
+/** The crew's second text and voice channel, beside the General and the Lounge it opens with. */
 const TEXT_CHANNELS = ['Race Plans'];
 const VOICE_CHANNELS = ['Sunday Long Ride'];
-/** Riders: the host, three who ride with her, and one watching from a phone. */
-const HOST = { name: 'Mara', ftp: 265, kg: 61 };
+/**
+ * Riders: the host, three who ride with her, and one watching from a phone.
+ * `look`: what they wear in the cozy room and on the road, one base-36
+ * character per part in $lib/lounge/look.ts's PARTS order. Mara rides with
+ * shades and her parrot on her shoulder; Ines with a ponytail and a hamster.
+ */
+const HOST = { name: 'Mara', ftp: 265, kg: 61, look: '203200002000020' };
 const RIDERS = [
-	{ name: 'Ines', ftp: 230, kg: 58 },
+	{ name: 'Ines', ftp: 230, kg: 58, look: '161221001000233' },
 	{ name: 'Luca', ftp: 310, kg: 74 },
 	{ name: 'Sam', ftp: 215, kg: 70 },
 ];
@@ -88,7 +114,7 @@ const WORKOUT = {
 	],
 };
 
-/** The Lounge's backlog. Noor speaks last, so her view has read it all. */
+/** General's backlog. Noor speaks last, so her view has read it all. */
 const CHAT = [
 	['Mara', 'Over-unders tonight at seven. Who is in?'],
 	['Ines', 'In. Legs still remember Sunday though'],
@@ -139,11 +165,64 @@ const TRACKS = [
 /** docs/SPEC.md's session lifecycle: a 10 s countdown before the timeline. */
 const COUNTDOWN_MS = 10_000;
 
-const browser = await chromium.launch({ args: ['--mute-audio'] });
+/** The shots this run takes: SHOTS=a,b, or every one. */
+const ONLY = process.env.SHOTS ? process.env.SHOTS.split(',') : null;
+const wanted = (...names) => !ONLY || names.some((n) => ONLY.includes(n));
+const CLASSIC = [
+	'workout-editor',
+	'session',
+	'phone',
+	'crew',
+	'jukebox',
+	'sprint',
+	'summary',
+	'game-modes',
+];
+const WORLD_SHOTS = [
+	'world-blocks',
+	'world-ghost',
+	'world-crew',
+	'world-sprint',
+	'phone-remote',
+];
+
+// Headless always: new headless on the Mac's own GPU through Metal, so the
+// world draws at its full tier rather than stepping down on SwiftShader;
+// SwiftShader elsewhere.
+const browser = await chromium.launch({
+	headless: true,
+	...(process.platform === 'darwin'
+		? {
+				channel: 'chromium',
+				args: [
+					'--mute-audio',
+					'--use-angle=metal',
+					'--enable-gpu',
+					'--ignore-gpu-blocklist',
+				],
+			}
+		: {
+				args: [
+					'--mute-audio',
+					'--use-angle=swiftshader',
+					'--enable-unsafe-swiftshader',
+				],
+			}),
+});
 const contexts = [];
 
 try {
 	await main();
+} catch (err) {
+	// SHOTS_DEBUG=<dir>: every open page as it stood when the run failed.
+	const dir = process.env.SHOTS_DEBUG;
+	if (dir)
+		for (const [i, context] of contexts.entries())
+			for (const [j, page] of context.pages().entries())
+				await page
+					.screenshot({ path: join(dir, `failed-${i}-${j}.png`) })
+					.catch(() => {});
+	throw err;
 } finally {
 	for (const context of contexts) await context.close().catch(() => {});
 	await browser.close();
@@ -151,6 +230,13 @@ try {
 }
 
 async function main() {
+	// The world's first: each part leaves Mara's screens closed for the next.
+	if (wanted(...WORLD_SHOTS)) await worldShots();
+	if (wanted(...CLASSIC)) await classic();
+}
+
+/** The crew's evening: the editor, a live session, the deck, a sprint, the summary. */
+async function classic() {
 	const host = await rider(HOST);
 	const riders = [];
 	for (const r of RIDERS) riders.push(await rider(r));
@@ -199,7 +285,10 @@ async function main() {
 
 	// Noor on the sofa: a phone spectates (WATTROOM.md, ADR-0058).
 	await sofa.page.goto(sessionPath);
-	await sofa.page.getByText(/^watching /i).waitFor({ timeout: 30_000 });
+	await sofa.page
+		.getByText(/^following /i)
+		.first()
+		.waitFor({ timeout: 30_000 });
 	await shoot(sofa.page, 'phone');
 
 	// The crew from Noor's desk, the session live under its voice channel.
@@ -251,6 +340,207 @@ async function main() {
 	const games = await openPicker(host, 'Games');
 	await games.getByRole('button', { name: 'Start game' }).first().waitFor();
 	await shoot(host.page, 'game-modes');
+
+	for (const context of contexts.splice(0)) await context.close();
+}
+
+/**
+ * The 3D world's shots and the phone remote. A ride alone (the workout, the
+ * remote, the ghost), then a session in the crew's voice channel. The world
+ * draws night from 20:00, so these contexts keep a clock where it is noon.
+ */
+async function worldShots() {
+	const day = { scale: 1, timezoneId: noonZone() };
+	const mara = await rider(HOST, WORLD, day);
+	const ines = await rider(RIDERS[0], WORLD, day);
+	const world = await seed(mara, [ines]);
+	// The figure card asks once before a first ride on a road: skipped.
+	for (const r of [mara, ines])
+		await must(api(r.page, 'PUT', '/api/me/figure', {}), `${r.name}'s figure`);
+
+	// --- a workout on the road, and the phone as its remote ---------------------
+	if (wanted('world-blocks', 'phone-remote')) {
+		const started = await rideAlone(
+			mara,
+			`/ride?road=intro&from=${BLOCKS_FROM_KM * 1000}&w=${world.workout}`,
+		);
+		// The warm-up's last seconds: the first over painted on the road ahead,
+		// the chevrons leading to it.
+		await until(started, 56);
+		await shoot(mara.page, 'world-blocks');
+
+		if (wanted('phone-remote')) {
+			// Mara's phone, on any page while her desk rides (#4425): the
+			// remote with the workout's Pause, +1 min and Skip.
+			const phone = await rider(HOST, PHONE, { timezoneId: day.timezoneId });
+			await phone.page.goto('/home');
+			await phone.page
+				.getByRole('button', { name: 'Use as your remote' })
+				.click({ timeout: 30_000 });
+			const remote = phone.page.getByTestId('phone-remote');
+			await remote
+				.getByTestId('remote-view')
+				.filter({ hasNotText: /^Waiting/ })
+				.waitFor({ timeout: 20_000 });
+			await remote.getByRole('button', { name: 'Skip block' }).waitFor();
+			await shoot(phone.page, 'phone-remote');
+			await phone.page.context().close();
+		}
+		await endRide(mara, true);
+	}
+
+	// --- a free ride on her own road, her ghost just ahead ---------------------
+	if (wanted('world-ghost')) {
+		const road = await ownRoad(mara);
+		// Her earlier ride of it, as GET /ghost answers (#3615): a ride two
+		// weeks ago at the simulator's pace on this flat (about 31 km/h) that
+		// got away a little quicker, so the ghost rides in frame a couple of
+		// seconds up the road.
+		await mara.page.route('**/api/routes/*/ghost', (route) =>
+			route.fulfill({
+				json: {
+					best: true,
+					startedAt: new Date(Date.now() - 13 * 86_400_000).toISOString(),
+					metres: Array.from({ length: 1201 }, (_, i) =>
+						Math.round(i * 7.1 + Math.min(i, 6)),
+					),
+				},
+			}),
+		);
+		const started = await rideAlone(mara, `/ride?road=${road}`);
+		await until(started, 25);
+		await shoot(mara.page, 'world-ghost');
+		await endRide(mara, false);
+		await mara.page.unroute('**/api/routes/*/ghost');
+	}
+
+	// --- a session on the road, then a sprint -----------------------------------
+	if (wanted('world-crew', 'world-sprint')) {
+		for (const r of [mara, ines]) {
+			await r.page.goto(`${world.voicePath}/training`);
+			await r.page
+				.getByRole('button', { name: 'Ride simulated' })
+				.click({ timeout: 30_000 });
+		}
+		const picker = await openPicker(mara, 'Roads');
+		await picker.getByRole('button', { name: 'Pick' }).first().click();
+		await picker.getByRole('button', { name: 'From a km' }).click();
+		await picker
+			.getByRole('spinbutton', { name: 'Start at km' })
+			.fill(String(SESSION_FROM_KM));
+		await picker.getByRole('button', { name: /^Start Pass loop/ }).click();
+		await mara.page.waitForURL('**/s/**');
+		await ines.page
+			.getByRole('link', { name: 'Join the ride' })
+			.click({ timeout: 30_000 });
+		await ines.page.waitForURL('**/s/**');
+		// A session on a road waits on its start line (#3228) for the
+		// coach's Start the ride. The crew's own session page draws no start
+		// line since sessions left the voice channel (#4389), so Mara's Start
+		// goes the way that button sends it.
+		await mara.page.waitForTimeout(3_000);
+		const [, , session] = new URL(mara.page.url()).pathname.match(
+			/^\/crew\/([^/]+)\/s\/([^/]+)/,
+		);
+		await control(mara, world.crew, session, 'start');
+		const started = Date.now() + COUNTDOWN_MS;
+		await until(started, 30);
+		await shoot(mara.page, 'world-crew');
+
+		if (wanted('world-sprint')) {
+			await mara.page.getByRole('button', { name: 'arm a sprint' }).click();
+			await mara.page.getByText('all out').waitFor({ timeout: 20_000 });
+			await mara.page.waitForTimeout(6_000);
+			await shoot(mara.page, 'world-sprint');
+		}
+		await endSessions(mara, world.crew);
+	}
+	for (const context of contexts.splice(0)) await context.close();
+}
+
+/**
+ * A time zone where it is about noon now, so the world draws its day: its
+ * night runs 20:00 to 06:00 by the page's own clock (RideWorld.svelte).
+ */
+function noonZone() {
+	const ahead = ((12 - new Date().getUTCHours() + 36) % 24) - 12;
+	if (ahead === 0) return 'Etc/UTC';
+	// The Etc zones name the offset the other way round: GMT-2 is UTC+2.
+	return `Etc/GMT${ahead > 0 ? '-' : '+'}${Math.abs(ahead)}`;
+}
+
+/**
+ * A ride alone from /ride: the simulated trainer paired, Start, and the
+ * moment its clock starts, once the world has drawn its first frames.
+ */
+async function rideAlone(who, path) {
+	await who.page.goto(path);
+	await who.page
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 30_000 });
+	await who.page
+		.getByRole('button', { name: 'Start the ride' })
+		.click({ timeout: 30_000 });
+	await who.page
+		.getByRole('button', { name: 'End ride', exact: true })
+		.first()
+		.waitFor();
+	return Date.now();
+}
+
+/** End a ride alone; a workout asks first. Back to Home, the ride saved. */
+async function endRide(who, workout) {
+	await who.page
+		.getByRole('button', { name: 'End ride', exact: true })
+		.first()
+		.click();
+	if (workout)
+		await who.page
+			.getByRole('dialog')
+			.getByRole('button', { name: 'End the ride' })
+			.click();
+	await who.page.waitForTimeout(2_000);
+	await who.page.goto('/home');
+}
+
+/**
+ * Mara's own copy of the Pass loop: a ghost rides only a road of your own
+ * (#3615). Built in the page from the same invented corners the Pass loop
+ * is (no real place), saved as an import saves one, once.
+ */
+async function ownRoad(owner) {
+	const { routes } = (await api(owner.page, 'GET', '/api/routes')).json;
+	const kept = routes.find((r) => r.name === OWN_ROAD);
+	if (kept) return kept.id;
+	const id = await owner.page.evaluate(async (name) => {
+		const { PASS_LOOP, syntheticPoints } =
+			await import('/src/lib/world/synthetic.ts');
+		const { toRoute } = await import('/src/lib/road/route.ts');
+		const { packRoad } = await import('/src/lib/road/road.ts');
+		const { base64Of } = await import('/src/lib/workout/import/route.ts');
+		const route = toRoute(syntheticPoints(PASS_LOOP));
+		const created = await fetch('/api/routes', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				src: 'gpx',
+				eleSource: 'file',
+				road: base64Of(packRoad(route.road)),
+				shape: route.shape,
+				climbs: route.climbs,
+				loop: route.loop,
+			}),
+		});
+		if (!created.ok) throw new Error(`saving the road: ${created.status}`);
+		const { id } = await created.json();
+		await fetch(`/api/routes/${id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ name }),
+		});
+		return id;
+	}, OWN_ROAD);
+	return id;
 }
 
 /** The host's start dialog, open on one of its tabs. */
@@ -359,19 +649,27 @@ function synthesize({ title, artist, bpm, seconds }) {
 	return out;
 }
 
-/** A signed-in rider in a context of its own, muted and dark before anything mounts. */
-async function rider(who, viewport = DESKTOP) {
+/**
+ * A signed-in rider in a context of its own, muted and dark before anything
+ * mounts. `scale` is the device pixel ratio; `timezoneId` pins the clock the
+ * page reads (the world's shots ride by daylight, noonZone).
+ */
+async function rider(
+	who,
+	viewport = DESKTOP,
+	{ scale = 2, timezoneId = 'Europe/Zurich' } = {},
+) {
 	const phone = viewport === PHONE;
 	const context = await browser.newContext({
 		baseURL: BASE,
 		viewport,
 		isMobile: phone,
 		hasTouch: phone,
-		deviceScaleFactor: 2,
+		deviceScaleFactor: scale,
 		colorScheme: 'dark',
 		// Pinned, so dates and times read the same on every machine.
 		locale: 'en-GB',
-		timezoneId: 'Europe/Zurich',
+		timezoneId,
 	});
 	contexts.push(context);
 	await context.addInitScript(() => {
@@ -412,6 +710,11 @@ async function rider(who, viewport = DESKTOP) {
 		}),
 		`${who.name}'s FTP and weight`,
 	);
+	if (who.look)
+		await must(
+			api(page, 'PUT', '/api/me/lounge-look', { look: who.look }),
+			`${who.name}'s look`,
+		);
 	return { ...who, page };
 }
 
@@ -454,16 +757,24 @@ async function seed(host, members) {
 					`opening ${name}`,
 				);
 	channels = await list();
-	const text = channels.find((c) => c.kind === 'text' && c.name === 'Lounge');
+	const text = channels.find((c) => c.kind === 'text' && c.name === 'General');
 	const voice = channels.find((c) => c.kind === 'voice' && c.name === 'Lounge');
 
 	const said = await api(host.page, 'GET', `/api/channels/${text.id}/chat`);
-	if (said.json.messages.length === 0) {
-		const byName = Object.fromEntries(
-			[host, ...members].map((m) => [m.name, m]),
-		);
+	const byName = Object.fromEntries([host, ...members].map((m) => [m.name, m]));
+	// The backlog is said by everyone in it: a run of the world's shots
+	// alone, with two riders, leaves it to the next full run. A run cut short
+	// mid-backlog is finished by the next one, its lines in order.
+	const kept = new Map(said.json.messages.map((m) => [m.text, m.id]));
+	if (CHAT.every(([from]) => byName[from])) {
 		const posted = [];
-		for (const [from, line] of CHAT)
+		const fresh = new Set();
+		for (const [i, [from, line]] of CHAT.entries()) {
+			if (kept.has(line)) {
+				posted.push(kept.get(line));
+				continue;
+			}
+			fresh.add(i);
 			posted.push(
 				(
 					await must(
@@ -474,16 +785,18 @@ async function seed(host, members) {
 					)
 				).json.id,
 			);
+		}
 		for (const [from, line, emoji] of REACTIONS)
-			await must(
-				api(
-					byName[from].page,
-					'POST',
-					`/api/channels/${text.id}/chat/reactions`,
-					{ messageId: posted[line], emoji },
-				),
-				`${from}'s reaction`,
-			);
+			if (fresh.has(line))
+				await must(
+					api(
+						byName[from].page,
+						'POST',
+						`/api/channels/${text.id}/chat/reactions`,
+						{ messageId: posted[line], emoji },
+					),
+					`${from}'s reaction`,
+				);
 	}
 
 	const saved = await api(host.page, 'GET', '/api/workouts');
@@ -510,23 +823,30 @@ async function seed(host, members) {
 	};
 }
 
-/** End whatever runs in the crew's voice channels, as the owner may. */
-async function endSessions(owner, crew) {
-	const { sessions } = (await api(owner.page, 'GET', `/api/crews/${crew}/live`))
-		.json;
-	for (const { channel } of sessions)
-		await owner.page.evaluate(async (channel) => {
+/** One coach's control on one of the crew's sessions, over its own socket. */
+async function control(coach, crew, session, action) {
+	await coach.page.evaluate(
+		async ({ crew, session, action }) => {
 			const socket = new WebSocket(
-				`ws://${location.host}/ws/channels/${channel}`,
+				`ws://${location.host}/ws/crews/${crew}/sessions/${session}`,
 			);
 			await new Promise((open, fail) => {
 				socket.onopen = open;
 				socket.onerror = fail;
 			});
-			socket.send(JSON.stringify({ control: { action: 'end' } }));
+			socket.send(JSON.stringify({ control: { action } }));
 			await new Promise((wait) => setTimeout(wait, 1_000));
 			socket.close();
-		}, channel);
+		},
+		{ crew, session, action },
+	);
+}
+
+/** End whatever session the crew has running, as the owner may. */
+async function endSessions(owner, crew) {
+	const { sessions } = (await api(owner.page, 'GET', `/api/crews/${crew}/live`))
+		.json;
+	for (const { id } of sessions) await control(owner, crew, id, 'end');
 	for (let tries = 0; tries < 20; tries++) {
 		const live = await api(owner.page, 'GET', `/api/crews/${crew}/live`);
 		if (live.json.sessions.length === 0) return;
@@ -569,6 +889,7 @@ async function must(call, what) {
  * and no focus ring on whichever field the page focused for typing.
  */
 async function shoot(page, name, region) {
+	if (!wanted(name)) return;
 	await page.evaluate(async () => {
 		await document.fonts.ready;
 		if (document.activeElement instanceof HTMLElement)
