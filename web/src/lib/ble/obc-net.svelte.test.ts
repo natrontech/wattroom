@@ -12,8 +12,8 @@ import {
 } from './obc-net.svelte';
 
 vi.mock('#lib/sound/cues.ts', () => ({ play: () => {} }));
-const dev = vi.hoisted(() => ({ on: true }));
-vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => dev.on }));
+// A production rider: no dev build, no dev sign-in door (#3349).
+vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => false }));
 
 /**
  * The desktop shell's `window.wattroom.obc`, as preload.js exposes it: a
@@ -75,7 +75,6 @@ beforeEach(() => {
 	shell.connects = [];
 	shell.closes = 0;
 	shell.refuse = null;
-	dev.on = true;
 });
 afterEach(async () => {
 	await shifterSlot.forget();
@@ -189,7 +188,7 @@ describe('a network shifter shifts the ride, behind its own switch (#3336)', () 
 		};
 	}
 
-	it('shifts one gear a tap at the dev gate, and buzzes the controller', async () => {
+	it('shifts a production ride one gear a tap, and buzzes the controller', async () => {
 		const r = await ride();
 		shell.written = [];
 		shell.send(0x01, 0x01, 0x01);
@@ -199,15 +198,7 @@ describe('a network shifter shifts the ride, behind its own switch (#3336)', () 
 		r.stop();
 	});
 
-	it('shifts nothing for a rider past the dev gate, or with its switch off', async () => {
-		dev.on = false;
-		const r = await ride();
-		shell.send(0x01, 0x01, 0x01);
-		shell.send(0x01, 0x01, 0x00);
-		expect(r.gear).toBe(0);
-		r.stop();
-
-		dev.on = true;
+	it('shifts nothing with its switch off (the patent watch, #3323)', async () => {
 		const off = await ride({ ...GEAR_INPUTS, 'obc-net': false });
 		shell.send(0x01, 0x01, 0x01);
 		shell.send(0x01, 0x01, 0x00);

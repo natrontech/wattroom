@@ -370,7 +370,7 @@
 						? 'Allow Local Network for WattRoom in System Settings'
 						: obcNet.found.length
 							? undefined
-							: 'Open BikeControl on this computer or network',
+							: 'Open BikeControl and turn on its network mode',
 					onPair: () => {
 						const [found] = obcNet.found;
 						if (found)

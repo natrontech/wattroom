@@ -2,6 +2,8 @@
 	// Controllers (#4236): what a press runs while riding, a pad that shows
 	// it live, and how a Zwift controller reaches WattRoom at all.
 	import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+	import { obcNet } from '#lib/ble/obc-net.svelte.ts';
+	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
 	import { isTyping } from '#lib/keys.ts';
 	import { KEY_TABLE } from '#lib/ride/keys.ts';
 	import { pressOfController, pressOfKey } from '#lib/ride/controller-test.ts';
@@ -93,6 +95,20 @@
 		</li>
 		<li>Give the other buttons the keys below, then try them above.</li>
 	</ol>
+	{#if gearsEnabled('obc-net')}
+		<!-- #3349: the network shifter is the shell's alone, so a browser
+		     hears where it is, and the shell where its card shows. -->
+		<p class="text-muted mt-3 text-sm leading-relaxed">
+			{#if obcNet.available}
+				Or skip the keys: turn on BikeControl's OpenBikeControl network mode,
+				then pair Network shifter beside your sensors.
+			{:else}
+				Or skip the keys in the
+				<a href="/download" class="underline">desktop app</a>: BikeControl's
+				OpenBikeControl network mode pairs there as Network shifter.
+			{/if}
+		</p>
+	{/if}
 	<h3 class="ride-label mt-4">A two-controller set</h3>
 	<table class="mt-2 text-sm">
 		<thead class="text-muted text-left">
