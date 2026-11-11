@@ -31,6 +31,7 @@ export function routeOfRoad(road: Road): Route {
 		z[k] = wz[i] + (wz[i + 1] - wz[i]) * f;
 		ele[k] = heightAt(road, k * step);
 	}
+	closeWalk(x, z, road.length);
 	// Centred, as a route file's frame is: the horizon stands round the middle.
 	const cx = x.reduce((s, v) => s + v, 0) / n;
 	const cz = z.reduce((s, v) => s + v, 0) / n;
@@ -50,11 +51,34 @@ export function routeOfRoad(road: Road): Route {
 		gain,
 		minEle: Math.min(...ele),
 		maxEle: Math.max(...ele),
-		// A walked loop closes only as nearly as its whole-degree turns do: ridden to its end, never round.
+		// Whether it is ridden round is the ride's to say (compose.ts): a loop's walk is closed above.
 		loop: false,
 		road,
 		shape: '',
 		climbs: climbsOf(road),
 		fixed: { spikes: 0, heldM: 0 },
 	};
+}
+
+/** A walk that ends this near its start, as a share of its length, is a loop's. */
+export const CLOSES_WITHIN = 0.01;
+
+/**
+ * Closes a walked loop: the walk ends only as near its start as its
+ * whole-degree turns let it, 25 m off on the Pass loop, and the world drew
+ * that seam as a road stopping short beside its own start (a voice channel's
+ * free ride stands there until the rider pedals). The miss is spread along
+ * the road by its metres, under a millimetre a metre, so the end meets the
+ * start and the ride's world goes round it. A road whose end lies further
+ * off is a road with two ends, and keeps them.
+ */
+export function closeWalk(x: Float64Array, z: Float64Array, length: number) {
+	const n = x.length - 1;
+	const gx = x[n] - x[0];
+	const gz = z[n] - z[0];
+	if (n < 1 || Math.hypot(gx, gz) > length * CLOSES_WITHIN) return;
+	for (let k = 1; k <= n; k++) {
+		x[k] -= (gx * k) / n;
+		z[k] -= (gz * k) / n;
+	}
 }

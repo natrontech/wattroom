@@ -61,6 +61,8 @@ export type Stage = {
 	 * one a call, nearest first (#3699).
 	 */
 	update(eye: THREE.Vector3, whole?: boolean): void;
+	/** Tiles within reach of the last eye still to be dressed, one an update. */
+	filling(): boolean;
 	/** The sky's band drawn from `eye` over the land in `view` as well as the far ranges: the ride's picture's (#4278). */
 	bandOverLand(eye: THREE.Vector3, view: View): void;
 	/**
@@ -388,6 +390,7 @@ export function buildStage(
 			}
 			pool(eye);
 		},
+		filling: () => !orbit && !dressed,
 		bandOverLand(eye, view) {
 			ridges.skyline.over(
 				eye,

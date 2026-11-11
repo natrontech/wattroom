@@ -128,6 +128,23 @@ Pixel 3D, measured before it gave way to Diorama 3D on 2026-11-07 (`pixels=d` dr
 - The Mi Monitor's numbers come from the run before that change, which leaves a 1× display as it was. The run after it read 0 % GPU and 105 % renderer CPU there: the window did not draw on the GPU, so it is not counted.
 - `make perf-scenes` stops at its third scene, because the voice channel no longer has the Free ride control it presses. Its world scenes are not measured yet.
 
+## A camera switch on a still world
+
+A world whose rider stands still draws one frame a second (loop.ts), each moving the ride on a tenth of a second (scene.ts's `MAX_DT`). That is a voice channel's free ride before the first pedal stroke. The camera eased into each new shot on its follow's half-life, so a switch crawled at that rate (a rider, 2026-11-11: "really laggy"). Now a switch is a cut, as docs/spec/motion.md has it, drawn on the next animation frame. The world then draws on for at most 2 s while the ground and the dressing round the new eye come in.
+
+Measured in a headless SwiftShader Chromium at 1440 × 900, 2026-11-11, with the camera button in a voice channel's free ride on the Pass loop before pedalling. Times are from the click until the world shows the new shot, and until the picture stops changing:
+
+| Switch | before: first change / settled | after |
+|---|---|---|
+| Chase → Overhead | 27 ms / **11.1 s** | 39 ms / 39 ms |
+| Overhead → Side | 695 ms / 695 ms | 38 ms / 38 ms |
+| Side → Steady | 513 ms / 4.5 s | 35 ms / 4.8 s ¹ |
+| Steady → Chase | 173 ms / **11.1 s** | 36 ms / 36 ms |
+
+¹ The quality ladder stepping down a rung on SwiftShader (`data-rung` L2, `slow`), not the camera: the shot itself stands from the first frame.
+
+The click's own script cost was never the problem: about 50–80 ms on that rig, one long animation frame, before and after.
+
 ## The world on the slow rig
 
 `make world-bench` (needs `make dev-web`) is the low tier's rig without the hardware (#3082). It opens `/dev/perf?case=world` in headless Chromium on SwiftShader twice: once as it is, once with the page's CPU throttled 4× through DevTools. Each run warms up for 15 s and measures for 60 s. It prints the frame interval and the render's JS time (p50 and p95), the frames a second, the share of vsync-divisor intervals missed, and the draws and triangles, set against docs/spec/world.md's tiers and Fallback. The dev build's frame judge stands down for it, so the world keeps drawing past the Fallback and every miss is counted.

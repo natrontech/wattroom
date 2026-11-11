@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { at } from '#lib/road/along.ts';
+import { at, closes } from '#lib/road/along.ts';
 import { heightAt } from '#lib/road/at-metre.ts';
-import { HAIRPINS, hairpinClimb, legsRoad } from '#lib/road/fixtures.ts';
+import {
+	alpineLoop,
+	HAIRPINS,
+	hairpinClimb,
+	legsRoad,
+} from '#lib/road/fixtures.ts';
 import { toRoute, type Route } from '#lib/road/route.ts';
 import type { Road } from '#lib/road/road.ts';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
-import { routeOfRoad } from './road-route';
+import { walk } from './place/stroke';
+import { closeWalk, routeOfRoad } from './road-route';
 
 /** A road's heights and turns become the route its world is built on (#3663). */
 describe('the route of a road', () => {
@@ -34,20 +40,56 @@ describe('the route of a road', () => {
  * A walked road closes where its route does: whole-degree turns rounded one
  * by one used to drift a long road by degrees, laying one stretch of it over
  * another (the Pass loop ended 976 m from its start, the Valley loop 271 m).
+ * Carried, they still left the Pass loop's end 25 m beside its start, and a
+ * voice channel's free ride, standing at its start before the first pedal
+ * stroke, looked at a road broken in pieces.
  */
 describe('a walked loop', () => {
+	const gap = (r: Route) => {
+		const n = r.x.length - 1;
+		return Math.hypot(r.x[n] - r.x[0], r.z[n] - r.z[0]);
+	};
+
 	it.each(HOME_ROADS.map((r) => [r.name, r] as const))(
-		'%s ends within 1 % of its length of its start',
+		'%s ends on its start, and its world goes round it',
 		async (_, home) => {
 			const { road, loop } = await homeRoute(home);
 			expect(loop).toBe(true);
-			const { x, z } = routeOfRoad(road);
-			const n = x.length - 1;
-			expect(Math.hypot(x[n] - x[0], z[n] - z[0])).toBeLessThan(
-				road.length / 100,
+			const walked = routeOfRoad(road);
+			expect(gap(walked)).toBeLessThan(0.01);
+			// Ridden round, as the ride's world rides it (compose.ts).
+			const round = { ...walked, loop: true };
+			expect(closes(round)).toBe(true);
+			// Across the seam a rider moves the metres it rode, never a jump.
+			const before = at(round, round.length - 2);
+			const after = at(round, 2);
+			expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeLessThan(
+				4.5,
 			);
 		},
 	);
+
+	it('moves no metre of the road further than its ends lay apart', async () => {
+		const { road } = await homeRoute(HOME_ROADS[0]);
+		const open = walk(road);
+		const n = open.x.length - 1;
+		const apart = Math.hypot(open.x[n] - open.x[0], open.z[n] - open.z[0]);
+		expect(apart).toBeGreaterThan(1);
+		const x = open.x.slice();
+		const z = open.z.slice();
+		closeWalk(x, z, road.length);
+		let most = 0;
+		for (let k = 0; k <= n; k++)
+			most = Math.max(most, Math.hypot(x[k] - open.x[k], z[k] - open.z[k]));
+		expect(most).toBeLessThanOrEqual(apart + 1e-6);
+		expect(Math.hypot(x[n] - x[0], z[n] - z[0])).toBeLessThan(1e-6);
+	});
+
+	it('keeps a road with two ends open: a lap starts again where it began', () => {
+		const walked = routeOfRoad(alpineLoop());
+		expect(gap(walked)).toBeGreaterThan(1000);
+		expect(closes({ ...walked, loop: true })).toBe(false);
+	});
 });
 
 /**
