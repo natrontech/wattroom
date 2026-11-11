@@ -1,7 +1,6 @@
 package og
 
 import (
-	"image"
 	"math"
 	"testing"
 )
@@ -85,50 +84,64 @@ func TestWhichPictureARideGets(t *testing.T) {
 	}
 }
 
-// The silent failure: a workout on a road that still draws its road across
-// the panel. The workout's blocks fill the box above the strip — the sweet
-// spot blocks sit at 90 % of FTP in Z3's colour, level across their minutes
-// — and the road climbs inside the strip under them, never above it.
-func TestAWorkoutOnARoadDrawsTheWorkoutFirst(t *testing.T) {
-	ride := workoutOnRoad()
-	// Ridden easy throughout, so the watts line runs under the blocks' top
-	// edges rather than over them.
-	for i := range ride.Watts {
-		ride.Watts[i] = 120
+// The silent failure: a workout on a road that still draws its road. The
+// workout's blocks fill the panel — the sweet spot blocks sit at 90 % of FTP
+// in Z3's colour, level across their minutes — and the road adds nothing to
+// the graph: the same workout off a road draws the same pixels there.
+func TestAWorkoutOnARoadDrawsOnlyTheWorkout(t *testing.T) {
+	easy := func(c RideCard) RideCard {
+		// Ridden easy throughout, so the watts line runs under the blocks'
+		// top edges rather than over them.
+		for i := range c.Watts {
+			c.Watts[i] = 120
+		}
+		return c
 	}
+	ride := easy(workoutOnRoad())
+	ride.RoadLine = "Virtual route · 12.0 km · 360 m"
 	img := decode(t, mustRender(t, ride))
-	graph := image.Rect(traceBox.Min.X, traceBox.Min.Y, traceBox.Max.X, roadStripBox.Min.Y-12)
-	if !hasZoneInk(img, graph) {
-		t.Fatal("no block colour above the road strip: the workout was not drawn")
+	if !hasZoneInk(img, workoutBox) {
+		t.Fatal("no block colour in the panel: the workout was not drawn")
 	}
 	// The first sweet-spot block runs from 10 to 18 minutes of the ride's
 	// 51: its top edge is level, where a road's profile would not be.
 	n := float64(len(ride.Watts))
 	at := func(second float64) int {
-		x := graph.Min.X + int(second/n*float64(graph.Dx()))
-		for y := graph.Min.Y; y < graph.Max.Y; y++ {
+		x := workoutBox.Min.X + int(second/n*float64(workoutBox.Dx()))
+		for y := workoutBox.Min.Y; y < workoutBox.Max.Y; y++ {
 			if near(img.At(x, y), zoneInk[3]) {
 				return y
 			}
 		}
-		return graph.Max.Y
+		return workoutBox.Max.Y
 	}
-	if a, b := at(700), at(1000); a == graph.Max.Y || a-b > 3 || b-a > 3 {
+	if a, b := at(700), at(1000); a == workoutBox.Max.Y || a-b > 3 || b-a > 3 {
 		t.Errorf("the 90 %% block's top sits at %d and %d px; want one level edge", a, b)
 	}
-	// The road's summit, three quarters along, is higher in the strip than
-	// its start — drawn small, but drawn.
-	stripTop := func(frac float64) int {
-		x := roadStripBox.Min.X + int(frac*float64(roadStripBox.Dx()))
-		for y := roadStripBox.Min.Y; y < roadStripBox.Max.Y; y++ {
-			if !alike(img.At(x, y), img.At(roadStripBox.Min.X-20, y)) {
-				return y
+	// Far taller than the old panel's whole graph: the workout fills the card.
+	if tall := workoutBox.Max.Y - at(700); tall < 300 {
+		t.Errorf("the 90 %% block stands %d px tall; want the workout to fill the panel", tall)
+	}
+	offImg := decode(t, mustRender(t, easy(workoutCard())))
+	for y := workoutBox.Min.Y; y < workoutBox.Max.Y; y += 2 {
+		for x := workoutBox.Min.X; x < workoutBox.Max.X; x += 2 {
+			if !alike(img.At(x, y), offImg.At(x, y)) {
+				t.Fatalf("the road drew into the workout's graph at %d,%d", x, y)
 			}
 		}
-		return roadStripBox.Max.Y
 	}
-	if start, summit := stripTop(0.1), stripTop(0.74); summit >= start-10 {
-		t.Errorf("the road strip's top is %d px at the start and %d at the summit; want the summit higher", start, summit)
+}
+
+// A workout that asks for no watts (only sprints, or saved before rides kept
+// their blocks) still gets the workout's card: its watts by zone fill the
+// panel, and its execution tile says it was not scored rather than 0 %.
+func TestAWorkoutWithNoTargetsDrawsItsWatts(t *testing.T) {
+	c := workoutCard()
+	c.Targets, c.HR, c.AvgHR = nil, nil, 0
+	c.ExecutionScored, c.Execution = false, 0
+	img := decode(t, mustRender(t, c))
+	if !hasZoneInk(img, workoutBox) {
+		t.Error("no watts drawn in the workout's panel")
 	}
 }
 
@@ -138,8 +151,8 @@ func TestAWorkoutCardDrawsItsHeartRate(t *testing.T) {
 	watt := Palette{}.orDefault().watt
 	drawn := func(c RideCard) bool {
 		img := decode(t, mustRender(t, c))
-		for y := traceBox.Min.Y; y < traceBox.Max.Y; y++ {
-			for x := traceBox.Min.X; x < traceBox.Max.X; x += 2 {
+		for y := workoutBox.Min.Y; y < workoutBox.Max.Y; y++ {
+			for x := workoutBox.Min.X; x < workoutBox.Max.X; x += 2 {
 				if near(img.At(x, y), watt) {
 					return true
 				}

@@ -83,10 +83,14 @@ type RideCard struct {
 	// beside Watts. With them a free ride's card is a poster — the road it
 	// rode.
 	Metres, Heights []float64
-	// Workout says the ride was ridden to a workout (ADR-0062's mode). On a
-	// road a workout is still drawn as the workout, with the road it rode
-	// small under it (#4430): in a workout, the workout comes first.
+	// Workout says the ride was ridden to a workout (ADR-0062's mode). A
+	// workout is drawn as the workout, on a road or off one, and nothing of
+	// the road's shape: the workout fills the card (#4430).
 	Workout bool
+	// RoadLine is where a workout on a road was ridden, in numbers only
+	// ("Virtual route · 32.0 km · 410 m"), said after the place under the
+	// title. Empty off a road, and where the title already says the road.
+	RoadLine string
 	// Where the road's heights came from, printed small at the foot of a
 	// poster: data that is someone else's is credited where it shows (#3133).
 	HeightCredit string
@@ -105,6 +109,13 @@ var embeddedFace = sync.OnceValues(func() (*sfnt.Font, error) {
 var (
 	traceBox   = image.Rect(cardMargin+36, 320, cardRight-36, 556)
 	zoneBarBox = image.Rect(cardMargin+36, 578, cardRight-36, 602)
+)
+
+// A workout's card gives the panel to the workout: one tall graph, the
+// numbers in a single row of six under it.
+var (
+	workoutPanel = image.Rect(cardMargin, 286, cardRight, 846)
+	workoutBox   = image.Rect(cardMargin+36, 330, cardRight-36, 818)
 )
 
 // RenderRide draws the 1080×1080 card as a PNG.
@@ -136,6 +147,10 @@ func RenderRide(c RideCard) ([]byte, error) {
 	if c.Place != "" {
 		where = "in " + c.Place
 	}
+	workout := c.Workout || hasTargets(c)
+	if workout && c.RoadLine != "" {
+		where += " · " + c.RoadLine
+	}
 	pillLeft, err := s.datePill(img, c.StartedAt.Format("2 Jan 2006 · 15:04"))
 	if err != nil {
 		return nil, err
@@ -145,6 +160,13 @@ func RenderRide(c RideCard) ([]byte, error) {
 		return nil, err
 	}
 	drawText(img, subFace, cardMargin, 258, s.pal.muted, sub)
+
+	if workout {
+		if err := s.drawWorkoutCard(img, c); err != nil {
+			return nil, err
+		}
+		return encode(img)
+	}
 
 	fillRound(img, image.Rect(cardMargin, 286, cardRight, 660), 28, s.pal.raised)
 	if err := s.drawSilhouette(img, traceBox, c); err != nil {
@@ -185,12 +207,40 @@ func RenderRide(c RideCard) ([]byte, error) {
 		}
 		drawText(img, creditFace, cardMargin, 1052, s.pal.mutedDim, c.HeightCredit)
 	}
+	return encode(img)
+}
 
+func encode(img *image.NRGBA) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// drawWorkoutCard is the panel and the numbers of a workout's card: the
+// workout as big as the card allows, then duration, average, normalised,
+// work, execution and XP in one row, then the curve.
+func (s *Service) drawWorkoutCard(img *image.NRGBA, c RideCard) error {
+	fillRound(img, workoutPanel, 28, s.pal.raised)
+	if err := s.drawSilhouette(img, workoutBox, c); err != nil {
+		return err
+	}
+	execution := "not scored"
+	if c.ExecutionScored {
+		execution = strconv.Itoa(int(c.Execution*100+0.5)) + " %"
+	}
+	if err := s.drawTileRow(img, 870, []tile{
+		{iconClock, clock(c.Seconds), "duration"},
+		{iconZap, strconv.Itoa(c.AvgWatts) + " W", "average"},
+		{iconActivity, strconv.Itoa(c.NormWatts) + " W", "normalised"},
+		{iconFlame, group(c.Kj) + " kJ", "work"},
+		{iconTarget, execution, "execution"},
+		{iconTrophy, group(c.Xp) + " XP", "earned"},
+	}); err != nil {
+		return err
+	}
+	return s.drawCurve(img, 1040, c.Curve)
 }
 
 // skyFill is the card's ground: the surface, lifted a little at the top so
@@ -270,6 +320,29 @@ func (s *Service) drawTiles(dst *image.NRGBA, top int, tiles [3]tile) error {
 		}
 		drawText(dst, valueFace, box.Min.X+24, top+96, s.pal.ink, value)
 		drawText(dst, labelFace, box.Min.X+24, top+120, s.pal.muted, t.label)
+	}
+	return nil
+}
+
+// drawTileRow lays any number of compact tiles in one row across the card,
+// each value fitted to its own tile.
+func (s *Service) drawTileRow(dst *image.NRGBA, top int, tiles []tile) error {
+	labelFace, err := s.face(19)
+	if err != nil {
+		return err
+	}
+	const gap = 12
+	step := (cardWidth + gap) / len(tiles)
+	for i, t := range tiles {
+		box := image.Rect(cardMargin+i*step, top, cardMargin+i*step+step-gap, top+120)
+		fillRound(dst, box, 18, s.pal.raised)
+		t.mark.draw(dst, float64(box.Min.X+18), float64(top+16), 26, s.pal.iconInk())
+		valueFace, value, err := s.fit(t.value, box.Dx()-30, 36, 18)
+		if err != nil {
+			return err
+		}
+		drawText(dst, valueFace, box.Min.X+16, top+86, s.pal.ink, value)
+		drawText(dst, labelFace, box.Min.X+16, top+110, s.pal.muted, t.label)
 	}
 	return nil
 }

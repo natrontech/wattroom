@@ -27,9 +27,11 @@ func workoutOn(routeID string) string {
 }
 
 // Which picture a saved ride gets (#4430): a free ride on a road is its
-// road's poster; a workout on a road is the workout — its blocks under the
-// watts, its heart rate, the road under them — and a workout on no road is
-// the workout too. The ride's page reads the same word for its button.
+// road's poster, named by the road's numbers; a workout on a road is the
+// workout — its blocks under the watts, titled by the workout's own name,
+// the road said under it in numbers only — and a workout on no road is the
+// workout too, with no road to say. The ride's page reads the same word for
+// its button.
 func TestWhichPictureASavedRideGets(t *testing.T) {
 	h := setup(t)
 	route, _ := storeRoute(t, h, "alice")
@@ -63,10 +65,12 @@ func TestWhichPictureASavedRideGets(t *testing.T) {
 		poster  bool
 		targets []float64 // at seconds 30 and 90; nil for none
 		mode    string
+		title   string // the title's start
+		road    string // the road line's start; "" for none
 	}{
-		{"a free ride on a road", freeRideOn(route, 8, ""), true, nil, "free"},
-		{"a workout on a road", workoutOn(route), false, []float64{150, 250}, "workout"},
-		{"a workout on no road", rideBody(120, 200), false, []float64{200, 200}, "workout"},
+		{"a free ride on a road", freeRideOn(route, 8, ""), true, nil, "free", "Road · 0.9 km", ""},
+		{"a workout on a road", workoutOn(route), false, []float64{150, 250}, "workout", "Openers", "Virtual route · 0.9 km · "},
+		{"a workout on no road", rideBody(120, 200), false, []float64{200, 200}, "workout", "Openers", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			id := saved(tc.body)
@@ -79,6 +83,12 @@ func TestWhichPictureASavedRideGets(t *testing.T) {
 				t.Errorf("blocks %v on a ride with no workout", card.Targets[:3])
 			case tc.targets != nil && (len(card.Targets) != 120 || card.Targets[30] != tc.targets[0] || card.Targets[90] != tc.targets[1]):
 				t.Errorf("targets at 30 s and 90 s are not %v: %d seconds", tc.targets, len(card.Targets))
+			}
+			if !strings.HasPrefix(card.WorkoutName, tc.title) || strings.Contains(card.WorkoutName+card.RoadLine, "Home loop") {
+				t.Errorf("titled %q, want it to start %q and never name the road", card.WorkoutName, tc.title)
+			}
+			if tc.road == "" && card.RoadLine != "" || !strings.HasPrefix(card.RoadLine, tc.road) {
+				t.Errorf("road line %q, want it to start %q", card.RoadLine, tc.road)
 			}
 			if _, detail := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, ""); detail["rideMode"] != tc.mode {
 				t.Errorf("the page reads its mode as %v, want %q", detail["rideMode"], tc.mode)

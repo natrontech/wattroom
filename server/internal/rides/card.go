@@ -155,11 +155,21 @@ func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) o
 			s.log.Warn("ride card road unreadable", "err", err, "ride", store.UUIDString(row.ID))
 		}
 		card.HeightCredit = heightCredit(stored.EleSource)
-		// A workout on a road is drawn as the workout, the road under it
-		// (#4430); a free ride on one stays its poster. The ride's own mode
+		// A workout on a road is drawn as the workout alone, the road said in
+		// words (#4430); a free ride on one stays its poster. The ride's own mode
 		// says so even where it kept no blocks — the page's button reads the
 		// same word, so the two never disagree about which picture it is.
 		card.Workout = card.Workout || stored.RideMode != nil && *stored.RideMode == "workout"
+	}
+	// A workout ridden over a road is titled by the workout (the save kept
+	// its own name beside the road's), and the road is said under it in
+	// numbers only. Where no own name was kept — a road workout, a ride
+	// saved before the column — the road's numbers already are the title.
+	if card.Workout && row.WorkoutOwnName != nil {
+		name = *row.WorkoutOwnName
+		if onRoad {
+			card.RoadLine = road.VirtualRouteOf(ridden(samples))
+		}
 	}
 	card.WorkoutName = name
 	return card
