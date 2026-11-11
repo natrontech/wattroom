@@ -2,17 +2,19 @@
 -- A session's ride names its crew, the voice channel and the session (#2443);
 -- a solo ride leaves all three null. The road summary (#3053) is what exists
 -- only at the moment of saving: null where a ride had no road, or the saver
--- did not know. The workout's blocks (#4430) are null on a ride with none.
+-- did not know. The workout's blocks (#4430) are null on a ride with none,
+-- and its own name is null unless the road named the ride.
 insert into rides (
     user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
     crew_id, channel_id, session_id,
     route_id, route_key, road_h, ride_mode, timeable,
-    from_m, distance_m, climbed_m, weight_kg, mean_shelter, on_road, blocks
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter, on_road, blocks,
+    workout_own_name
 )
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
 returning id;
 
 -- name: ListUserRides :many
@@ -441,9 +443,10 @@ delete from users where id = $1;
 -- The uploader's one read: the ride plus the owner's consent flag and the
 -- crew's name for the activity description (null for solo rides, #2443).
 -- A route ride's title is its numbers (#4154): route_key marks one the save
--- placed, and outlives the route; on_road marks every one since.
+-- placed, and outlives the route; on_road marks every one since. A workout
+-- ridden over a road is titled by its own name instead.
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
-       c.name as crew_name, r.route_key, r.distance_m, r.on_road
+       c.name as crew_name, r.route_key, r.distance_m, r.on_road, r.workout_own_name
 from rides r
 join users u on u.id = r.user_id
 left join crews c on c.id = r.crew_id

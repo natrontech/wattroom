@@ -218,6 +218,12 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), req.WorkoutJSON, route != nil, req.Drive, stats.WeightThatDay(user))
 	if route != nil {
 		stats.SetRoad(&row, *route, ride)
+		// A workout named after the route itself is the road's name, not
+		// the workout's: the owner's rename can say where they live (#3055).
+		if own := row.WorkoutOwnName; own != nil && route.Name != "" &&
+			strings.Contains(strings.ToLower(*own), strings.ToLower(route.Name)) {
+			row.WorkoutOwnName = nil
+		}
 	}
 	row.Xp += stats.StreakXP(r.Context(), s.store.Queries, user.ID, req.StartedAt)
 	// Under the rider's row lock, and only if it is not there yet (audit

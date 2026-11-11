@@ -232,6 +232,43 @@ func TestARoadWorkoutRideIsKeptUnderItsGeneratedName(t *testing.T) {
 	}
 }
 
+// A workout ridden by its clock over a road is kept under the road's
+// generated name, as every road ride is (#3055), and keeps the workout's own
+// name beside it for its Strava title. A workout named after the route itself
+// keeps none: the owner's rename can say where they live.
+func TestAWorkoutOnARouteKeepsItsOwnName(t *testing.T) {
+	h := setup(t)
+	route, _ := storeRoute(t, h, "alice")
+	samples := make([]string, 120)
+	for i := range samples {
+		samples[i] = fmt.Sprintf(`{"watts":250,"cadence":90,"m":%d}`, 1000+8*i)
+	}
+	for _, c := range []struct{ name, want string }{
+		{"Sweet spot", "Sweet spot"},
+		{"Home loop tempo", ""},
+	} {
+		workout := `{"name":"` + c.name + `","road":{"routeId":"` + route + `","fromM":0,"toM":5000},"steps":[{"type":"steady","seconds":120,"target":0.9}]}`
+		body := fmt.Sprintf(`{"workoutName":%q,"workoutJson":%q,"startedAt":%q,"samples":[%s],"routeId":%q}`,
+			c.name, workout, nextStart().Format(time.RFC3339), strings.Join(samples, ","), route)
+		status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+		if status != http.StatusCreated {
+			t.Fatalf("%s: save: %d %v", c.name, status, got)
+		}
+		var kept string
+		var own *string
+		if err := h.store.Pool.QueryRow(t.Context(), `select workout_name, workout_own_name from rides where id = $1`, got["id"]).Scan(&kept, &own); err != nil {
+			t.Fatal(err)
+		}
+		ownName := ""
+		if own != nil {
+			ownName = *own
+		}
+		if kept != "Road · 5.0 km · 100 m" || ownName != c.want {
+			t.Errorf("%s: kept as %q with own name %q, want the generated name and %q", c.name, kept, ownName, c.want)
+		}
+	}
+}
+
 // A road ride the save cannot place is still marked as one (#4154), so its
 // Strava title carries no place: one with no metres, one whose route was
 // deleted, and one on a WattRoom road, which has no route row (#4262), kept

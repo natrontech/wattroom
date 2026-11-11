@@ -323,6 +323,9 @@ func BuildRideRow(
 		// What the workout asked, for the ride's picture (#4430): kept at the
 		// FTP it was scored on, like the score.
 		Blocks: RideBlocksJSON(workoutJSON, float64(ftpWatts)),
+		// The workout's own name where its road named the ride, for the
+		// Strava title.
+		WorkoutOwnName: WorkoutOwnName(workoutJSON, workoutName),
 	}, nil
 }
 
