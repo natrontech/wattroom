@@ -10,7 +10,9 @@
 # golang tag stays a human's edit — the Node major tracks ci.yml's `web` job
 # and the Go version tracks go.mod.
 FROM --platform=$BUILDPLATFORM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS web
-RUN corepack enable
+# Node 25 stopped shipping corepack, so it comes from npm. It still reads
+# packageManager from package.json, which stays the one pnpm pin.
+RUN npm install -g corepack@0.36.0 && corepack enable
 WORKDIR /src/web
 # pnpm-workspace.yaml is part of the install's input, not a convenience:
 # pnpm 12 stopped reading package.json's `pnpm` field, so `overrides` — the
