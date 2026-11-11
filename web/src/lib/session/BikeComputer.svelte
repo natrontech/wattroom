@@ -150,11 +150,8 @@
 	$effect(() => {
 		const ask = (event: Event) => {
 			const wanted = (event as CustomEvent<PageAsk>).detail;
-			if (wanted === 'next') {
-				if (pages.length < 2) return;
-				turn(1);
-			} else if (pages.includes(wanted)) page = wanted;
-			else return;
+			if (!pages.includes(wanted)) return;
+			page = wanted;
 			event.preventDefault();
 		};
 		window.addEventListener(PAGE_ASK, ask);

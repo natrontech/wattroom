@@ -1817,9 +1817,10 @@ export const PokeCooldownSeconds = 10;
  * Addressed to that rider's own sockets only and never on the tick, for the
  * reason SensorPairing is: what a rider's second screen does is nobody else's
  * business.
- * View flips the riding screen between the 3D world and the flat road
- * (#4223); Page turns the bike computer to its next page, and Map to MAP and
- * back.
+ * The view-* actions are the riding screen's view switch, one segment each
+ * (#4223): 3D, Flat, Map and Room. Flag, TV and End are the now bar's ⚑, TV
+ * mode (a toggle) and End ride. The phone offers what the bar offers and
+ * nothing else: one list of the ride's controls, web/src/lib/ride/ride-controls.ts.
  * Taps never hold: a lost release under Talk's 1 s keepalive measured up to 5
  * phantom shifts, so Easier and Harder are one tap each. Only Talk holds, as
  * talk-down, a talk-keepalive while it lasts, and talk-up. Sync presses
@@ -1875,17 +1876,16 @@ export interface PauseState {
   last?: boolean;
 }
 /**
- * ViewState is the holding tab's answer about where its rider looks (#4223):
- * the bike computer's page and whether the 3D world draws. It travels the way
- * GearState does, so the phone's Page, Map and 3D / Flat say what the riding
- * screen shows now.
+ * ViewState is the holding tab's answer about where its rider looks (#4223)
+ * and which of the now bar's controls it offers. It travels the way GearState
+ * does, so the phone's view row, Camera, Photo, Flag, TV and End say what the
+ * riding screen shows and offers now.
  */
 export interface ViewState {
   /**
-   * The bike computer's page, as its id ("ride", "map" …); empty where
-   * the screen has no computer.
+   * The view switch's pressed segment: "3d", "flat", "map" or "room".
    */
-  page: string;
+  look: string;
   /**
    * The 3D world draws; false is the flat road.
    */
@@ -1899,9 +1899,22 @@ export interface ViewState {
    * Pictures taken on this ride, so the phone's Photo can say it took one.
    */
   pictures?: number /* int */;
+  /**
+   * Flags marked on this ride, so the phone's Flag can say it took one.
+   */
+  flags?: number /* int */;
+  /**
+   * TV mode is up on the riding screen.
+   */
+  tv?: boolean;
+  /**
+   * The remote actions the riding screen offers now: the view segments
+   * its switch draws, and Flag, TV and End where its now bar has them.
+   */
+  offers?: string[];
 }
 /**
- * MaxViewPage bounds Page and Camera: each is rendered on another screen.
+ * MaxViewPage bounds Look and Camera: each is rendered on another screen.
  */
 export const MaxViewPage = 8;
 

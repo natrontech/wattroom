@@ -178,12 +178,12 @@ func TestRiderLaneFirstRideHoldsTheRemote(t *testing.T) {
 	r.send(desk, rideClaim(true, "desk-tab", "desktop"))
 	r.send(laptop, rideClaim(true, "laptop-tab", "tablet"))
 
-	got := r.send(phone, press("view"))
+	got := r.send(phone, press("view-flat"))
 	if len(got[desk]) != 1 || len(got[laptop]) != 0 {
 		t.Fatalf("the press went to the second ride: desk %d, laptop %d", len(got[desk]), len(got[laptop]))
 	}
 	// The second screen's answers are not the ride's.
-	if got := r.send(laptop, protocol.LobbyClientMessage{View: &protocol.ViewState{Page: "ride"}}); len(got[phone]) != 0 {
+	if got := r.send(laptop, protocol.LobbyClientMessage{View: &protocol.ViewState{Look: "3d"}}); len(got[phone]) != 0 {
 		t.Fatalf("the phone heard the second ride's view: %+v", got[phone])
 	}
 
@@ -191,7 +191,7 @@ func TestRiderLaneFirstRideHoldsTheRemote(t *testing.T) {
 	if where, _ := elsewhere(got[phone]); where != "tablet" {
 		t.Fatalf("with the desk gone the phone was told %q, want tablet", where)
 	}
-	if got := r.send(phone, press("view")); len(got[laptop]) != 1 {
+	if got := r.send(phone, press("view-flat")); len(got[laptop]) != 1 {
 		t.Fatalf("the laptop did not take the remote: %+v", got)
 	}
 }
@@ -211,7 +211,7 @@ func TestRiderLaneReloadKeepsTheRide(t *testing.T) {
 	if got := bySocket(r.lanes.remove(desk)); len(got[phone]) != 0 {
 		t.Fatalf("the phone heard the old socket go: %+v", got[phone])
 	}
-	if got := r.send(phone, press("page")); len(got[reloaded]) != 1 {
+	if got := r.send(phone, press("view-map")); len(got[reloaded]) != 1 {
 		t.Fatalf("the reloaded tab did not get the press: %+v", got)
 	}
 }

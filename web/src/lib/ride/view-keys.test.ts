@@ -6,7 +6,14 @@ const askViewFlip = vi.fn(() => true);
 vi.mock('$lib/session/computer-pages', () => ({
 	toggleMap: () => toggleMap(),
 }));
-vi.mock('$lib/world/ride-view', () => ({ askViewFlip: () => askViewFlip() }));
+const world = { on: true };
+const askCamera = vi.fn((_preset?: string) => world.on);
+const askPhoto = vi.fn(() => world.on);
+vi.mock('$lib/world/ride-view', () => ({
+	askViewFlip: () => askViewFlip(),
+	askCamera: (preset?: string) => askCamera(preset),
+	askPhoto: () => askPhoto(),
+}));
 
 const { bindViewKeys, rideKeyOf } = await import('./keys');
 
@@ -16,7 +23,7 @@ const press = (key: string) => {
 	return event.defaultPrevented;
 };
 
-describe('M and V on a session’s and a free ride’s surface (#4236)', () => {
+describe('the view keys on a session’s and a free ride’s surface (#4236)', () => {
 	afterEach(() => vi.clearAllMocks());
 
 	it('reads V as the view flip', () => {
@@ -40,9 +47,22 @@ describe('M and V on a session’s and a free ride’s surface (#4236)', () => {
 		expect(askViewFlip).toHaveBeenCalledOnce();
 	});
 
+	it('takes O and 1-4 for the bar’s Photo and Camera while a world draws', () => {
+		const off = bindViewKeys(() => false);
+		world.on = true;
+		expect(press('o')).toBe(true);
+		expect(press('2')).toBe(true);
+		expect(askCamera).toHaveBeenCalledWith('heli');
+		world.on = false;
+		expect(press('o')).toBe(false);
+		expect(press('1')).toBe(false);
+		off();
+		world.on = true;
+	});
+
 	it('leaves every other key to whoever has it', () => {
 		const off = bindViewKeys(() => false);
-		for (const key of ['h', 'o', '1', '?']) expect(press(key)).toBe(false);
+		for (const key of ['h', '?', '5']) expect(press(key)).toBe(false);
 		off();
 	});
 

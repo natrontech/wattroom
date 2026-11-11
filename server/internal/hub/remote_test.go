@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ func TestRemoteReachesOnlyTheHoldingTab(t *testing.T) {
 func TestRemoteWithNoRideRunningIsAConflict(t *testing.T) {
 	r := newRemoteRig(t)
 	r.rm.claimSensors(r.desktop, protocol.SensorClaim{Tab: "desk"})
-	r.h.remote(r.phone, r.rm, r.phone.rider, protocol.RemoteCommand{Action: "page"})
+	r.h.remote(r.phone, r.rm, r.phone.rider, protocol.RemoteCommand{Action: "view-map"})
 	if got := heard(r.phone); got == nil || got.Error == nil || got.Error.Code != "remote_conflict" {
 		t.Fatalf("the phone heard %+v, want remote_conflict", got)
 	}
@@ -190,19 +191,23 @@ func TestViewStateReachesOnlyTheRidersOtherScreens(t *testing.T) {
 		view  protocol.ViewState
 		phone bool
 	}{
-		{"the holder's view", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "map", World: true}, true},
-		{"a page too long to render", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: strings.Repeat("x", protocol.MaxViewPage+1)}, false},
-		{"the holder's camera and pictures", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "ride", World: true, Camera: "heli", Pictures: 2}, true},
-		{"a camera too long to render", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "ride", Camera: strings.Repeat("x", protocol.MaxViewPage+1)}, false},
-		{"a negative picture count", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Page: "ride", Pictures: -1}, false},
-		{"a screen that does not hold the trainer", func(r remoteRig) *client { return r.phone }, protocol.ViewState{Page: "ride"}, false},
+		{"the holder's view", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "map", World: true}, true},
+		{"a look too long to render", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: strings.Repeat("x", protocol.MaxViewPage+1)}, false},
+		{"the holder's camera and pictures", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "3d", World: true, Camera: "heli", Pictures: 2}, true},
+		{"a camera too long to render", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "3d", Camera: strings.Repeat("x", protocol.MaxViewPage+1)}, false},
+		{"a negative picture count", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "3d", Pictures: -1}, false},
+		{"the now bar's offers, TV up and a flag", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "flat", TV: true, Flags: 1, Offers: []string{"view-3d", "view-flat", "flag", "tv", "end"}}, true},
+		{"an offer outside the remote's set", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "flat", Offers: []string{"reboot"}}, false},
+		{"an offer twice", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "flat", Offers: []string{"tv", "tv"}}, false},
+		{"a negative flag count", func(r remoteRig) *client { return r.desktop }, protocol.ViewState{Look: "flat", Flags: -1}, false},
+		{"a screen that does not hold the trainer", func(r remoteRig) *client { return r.phone }, protocol.ViewState{Look: "3d"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newRemoteRig(t)
 			from := tc.from(r)
 			r.h.viewState(from, r.rm, from.rider, tc.view)
 			got := heard(r.phone)
-			if tc.phone && (got == nil || got.View == nil || *got.View != tc.view) {
+			if tc.phone && (got == nil || got.View == nil || !reflect.DeepEqual(*got.View, tc.view)) {
 				t.Fatalf("the phone heard %+v, want %+v", got, tc.view)
 			}
 			if !tc.phone && got != nil {

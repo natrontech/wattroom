@@ -4,7 +4,7 @@ import { gearsEnabled } from '$lib/ride/gears-enabled';
 import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
 import type { RemoteCommand } from '$lib/protocol';
 import { toggleMap } from '$lib/session/computer-pages';
-import { askViewFlip } from '$lib/world/ride-view';
+import { askCamera, askPhoto, askViewFlip } from '$lib/world/ride-view';
 import { CAMERA_PRESETS, type CameraPreset } from '$lib/world/cameras';
 
 /**
@@ -254,16 +254,26 @@ export function bindRideKeys(
 }
 
 /**
- * M and V on a riding surface with no other ride keys (#4236): a session's
- * and a free ride's. Only these two are claimed, so H, O and the digits
- * stay free there, and a soundboard pad bound to either keeps it.
+ * The keys of the now bar's view controls on a riding surface with no other
+ * ride keys (#4236): a session's and a free ride's. M and V always; 1-4 and
+ * O while a world takes them, since Camera and Photo sit in those bars too
+ * (ride-controls.ts). H and ? stay free there, and a soundboard pad bound to
+ * any of them keeps it.
  */
 export function bindViewKeys(padBound: (key: string) => boolean): () => void {
 	const down = (event: KeyboardEvent) => {
 		if (event.defaultPrevented || event.repeat || isTyping(event)) return;
 		const key = rideKeyOf(event);
-		if (!key || (key.kind !== 'map' && key.kind !== 'view')) return;
+		if (!key || key.kind === 'clean' || key.kind === 'sheet') return;
 		if (padBound(event.key)) return;
+		if (key.kind === 'camera') {
+			if (askCamera(key.preset)) event.preventDefault();
+			return;
+		}
+		if (key.kind === 'snap') {
+			if (askPhoto()) event.preventDefault();
+			return;
+		}
 		event.preventDefault();
 		if (key.kind === 'map') toggleMap();
 		else askViewFlip();

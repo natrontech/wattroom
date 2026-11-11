@@ -132,10 +132,16 @@ describe('the world on a ride', () => {
 		// ⚑ keeps its own kit (FlagButton). The names' tooltips are the app's
 		// own (#4427), attached in the browser: tooltip.test.ts holds them.
 		expect(html).toMatch(/<button[^>]*aria-label="Flag a problem"/);
-		for (const name of ['TV mode', 'One more minute', 'Skip block'])
+		for (const name of [
+			'Next camera',
+			'Take the ride’s photo',
+			'TV mode',
+			'One more minute',
+			'Skip block',
+		])
 			expect(html).toMatch(
 				new RegExp(
-					`<button[^>]*class="[^"]*h-11 w-11[^"]*" aria-label="${name}"`,
+					`<button[^>]*aria-label="${name}"[^>]*class="[^"]*h-11 w-11[^"]*"`,
 				),
 			);
 		expect(html).toMatch(/>End ride<\/button>/);

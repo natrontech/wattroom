@@ -4,6 +4,7 @@
 	import TvMode from '$lib/session/TvMode.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
+	import { rideOffers } from '$lib/ride/ride-offers.svelte';
 	import type { SprintState, GameState } from '$lib/protocol';
 	import { TV_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
 	import type { Block } from '$lib/workout/block';
@@ -84,6 +85,18 @@
 	} = $props();
 
 	const you = $derived(riders.find((r) => r.you));
+
+	// The phone's TV is a toggle (ride-controls.ts): while this frame is up
+	// it says so, and its TV press is the way out, over the button that
+	// opened it.
+	$effect(() => {
+		rideOffers.tv = true;
+		const off = rideOffers.offer('tv', () => onExit(), true);
+		return () => {
+			off();
+			rideOffers.tv = false;
+		};
+	});
 </script>
 
 {#snippet exit()}

@@ -1,25 +1,42 @@
 <script lang="ts">
 	/**
 	 * This phone as the remote for the rider's other screen (#3217, ADR-0025):
-	 * two columns of 64 px buttons, thumb-sized for a rider on a bike (ux.md).
-	 * Every press is a closed-set RemoteCommand the holding tab runs through its
-	 * keymap. Easier and Harder tap and never hold: a lost release measured up
-	 * to 5 phantom shifts. Only Talk holds, with a beat (remote-talk.ts).
+	 * the now bar's controls, from the one list both draw (ride-controls.ts),
+	 * so the two cannot drift apart again (rider feedback, 2026-11). The view
+	 * row is the riding screen's view switch, TV and Flag are its own TV mode
+	 * and ⚑, and each is held, with one line that says why, while that
+	 * screen does not offer it.
 	 *
-	 * Chrome, not live data: neon, never the watt accent (ADR-0005).
+	 * It fits the screen exactly, whatever the phone (an iPhone 17 in Safari
+	 * scrolled a few pixels): every row shares the height left after the
+	 * header, with a 48 px floor, and nothing is a fixed sum of heights.
+	 *
+	 * Every press is a closed-set RemoteCommand the holding tab runs through
+	 * its own controls. Easier and Harder tap and never hold: a lost release
+	 * measured up to 5 phantom shifts. Only Talk holds, with a beat
+	 * (remote-talk.ts). Chrome, not live data: neon, never the watt accent
+	 * (ADR-0005).
 	 *
 	 * `link` is the way to the riding screen: a voice channel's socket, or the
 	 * rider's own lane for a ride alone (#4425). Talk and Cheer reach a call
 	 * and a channel, so a ride alone draws neither (`social`).
 	 */
 	import { onDestroy, onMount, untrack } from 'svelte';
+	import { play } from '$lib/sound/cues';
 	import type { RemoteLink } from '$lib/ride/remote-link';
-	import { LAST_BLOCK, NO_BLOCKS } from '$lib/ride/remote-blocks';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { createTalkHold } from '$lib/ride/remote-talk';
 	import { keepAwakeWhile } from '$lib/workout/keep-awake.svelte';
-	import { answerLine, photosFull, remoteLine } from '$lib/ride/remote-line';
-	import { play } from '$lib/sound/cues';
+	import {
+		answerLine,
+		CONTROLS,
+		LOOK_WORDS,
+		phoneTiles,
+		phoneViews,
+		remoteLine,
+		type RideControl,
+	} from '$lib/ride/ride-controls';
+	import Mic from '@lucide/svelte/icons/mic';
 
 	let {
 		link: live,
@@ -32,44 +49,56 @@
 		onclose: () => void;
 	} = $props();
 
-	// Page, Map and 3D / Flat turn the riding screen's own controls (#4223);
-	// Cheer answers the rider who last cheered you, or cheers everyone; Camera
-	// and Photo turn its world, so they wait for 3D, one row under Talk with
-	// the line that says so (#4253).
-	const CELLS = $derived([
-		{ action: 'page', label: 'Page' },
-		{ action: 'map', label: 'Map' },
-		{ action: 'view', label: '3D / Flat' },
-		...(social ? [{ action: 'cheer-back', label: 'Cheer' }] : []),
-	]);
-	const WORLD_CELLS = [
-		{ action: 'camera', label: 'Camera' },
-		{ action: 'photo', label: 'Photo' },
-	];
-	const world = $derived(!!live.view?.world);
-	// Photo's answer: the count of pictures it had when pressed (remoteLine).
-	let photoFrom = $state<number | null>(null);
-	const shown = $derived(remoteLine(live.view, photoFrom));
-	// At the ride's cap Photo is disabled under the line that says so.
-	const full = $derived(photosFull(live.view));
-	// The shutter here too, when the riding screen says it took one.
+	const shown = $derived(
+		phoneTiles({ view: live.view, pause: live.pause, social }),
+	);
+	const views = $derived(phoneViews(live.view));
+
+	// Photo's and Flag's answers: the counts the screen had when pressed.
+	let since = $state<{ pictures: number | null; flags: number | null }>({
+		pictures: null,
+		flags: null,
+	});
+	const line = $derived(remoteLine(live.view, !!live.pause?.paused, since));
+	// The shutter here too, when the riding screen says it took one (#4495).
 	let heard = untrack(() => live.view?.pictures ?? 0);
 	$effect(() => {
 		const pictures = live.view?.pictures ?? 0;
 		if (pictures > heard) play('shutter');
 		heard = pictures;
 	});
-	function press(action: string) {
-		if (action === 'photo') photoFrom = live.view?.pictures ?? 0;
-		live.sendRemote(action);
+
+	// End ends a ride that cannot be resumed (#2623): the phone asks with a
+	// second tap, so the riding screen ends it at once.
+	const END_ARMED_MS = 3000;
+	let arming = $state(false);
+	let disarm: ReturnType<typeof setTimeout> | undefined;
+	onDestroy(() => clearTimeout(disarm));
+
+	function press(control: RideControl) {
+		if (control === 'photo')
+			since = { pictures: live.view?.pictures ?? 0, flags: null };
+		if (control === 'flag')
+			since = { pictures: null, flags: live.view?.flags ?? 0 };
+		if (control === 'end' && !arming) {
+			arming = true;
+			disarm = setTimeout(() => (arming = false), END_ARMED_MS);
+			return;
+		}
+		if (control === 'end') {
+			clearTimeout(disarm);
+			arming = false;
+		}
+		live.sendRemote(control);
 	}
+
 	const geared = gearsEnabled('phone');
 	// The button the last shift tap was on carries the answer (#3334); before
 	// any tap the gear the phone opened to sits on Harder.
-	const SHIFTS = [
-		['easier', 'Easier'],
-		['harder', 'Harder'],
-	] as const;
+	const SHIFTS = $derived([
+		['easier', geared ? 'Easier' : 'Bias −'],
+		['harder', geared ? 'Harder' : 'Bias +'],
+	] as const);
 	let tapped = $state<'easier' | 'harder'>('harder');
 	function shiftTap(action: 'easier' | 'harder') {
 		tapped = action;
@@ -77,184 +106,133 @@
 	}
 	const talk = createTalkHold((action) => live.sendRemote(action));
 	onDestroy(talk.up);
-	// A phone that opens late asks the holder where it is: its gear and
-	// whether the ride is a solo one it may pause.
+	// A phone that opens late asks the holder where it is: its gear, view
+	// and whether the ride is a solo one it may pause.
 	onMount(() => live.sendRemote('sync'));
 	// A remote that sleeps mid-ride is a phone to unlock with sweaty hands (#4219).
 	keepAwakeWhile(() => true);
 
-	const cell =
-		'btn btn-accent btn-ride min-h-16 text-2xl! disabled:cursor-not-allowed disabled:opacity-60';
+	// A row's floor is 48 px, a thumb's target (ux.md); `min-h-0` lets the
+	// rows share what the screen has rather than add up past it.
+	const key =
+		'btn btn-accent min-h-12 min-w-0 px-2 font-semibold disabled:cursor-not-allowed disabled:opacity-40 aria-pressed:bg-neon/20 aria-pressed:border-neon';
 </script>
 
 <div
-	class="bg-surface safe-p-4 fixed inset-0 z-50 flex flex-col gap-3 overflow-y-auto"
+	class="bg-surface safe-p-3 fixed inset-0 z-50 flex touch-manipulation flex-col gap-2 overflow-y-auto overscroll-contain"
 	role="dialog"
 	aria-label="Phone remote"
 	data-testid="phone-remote"
 >
-	<div class="flex items-center justify-between">
-		<h2 class="text-2xl font-semibold">Remote</h2>
+	<div class="flex shrink-0 items-center justify-between gap-3">
+		<div class="min-w-0">
+			<h2 class="text-2xl leading-8 font-semibold">Remote</h2>
+			<p
+				class="text-neon truncate text-lg leading-6"
+				aria-live="polite"
+				data-testid="remote-view"
+			>
+				{line ?? 'Waiting for your riding screen…'}
+			</p>
+		</div>
 		<button
 			type="button"
-			class="btn btn-accent btn-ride text-2xl!"
+			class="btn btn-accent btn-ride shrink-0 text-xl!"
 			onclick={onclose}
 		>
 			Done
 		</button>
 	</div>
 
-	<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
-		{#each CELLS as c, i (c.action)}
-			<!-- Three cells alone: the last takes the row. -->
-			<button
-				type="button"
-				class="{cell} {i === CELLS.length - 1 && CELLS.length % 2
-					? 'col-span-2'
-					: ''}"
-				onclick={() => press(c.action)}
-			>
-				{c.label}
-			</button>
-		{/each}
-		{#if social}
-			<button
-				type="button"
-				class="{cell} col-span-2"
-				style="touch-action: none"
-				onpointerdown={talk.down}
-				onpointerup={talk.up}
-				onpointerleave={talk.up}
-				onpointercancel={talk.up}
-				oncontextmenu={(event) => event.preventDefault()}
-			>
-				Talk
-			</button>
-		{/if}
-		{#each WORLD_CELLS as c (c.action)}
-			<button
-				type="button"
-				class={cell}
-				disabled={!world || (c.action === 'photo' && !!full)}
-				onclick={() => press(c.action)}
-			>
-				{c.label}
-			</button>
-		{/each}
-	</div>
-	{#if !world}
-		<p class="text-ink-muted text-2xl leading-7" data-testid="remote-hint">
-			Camera and Photo need 3D.
-		</p>
-	{:else if full}
-		<p class="text-ink-muted text-2xl leading-7" data-testid="remote-hint">
-			{full}
-		</p>
-	{/if}
-
-	{#if !geared}
-		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
-			<button
-				type="button"
-				class={cell}
-				onclick={() => live.sendRemote('easier')}
-			>
-				Bias −
-			</button>
-			<button
-				type="button"
-				class={cell}
-				onclick={() => live.sendRemote('harder')}
-			>
-				Bias +
-			</button>
-		</div>
-	{/if}
-
-	{#if shown}
-		<p
-			class="text-neon text-center text-2xl"
-			aria-live="polite"
-			data-testid="remote-view"
+	{#if views.length}
+		<!-- The riding screen's view switch, its segments as it draws them. -->
+		<div
+			class="grid min-h-12 shrink-0 gap-2"
+			style="grid-template-columns: repeat({views.length}, minmax(0, 1fr))"
+			role="group"
+			aria-label="View"
 		>
-			{shown}
-		</p>
-	{/if}
-
-	{#if live.pause?.pausable}
-		<div class="grid grid-cols-2 gap-3">
-			<button
-				type="button"
-				class={cell}
-				disabled={live.pause.paused}
-				onclick={() => live.sendRemote('pause')}
-			>
-				Pause
-			</button>
-			<button
-				type="button"
-				class={cell}
-				disabled={!live.pause.paused}
-				onclick={() => live.sendRemote('resume')}
-			>
-				Resume
-			</button>
-		</div>
-		{#if live.pause.paused}
-			<p class="text-neon text-center text-2xl" aria-live="polite">Paused</p>
-		{/if}
-		<!-- The riding screen's +1 min and Skip block (#4425), where its clock
-		     ends the blocks; held with the line that says why where it does not. -->
-		<div class="grid grid-cols-2 gap-3">
-			<button
-				type="button"
-				class={cell}
-				disabled={!live.pause.blocks}
-				onclick={() => live.sendRemote('extend')}
-			>
-				+1 min
-			</button>
-			<button
-				type="button"
-				class={cell}
-				disabled={!live.pause.blocks || live.pause.last}
-				onclick={() => live.sendRemote('skip')}
-			>
-				Skip block
-			</button>
-		</div>
-		{#if !live.pause.blocks || live.pause.last}
-			<p class="text-ink-muted text-2xl leading-7" data-testid="remote-blocks">
-				{live.pause.blocks ? LAST_BLOCK : NO_BLOCKS}
-			</p>
-		{/if}
-	{/if}
-
-	<!-- The most-used pair, last: under the thumb, the full width (#3334). -->
-	{#if geared}
-		<div class="grid flex-1 auto-rows-fr grid-cols-2 gap-3">
-			{#each SHIFTS as [action, word] (action)}
+			{#each views as v (v.segment)}
 				<button
 					type="button"
-					class="{cell} flex-col gap-1"
-					onclick={() => shiftTap(action)}
+					class="{key} text-xl"
+					aria-pressed={v.pressed}
+					onclick={() => !v.pressed && live.sendRemote(`view-${v.segment}`)}
 				>
-					{word}
-					{#if live.gear && tapped === action}
-						<span
-							class="text-neon font-display text-2xl"
-							aria-live="polite"
-							data-testid="remote-gear">{answerLine(live.gear)}</span
-						>
-					{/if}
+					{LOOK_WORDS[v.segment]}
 				</button>
 			{/each}
 		</div>
 	{/if}
 
+	<div class="grid min-h-0 flex-[3] auto-rows-fr grid-cols-3 gap-2">
+		{#each shown.tiles as t (t.control)}
+			{@const c = CONTROLS[t.control]}
+			<button
+				type="button"
+				class="{key} flex-col gap-0.5 text-lg leading-6 {t.control === 'end' &&
+				arming
+					? 'border-danger text-danger'
+					: ''}"
+				disabled={t.disabled}
+				aria-pressed={t.pressed}
+				aria-label={c.label}
+				onclick={() => press(t.control)}
+			>
+				<c.icon size={26} aria-hidden="true" />
+				<span class="truncate"
+					>{t.control === 'end' && arming ? 'Tap again' : c.word}</span
+				>
+			</button>
+		{/each}
+	</div>
+
+	{#if social}
+		<button
+			type="button"
+			class="{key} min-h-14 shrink-0 gap-2 text-xl"
+			style="touch-action: none"
+			onpointerdown={talk.down}
+			onpointerup={talk.up}
+			onpointerleave={talk.up}
+			onpointercancel={talk.up}
+			oncontextmenu={(event) => event.preventDefault()}
+		>
+			<Mic size={24} aria-hidden="true" /> Hold to talk
+		</button>
+	{/if}
+
 	{#if live.remoteRefusal}
-		<p class="text-danger text-2xl leading-7" role="alert">
+		<p class="text-danger line-clamp-2 shrink-0 text-lg leading-6" role="alert">
 			{live.remoteRefusal}
 		</p>
+	{:else if shown.hint}
+		<p
+			class="text-muted line-clamp-2 shrink-0 text-lg leading-6"
+			data-testid="remote-hint"
+		>
+			{shown.hint}
+		</p>
 	{/if}
+
+	<!-- The most-used pair, last: under the thumb, the full width, the
+	     tallest row (#3334). -->
+	<div class="grid min-h-24 flex-[2] grid-cols-2 gap-2">
+		{#each SHIFTS as [action, word] (action)}
+			<button
+				type="button"
+				class="{key} flex-col gap-1 text-2xl"
+				onclick={() => shiftTap(action)}
+			>
+				{word}
+				{#if live.gear && tapped === action}
+					<span
+						class="text-neon font-display text-xl"
+						aria-live="polite"
+						data-testid="remote-gear">{answerLine(live.gear)}</span
+					>
+				{/if}
+			</button>
+		{/each}
+	</div>
 </div>
