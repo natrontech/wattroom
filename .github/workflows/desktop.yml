@@ -85,3 +85,98 @@ jobs:
           name: desktop-smoke-trace-${{ matrix.os }}
           path: desktop/test-results/
           retention-days: 7
+
+  # The PACKAGED shell, driven over CDP (#1314, ADR-0088): electron-builder's
+  # own output with its fuses flipped — no --inspect, so not _electron — signs
+  # in through the wattroom:// hand-off from a second launch, rides the
+  # SimulatedTrainer through the one-minute workout against the production
+  # web build and the Go API, and floats the HUD (packaged.spec.js).
+  #
+  # Linux and unsigned here: a pull request gets no signing secrets, and a
+  # signed macOS build costs a notarization per push. The signed build rides
+  # the same spec in desktop-release.yml's `ride` job, before anything is
+  # published.
+  packaged:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: wattroom
+          POSTGRES_PASSWORD: wattroom
+          POSTGRES_DB: wattroom
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wattroom"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      # Not `pnpm/setup` — see the note in ci.yml's `web` job (#2375).
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: desktop/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: |
+            desktop/pnpm-lock.yaml
+            web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm install --frozen-lockfile
+        working-directory: desktop
+      - name: fetch the Electron binary
+        working-directory: desktop
+        run: test -d node_modules/electron/dist || node node_modules/electron/install.js
+      # The unpacked app is what the installers wrap; `dir` skips the
+      # AppImage and deb, which this job would only unpack again.
+      - name: build the shell
+        working-directory: desktop
+        env:
+          GH_TOKEN: ''
+        run: pnpm exec electron-builder --linux dir --publish never
+      - name: the fuses are off
+        working-directory: desktop
+        run: node fuses-check.js dist/linux-unpacked/wattroom-desktop
+      # The server the e2e job rides against: the production web build behind
+      # web/e2e/server.js, which proxies /api and /ws to `go run`. No LiveKit:
+      # an empty URL turns AV off rather than pointing at nothing.
+      - name: start the server
+        env:
+          WATTROOM_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
+          WATTROOM_LIVEKIT_URL: ''
+        run: |
+          eval "$(sh scripts/dev-env.sh print)"
+          echo "WATTROOM_URL=http://localhost:$WATTROOM_E2E_WEB_PORT" >> "$GITHUB_ENV"
+          (cd web && pnpm build)
+          (cd web && nohup node e2e/server.js > "$RUNNER_TEMP/server.log" 2>&1 &)
+          for _ in $(seq 1 240); do
+            curl -fsS -o /dev/null "http://localhost:$WATTROOM_E2E_WEB_PORT/ride" && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/server.log" >&2
+          echo "::error::the server never answered" >&2
+          exit 1
+      - name: ride the packaged shell
+        working-directory: desktop
+        env:
+          WATTROOM_APP_BINARY: dist/linux-unpacked/wattroom-desktop
+        run: xvfb-run --auto-servernum pnpm exec playwright test -c packaged.config.js
+      - name: server log
+        if: failure()
+        run: cat "$RUNNER_TEMP/server.log"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: desktop-packaged-results
+          path: desktop/test-results/
+          retention-days: 7

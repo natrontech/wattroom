@@ -327,11 +327,126 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  # The build a rider downloads, ridden before it is published (#1314,
+  # ADR-0088): the signed, notarized macOS app out of the .zip the updater
+  # installs, and the Linux AppImage, each launched as built and driven over
+  # CDP by packaged.spec.js — the wattroom:// hand-off from a second launch,
+  # a minute on the SimulatedTrainer saved on a local server, the HUD. The
+  # fuses leave no --inspect, so CDP is the only way in.
+  #
+  # Pull requests ride the unsigned Linux build in desktop.yml's `packaged`
+  # job; only here are the signing secrets. Windows is not ridden: its build
+  # carries the Apple certificate, which Windows does not trust (#2818), so
+  # there is no signed Windows build to prove yet.
+  ride:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: macos-universal
+          - os: ubuntu-latest
+            artifact: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: installers-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/installers
+      # The installers, opened the way a rider's machine opens them, into a
+      # directory outside the checkout.
+      - name: unpack the app
+        run: |
+          mkdir -p "$RUNNER_TEMP/app" && cd "$RUNNER_TEMP/app"
+          case "$RUNNER_OS" in
+            macOS)
+              ditto -x -k "$RUNNER_TEMP"/installers/*.zip .
+              codesign -dvv WattRoom.app 2>&1 | grep '^Authority=' | head -1
+              echo "WATTROOM_APP_BINARY=$PWD/WattRoom.app/Contents/MacOS/WattRoom" >> "$GITHUB_ENV" ;;
+            Linux)
+              chmod +x "$RUNNER_TEMP"/installers/*.AppImage
+              "$RUNNER_TEMP"/installers/*.AppImage --appimage-extract > /dev/null
+              echo "WATTROOM_APP_BINARY=$PWD/squashfs-root/wattroom-desktop" >> "$GITHUB_ENV" ;;
+          esac
+      # No service containers outside Linux, so the database is the runner's
+      # own Postgres on both, for one shape. Any recent major does: the
+      # migrations only add (AGENTS.md).
+      - name: start Postgres
+        run: |
+          case "$RUNNER_OS" in
+            macOS)
+              brew list postgresql@17 > /dev/null 2>&1 || brew install --quiet postgresql@17
+              pg="$(brew --prefix postgresql@17)/bin"
+              "$pg/initdb" -D "$RUNNER_TEMP/pg" -U wattroom --auth=trust > /dev/null
+              "$pg/pg_ctl" -D "$RUNNER_TEMP/pg" -l "$RUNNER_TEMP/pg.log" -o "-p 5432" -w start
+              "$pg/createdb" -h localhost -U wattroom wattroom ;;
+            Linux)
+              sudo systemctl start postgresql.service
+              sudo -u postgres psql -q -c "CREATE ROLE wattroom LOGIN SUPERUSER PASSWORD 'wattroom'"
+              sudo -u postgres createdb -O wattroom wattroom ;;
+          esac
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      # Not `pnpm/setup` — see the note in ci.yml's `web` job (#2375).
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: desktop/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: |
+            desktop/pnpm-lock.yaml
+            web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      # Playwright only, to drive the app; the app under test is the one
+      # unpacked above, not node_modules' Electron.
+      - run: pnpm install --frozen-lockfile
+        working-directory: desktop
+      # The same server desktop.yml's `packaged` job rides against.
+      - name: start the server
+        env:
+          WATTROOM_DB: postgres://wattroom:wattroom@localhost:5432/wattroom
+          WATTROOM_LIVEKIT_URL: ''
+        run: |
+          eval "$(sh scripts/dev-env.sh print)"
+          echo "WATTROOM_URL=http://localhost:$WATTROOM_E2E_WEB_PORT" >> "$GITHUB_ENV"
+          (cd web && pnpm build)
+          (cd web && nohup node e2e/server.js > "$RUNNER_TEMP/server.log" 2>&1 &)
+          for _ in $(seq 1 240); do
+            curl -fsS -o /dev/null "http://localhost:$WATTROOM_E2E_WEB_PORT/ride" && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/server.log" >&2
+          echo "::error::the server never answered" >&2
+          exit 1
+      # Linux needs an X server; a Mac runner has a display of its own.
+      - name: ride the built app
+        working-directory: desktop
+        run: ${{ runner.os == 'Linux' && 'xvfb-run --auto-servernum ' || '' }}pnpm exec playwright test -c packaged.config.js
+      - name: server log
+        if: failure()
+        run: cat "$RUNNER_TEMP/server.log"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: ride-results-${{ matrix.artifact }}
+          path: desktop/test-results/
+          retention-days: 7
+
   publish:
     # Tags publish; a dispatch stops at the artifacts above, so the pipeline
-    # can be proven before anything is public.
+    # can be proven before anything is public. A build that cannot ride is
+    # not published (#1314).
     if: startsWith(github.ref, 'refs/tags/')
-    needs: build
+    needs: [build, ride]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
