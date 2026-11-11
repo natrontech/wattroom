@@ -58,7 +58,7 @@
 			eyebrow: 'Workouts on the road',
 			title: 'The next blocks are painted on the road ahead',
 			body: 'Ride a workout on one of your roads and its next three blocks are painted on the asphalt, each with its name and your target where it starts. A sprint gets a banner across the road from 1 km out.',
-			alt: 'A workout ridden on a mountain road in the 3D world: the next block painted across the road ahead with its target, the workout’s clock and graph above, the bike computer at the left',
+			alt: 'A workout ridden on a valley road in the 3D world: chevrons on the asphalt lead to the next block, painted across the road with its name and target; the watts and the warm-up’s clock above, the workout’s graph below, and the rider with a parrot on her shoulder',
 		},
 		{
 			screen: 'workout-flat',
@@ -71,16 +71,16 @@
 			screen: 'world-ghost',
 			eyebrow: 'Your ghost',
 			title: 'Ride a road again and race your earlier self',
-			body: 'Start a road of yours from the beginning and the rider you were last time rides beside you, a see-through figure in your own kit. The bike computer says the gap in words: “4 s behind”.',
-			alt: 'A free ride on a mountain road in the 3D world: the rider’s ghost from an earlier ride just ahead, the bike computer reading 4 s behind, and Easier and Harder in the panel above',
+			body: 'Start a road of yours from the beginning and the rider you were last time rides with you, a see-through figure on the road and a tick on the profile below. At a quarter, halfway, three quarters and 500 m to go you hear the gap: “Halfway, 12 seconds ahead of your best”.',
+			alt: 'A free ride on a valley road in the 3D world: the rider’s see-through ghost from an earlier ride just up the road, its day named on the profile below, and Easier and Harder in the bar at the bottom',
 		},
 		{
 			screen: 'phone-remote',
 			portrait: true,
 			eyebrow: 'Gears and your phone',
 			title: 'Shift from the screen, the keys, a Cog or your phone',
-			body: 'On a road, Easier and Harder shift virtual gears: tap them, press − and +, or ride a Zwift Cog. In an ERG workout the same controls trim your target. Open WattRoom on your phone while the desk rides and the phone becomes your remote, and one tap moves your voice to it.',
-			alt: 'A phone as the rider’s remote while the desk rides: big Easier and Harder buttons, and buttons to turn the bike computer’s page, cheer back and talk',
+			body: 'On a road, Easier and Harder shift virtual gears: tap them, press − and +, or ride a Zwift Cog. In an ERG workout the same controls trim your target. Open WattRoom on your phone while the desk rides and the phone becomes your remote, with the desk’s own controls: 3D or flat, the camera, a photo, TV mode, pause and skip. In a voice channel, one tap moves your voice to it.',
+			alt: 'A phone as the rider’s remote during a workout: 3D, Flat and Map along the top; Camera, Photo, TV, Flag, Pause, +1 min, Skip and End below; and big Easier and Harder buttons under the thumb',
 		},
 	];
 
@@ -91,7 +91,7 @@
 		},
 		{
 			q: 'Where do the roads come from?',
-			a: 'From you. Import a GPX, TCX or FIT file of a route you know, and WattRoom reads its climbs and grades. The world is a switch on each device: set it to Full and the road is drawn in 3D, or leave it on Flat and the road rides as its profile.',
+			a: 'From you. Import a GPX, TCX or FIT file of a route you know, and WattRoom reads its climbs and grades. The road is drawn in 3D on every device that can draw it; switch a device to Flat and the road rides as its profile.',
 		},
 		{
 			q: 'Which browsers work?',
@@ -181,7 +181,7 @@
 		<div class="mt-8">
 			<Screen
 				name="world-crew"
-				alt="Two riders of a crew side by side in a session on a mountain road in the 3D world, the workout’s clock above, the bike computer at the left and the riders’ watts per kilo at the right"
+				alt="Two riders of a crew side by side in a session on a road through the pines in the 3D world, one with a parrot on her shoulder and one with a hamster on her head; the watts and the block’s clock above, the riders’ watts per kilo at the right, the workout’s graph below"
 				width={1440}
 				height={900}
 			/>
@@ -193,7 +193,7 @@
 				<SectionHead eyebrow={f.eyebrow} title={f.title} lede={f.body} />
 			</div>
 			{#if f.portrait}
-				<Screen name={f.screen} alt={f.alt} width={375} height={698} narrow />
+				<Screen name={f.screen} alt={f.alt} width={375} height={812} narrow />
 			{:else}
 				<Screen name={f.screen} alt={f.alt} width={1440} height={900} />
 			{/if}
@@ -257,7 +257,7 @@
 		/>
 		<Screen
 			name="world-sprint"
-			alt="A sprint’s window open in a session on the road: the moment card over the 3D world, the riders ranked live"
+			alt="A sprint’s window open in a session on the road: the sprint card over the 3D world with the seconds left and who leads, the riders ranked live"
 			width={1440}
 			height={900}
 			caption="A sprint lands mid-session."
