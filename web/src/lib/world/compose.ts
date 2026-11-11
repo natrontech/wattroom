@@ -162,6 +162,8 @@ export type Moment = { m: number; p: number | null };
 /** Metres a crank turn carries a rider: a moment's pedals are placed by it. */
 const CRANK_M = 7;
 
+/** The most a camera cut keeps a still world drawing while its new ground comes in. */
+const CUT_FILL_S = 2;
 const HUD_EVERY = 0.25; // seconds of real time between HUD snapshots
 const SUBSTEP = 0.1; // sim seconds per integration step, so 16× does not tunnel through a crest
 
@@ -380,6 +382,12 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		return { left, total: c.total, still };
 	}
 	let sinceHud = HUD_EVERY;
+	// A camera change not drawn yet: the world draws it on the next animation
+	// frame, even standing still, where it draws one frame a second (loop.ts).
+	let recut = false;
+	// Wall seconds a cut keeps drawing while the ground and the dressing round
+	// its eye come in, which a world standing still would show a second apart.
+	let filling = 0;
 	/** `wall` is the real time the frame took, unclamped: what the bunch is laid out by (#3098). */
 	function advanceBy(seconds: number, wall = seconds) {
 		if (!crew) return;
@@ -425,6 +433,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				real,
 				countingIn(),
 			);
+		recut = false;
+		filling = Math.max(0, filling - wall);
 		game?.follow(camera.position);
 		tags?.update(riders, (r) => crew!.at(r), camera, mode === 'orbit');
 		sight.uCam.value.copy(camera.position);
@@ -562,9 +572,19 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		get you() {
 			return crew?.you ?? null;
 		},
+		/**
+		 * A shot change is a cut (docs/spec/motion.md), drawn at once. It used
+		 * to ease from the old shot on the follow's half-life, and a rider
+		 * standing still, whose world draws a frame a second each moving it
+		 * on a tenth of one, watched the switch crawl for 11 s.
+		 */
 		setCamera(next: CameraMode) {
+			if (next === mode) return;
 			mode = next;
 			applyMode();
+			rig.reset();
+			recut = true;
+			filling = CUT_FILL_S;
 		},
 		/** Cuts to `next` where it stands on this frame, never eased from where the camera was: the ride picture's view from above (#4431). */
 		cutTo(next: Follow) {
@@ -595,7 +615,12 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands, nobody turns the model and no cheer blinks. */
 		idle: () =>
 			!!moment ||
-			(!(opts.countIn?.() && !opts.steady?.()) &&
+			(!recut &&
+				!(
+					filling > 0 &&
+					(stream.pending() > 0 || (stage?.filling() ?? false))
+				) &&
+				!(opts.countIn?.() && !opts.steady?.()) &&
 				you.watts === 0 &&
 				!controls &&
 				cheered.size === 0 &&
