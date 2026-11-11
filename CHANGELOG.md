@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.29] - 2026-11-11
+
+### Fixed
+
+- 2026.11.28's server image failed to build, so it never reached anyone. This release ships everything listed under 2026.11.28. (#4511)
+
 ## [2026.11.28] - 2026-11-11
 
 ### Added
@@ -4498,7 +4504,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.28...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.29...HEAD
+[2026.11.29]: https://github.com/natrontech/wattroom/compare/2026.11.28...2026.11.29
 [2026.11.28]: https://github.com/natrontech/wattroom/compare/2026.11.27...2026.11.28
 [2026.11.27]: https://github.com/natrontech/wattroom/compare/2026.11.26...2026.11.27
 [2026.11.26]: https://github.com/natrontech/wattroom/compare/2026.11.25...2026.11.26
