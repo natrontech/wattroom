@@ -13,14 +13,11 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 )
 
-// The workout's picture (#4430): in a workout the workout comes first — its
-// blocks, the watts ridden over them (and a heart rate when handed one) — the way the riding
-// screen draws a workout along its bottom, not the road's gradient. A
-// workout on a road keeps the road, small, in a strip under them.
-
-// roadStripBox is where a workout on a road draws the road it rode: the
-// bottom of the panel's silhouette box, under the workout.
-var roadStripBox = image.Rect(traceBox.Min.X, traceBox.Max.Y-52, traceBox.Max.X, traceBox.Max.Y)
+// The workout's picture (#4430): in a workout the workout is the picture —
+// its blocks, the watts ridden over them (and a heart rate when handed one) —
+// the way the riding screen draws a workout along its bottom, never the
+// road's gradient. A workout on a road says the road in words under its
+// title, and draws none of it.
 
 // hasTargets says the card carries a workout's blocks to draw: a target for
 // every second, and at least one that asks for watts.
@@ -102,8 +99,10 @@ func (s *Service) drawWorkout(dst *image.NRGBA, box image.Rectangle, c RideCard)
 	targets := columns(w, n, func(i int) (float64, bool) { return c.Targets[i], true })
 	power := smoothed(columns(w, n, func(i int) (float64, bool) { return float64(c.Watts[i]), true }), 3*ss)
 
+	// Scaled to the workout, not to 1.35 × FTP: a sweet-spot hour left the
+	// top third of the box empty. FTP stays in view, with room for its label.
 	ranked := slices.Sorted(slices.Values(power))
-	top := math.Max(float64(c.Ftp)*1.35, math.Max(ranked[len(ranked)*99/100], slices.Max(targets)*1.1))
+	top := math.Max(float64(c.Ftp)*1.12, math.Max(ranked[len(ranked)*99/100]*1.05, slices.Max(targets)*1.15))
 	y := func(watts float64) float64 { return float64(h) - watts/top*float64(h) }
 
 	tmp := image.NewNRGBA(image.Rect(0, 0, w, h))
@@ -168,46 +167,6 @@ func (s *Service) drawHeartRate(dst *image.NRGBA, box image.Rectangle, c RideCar
 	polyline(tmp, line, 3*ss, s.pal.watt)
 	draw.ApproxBiLinear.Scale(dst, box, tmp, tmp.Bounds(), draw.Over, nil)
 	return nil
-}
-
-// drawRoadStrip is the road a workout rode, second by second under the
-// workout so the climb sits under the minutes it was ridden in: one quiet
-// silhouette, never the zones' paint, because the workout is the picture.
-func (s *Service) drawRoadStrip(dst *image.NRGBA, box image.Rectangle, c RideCard) {
-	const ss = 2
-	w, h := box.Dx()*ss, box.Dy()*ss
-	heights := columns(w, len(c.Heights), func(i int) (float64, bool) {
-		return c.Heights[i], c.Metres[i] > 0 // seconds before the road are not on it
-	})
-	lo, hi := math.Inf(1), math.Inf(-1)
-	last := -1.0
-	for x, v := range heights {
-		if v < 0 {
-			heights[x] = last // a stretch no placed second landed in rides on at the last height
-			continue
-		}
-		last = v
-		lo, hi = math.Min(lo, v), math.Max(hi, v)
-	}
-	if math.IsInf(lo, 1) {
-		return
-	}
-	span := math.Max(hi-lo, minRoadSpanM)
-	tmp := image.NewNRGBA(image.Rect(0, 0, w, h))
-	const capHeight = 2 * ss
-	for x, v := range heights {
-		if v < 0 {
-			continue
-		}
-		y := max(0, int(float64(h)-(v-lo)/span*float64(h)*0.85-float64(h)*0.15))
-		fill(tmp, image.Rect(x, y, x+1, min(y+capHeight, h)), s.pal.muted)
-		for py := y + capHeight; py < h; py++ {
-			body := s.pal.muted
-			body.A = uint8(0x70 - 0x50*float64(py)/float64(h))
-			tmp.SetNRGBA(x, py, body)
-		}
-	}
-	draw.ApproxBiLinear.Scale(dst, box, tmp, tmp.Bounds(), draw.Over, nil)
 }
 
 // legendItem is one mark's swatch and what it is. A swatch of several

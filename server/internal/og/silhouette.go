@@ -17,18 +17,14 @@ import (
 
 // drawSilhouette picks the mark a ride has the data for: a free ride on a
 // road is the road it rode; anything else is its watts — over the workout's
-// blocks when it had one (#4430), with a heart rate when handed one, and
-// a workout on a road keeps the road as a strip under them.
+// blocks when it had one (#4430), with a heart rate when handed one. A
+// workout on a road draws nothing of the road: the workout is the picture.
 func (s *Service) drawSilhouette(dst *image.NRGBA, box image.Rectangle, c RideCard) error {
 	if c.Poster() {
 		s.drawRoad(dst, box, c)
 		return nil
 	}
 	graph := box
-	if onRoad(c) {
-		graph.Max.Y = roadStripBox.Min.Y - 12
-		s.drawRoadStrip(dst, roadStripBox, c)
-	}
 	var top float64
 	var err error
 	if hasTargets(c) {

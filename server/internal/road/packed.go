@@ -95,6 +95,12 @@ func NameOf(lengthM, gainM float64) string {
 	return fmt.Sprintf("Road · %.1f km · %s m", lengthM/1000, thousands(int64(gainM+0.5)))
 }
 
+// VirtualRouteOf is the same numbers as a workout's picture says them under
+// its title: the workout is the name, the road only where it was ridden.
+func VirtualRouteOf(lengthM, gainM float64) string {
+	return fmt.Sprintf("Virtual route · %.1f km · %s m", lengthM/1000, thousands(int64(gainM+0.5)))
+}
+
 // thousands writes n with a comma every three digits, as en-US does.
 func thousands(n int64) string {
 	s := strconv.FormatInt(n, 10)

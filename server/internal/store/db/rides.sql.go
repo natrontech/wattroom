@@ -780,7 +780,7 @@ const getRide = `-- name: GetRide :one
 select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
        r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
        r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.title,
-       r.on_road, r.route_key, r.blocks,
+       r.on_road, r.route_key, r.blocks, r.workout_own_name,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
        coalesce(ch.name, '')::text as channel_name,
@@ -824,6 +824,7 @@ type GetRideRow struct {
 	OnRoad          *bool
 	RouteKey        *string
 	Blocks          []byte
+	WorkoutOwnName  *string
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
@@ -867,6 +868,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.OnRoad,
 		&i.RouteKey,
 		&i.Blocks,
+		&i.WorkoutOwnName,
 		&i.CrewID,
 		&i.ChannelID,
 		&i.SessionID,
