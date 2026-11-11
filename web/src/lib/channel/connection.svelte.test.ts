@@ -54,6 +54,7 @@ const fakeLive = {
 	onRemote: () => () => {},
 	sendPause: () => {},
 	sendView: () => {},
+	sendGear: () => {},
 	// One rider, one voice (ADR-0089): this screen always carries it here.
 	claimVoice: async () => true,
 	releaseVoice() {},
@@ -219,6 +220,42 @@ describe('channelConnection', () => {
 		expect(channelConnection.session).toBeNull();
 		expect(channelConnection.call?.address.key).toBe(call.address.key);
 		expect(channelConnection.call?.live).toBe(call.live);
+		expect(channelRide.current?.live).toBe(call.live);
+	});
+
+	it('keeps the ride riding when you switch voice channels (#4259)', async () => {
+		const first = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const trainer = new FakeTrainer();
+		await first.ride.ride(trainer);
+		first.freeRide.arm();
+		const next = channelConnection.join(
+			channelAddress('c', 'garage', 'Garage'),
+		);
+		// One ride, moved: the trainer never let go, the free ride still on.
+		expect(next.ride).toBe(first.ride);
+		expect(next.ride.trainer).toBe(trainer);
+		expect(trainer.disconnected).toBe(false);
+		expect(next.freeRide.armed).toBe(true);
+		// Its numbers go to the call you are in now.
+		expect(channelRide.current?.live).toBe(next.live);
+	});
+
+	it('keeps your free ride when a crew session opens, and after you leave it (#4469)', async () => {
+		const call = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		await call.ride.ride(new FakeTrainer());
+		call.freeRide.arm();
+		const session = channelConnection.join(
+			crewSessionAddress('c', 's1', 'Tempo'),
+		);
+		// Opening the session is not joining it: the free ride goes on.
+		expect(session.freeRide).toBe(call.freeRide);
+		expect(session.freeRide.armed).toBe(true);
+		channelConnection.leave();
+		expect(channelConnection.call?.freeRide.armed).toBe(true);
 		expect(channelRide.current?.live).toBe(call.live);
 	});
 

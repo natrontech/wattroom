@@ -38,7 +38,6 @@
 	import MomentCard from '#lib/session/MomentCard.svelte';
 	import Skyline from '#lib/ride/Skyline.svelte';
 	import { rideContext } from './ride-context';
-	import { goto } from '$app/navigation';
 	import RideControlButton from '#lib/ride/RideControlButton.svelte';
 	import { NEEDS_3D, PHOTOS_FULL } from '#lib/ride/ride-controls.ts';
 	import { worldPicture } from '#lib/world/picture.svelte.ts';
@@ -101,11 +100,13 @@
 	const inRide = $derived(channel.riders.filter((r) => r.inSession));
 	// Who this screen's bottle goes to, from the roadside (#3022).
 	const watched = $derived(bottleFor(channel.riders, channel.focusId));
-	async function leaveRide() {
-		// Away first: this page joins whoever is on it.
-		await goto(channel.address.home);
-		channel.control('leave');
-	}
+	// Leaving the ride keeps the page: the rider watches from here, and only
+	// their Join puts them back on (#4469).
+	const leaveRide = () => channel.control('leave');
+	const joinRide = () => channel.control('join');
+	// A rider at a bike who is watching: Join is theirs to press. A phone
+	// spectates (ADR-0089) and is offered none.
+	const mayJoin = $derived(!channel.you.inSession && !device.spectator);
 	const inFocus = $derived(
 		sprintFocus ? 'sprint' : channel.game ? 'game' : share ? 'media' : 'you',
 	);
@@ -250,6 +251,11 @@
 			     rather than during the first interval. -->
 			<div class="flex flex-wrap items-center justify-center gap-3">
 				{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
+				{#if mayJoin}
+					<button onclick={joinRide} class="btn btn-accent btn-lg"
+						>Join the ride</button
+					>
+				{/if}
 				<SessionControls compact />
 			</div>
 		{/snippet}
@@ -301,6 +307,13 @@
 					class="btn btn-secondary btn-ride"
 					aria-label="Leave the ride"
 					title="Leave the ride">Leave</button
+				>
+			{:else if mayJoin}
+				<button
+					onclick={joinRide}
+					class="btn btn-accent btn-ride"
+					aria-label="Join the ride"
+					title="Join the ride">Join</button
 				>
 			{/if}
 			<!-- The coach's controls last, End last among them in its own box: a

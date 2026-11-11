@@ -10,6 +10,7 @@ import type { Segment } from '#lib/workout/types.ts';
 import { unmeasured } from '#lib/session/sensor-status.ts';
 import { sensors } from '#lib/sensors.svelte.ts';
 import { device } from '#lib/device.svelte.ts';
+import { joinIntent } from '#lib/session/join-intent.svelte.ts';
 
 /**
  * ADR-0020's contract, built (#686). The shell keeps the state and the places
@@ -195,7 +196,14 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get pairing() {
 			return live.pairing;
 		},
-		control: (kind, payload) => live.control(kind as never, payload as never),
+		control: (kind, payload) => {
+			// Join and Leave are the rider's choice (#4469): the session page
+			// asks a lost join again, and never one the rider left.
+			const session = connection.shared()?.id;
+			if (session && kind === 'join') joinIntent.choose(session);
+			if (session && kind === 'leave') joinIntent.drop(session);
+			live.control(kind as never, payload as never);
+		},
 		openPicker: (intent = 'start') => deps.openPicker(intent),
 		openTv: () => deps.openTv(),
 		get stageSources() {

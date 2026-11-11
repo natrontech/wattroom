@@ -9,7 +9,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import NotifyOffer from '#lib/components/NotifyOffer.svelte';
 	import { voiceChannelPath } from '#lib/channels.ts';
-	import { sessionPath } from '#lib/channel/address.ts';
+	import { joinSessionPath } from '#lib/channel/address.ts';
 	import { fetchCrewRecaps, type Crew } from '#lib/crew.ts';
 	import {
 		answerCrewPlan,
@@ -134,13 +134,13 @@
 			return;
 		}
 		picking = false;
-		void goto(sessionPath(crew.id, res.data.id));
+		void goto(joinSessionPath(crew.id, res.data.id));
 	}
 
 	async function rideTogether() {
 		const res = await startRideTogether(crew.id);
 		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
-		else void goto(sessionPath(crew.id, res.data.id));
+		else void goto(joinSessionPath(crew.id, res.data.id));
 	}
 
 	const ANSWERS: [RsvpAnswer, string][] = [
@@ -207,8 +207,9 @@
 						)}
 					</p>
 				</div>
-				<a href={sessionPath(crew.id, session.id)} class="btn btn-accent btn-lg"
-					>Join the ride</a
+				<a
+					href={joinSessionPath(crew.id, session.id)}
+					class="btn btn-accent btn-lg">Join the ride</a
 				>
 			</li>
 		{/each}
@@ -256,7 +257,7 @@
 					<!-- The session's own page, as Home and the start notification
 					     go (#1332, #2635): one door, one place it leads. -->
 					<a
-						href={sessionPath(crew.id, session.id)}
+						href={joinSessionPath(crew.id, session.id)}
 						class="btn btn-accent btn-lg">Join the ride</a
 					>
 				</li>

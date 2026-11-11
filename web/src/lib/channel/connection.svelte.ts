@@ -22,6 +22,7 @@ import { createRecording } from '#lib/session/recording.svelte.ts';
 import {
 	channelRide,
 	type ChannelRide,
+	type ChannelRideDeps,
 } from '#lib/ride/channel-ride.svelte.ts';
 import type { FreeRide } from '#lib/ride/free-ride.svelte.ts';
 import { sensorClaim } from '#lib/channel/sensor-claim.ts';
@@ -89,6 +90,8 @@ type Connection = {
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
 	workout: () => Workout | null;
+	/** What the device's ride rides on while this place holds it. */
+	rideDeps: ChannelRideDeps;
 	dispose: () => void;
 };
 
@@ -120,28 +123,19 @@ export async function prepareChannelAv(): Promise<void> {
 	({ createChannelAv } = await import('#lib/channel/av.svelte.ts'));
 }
 
-/**
- * `reuse` keeps a call's socket and voice while its ride is built again: a
- * crew session that held the device's ride hands it back (docs/SESSIONS.md).
- */
-function connect(
-	address: PlaceAddress,
-	reuse?: Pick<Connection, 'live' | 'av'>,
-): Connection {
+function connect(address: PlaceAddress): Connection {
 	if (!createChannelAv) {
 		throw new Error(
 			'the channel AV is not loaded — the channel layout prepares it before the shell joins',
 		);
 	}
-	const live = reuse?.live ?? createChannelLive(address);
+	const live = createChannelLive(address);
 	// One rider, one voice (ADR-0089): the hub says which screen carries it.
-	const av =
-		reuse?.av ??
-		createChannelAv(address, {
-			claim: (take) => live.claimVoice(take),
-			timedOut: () => live.voiceClaimTimedOut(),
-			release: () => live.releaseVoice(),
-		});
+	const av = createChannelAv(address, {
+		claim: (take) => live.claimVoice(take),
+		timedOut: () => live.voiceClaimTimedOut(),
+		release: () => live.releaseVoice(),
+	});
 	// The device's one ride is held by one connection (ADR-0093): a crew
 	// session's while you ride one, else the call's. The other reads it and
 	// leaves the trainer, its claim and its keys alone.
@@ -156,6 +150,7 @@ function connect(
 	let sharedOf!: () => SessionState | undefined;
 	let segmentsOf!: () => Segment[];
 	let workoutOf!: () => Workout | null;
+	let rideDeps!: ChannelRideDeps;
 	/**
 	 * The away state this screen has asked for and not yet seen echoed
 	 * (#1128), and when it asked. Null means "believe the roster". Outside the
@@ -214,19 +209,23 @@ function connect(
 		// ride (ADR-0093): `theRide.channel` holds them, so a page that draws them is
 		// a view and never their owner.
 		// A crew session always takes the ride; a call takes it only when no
-		// session holds one.
+		// session holds one. Taking it moves it, still running (#4259): the
+		// free ride is never ended by opening a place.
+		rideDeps = {
+			live,
+			profile,
+			recording,
+			shared: () => shared,
+			segments: () => parsed.segments,
+			road: () => place,
+			joined,
+		};
+		const sessionHolds =
+			!!session && channelRide.current?.live === session.live;
 		({ ride, freeRide, ownRide } =
-			address.avToken && channelRide.current
-				? channelRide.current
-				: channelRide.hold({
-						live,
-						profile,
-						recording,
-						shared: () => shared,
-						segments: () => parsed.segments,
-						road: () => place,
-						joined,
-					}));
+			address.avToken && sessionHolds
+				? channelRide.current!
+				: channelRide.hold(rideDeps));
 		// The lounge is where you last rode (#3274): noted on this device when
 		// the roster first says you are riding here — a free ride or a session.
 		let notedRiding = false;
@@ -552,6 +551,7 @@ function connect(
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
+		rideDeps,
 		dispose,
 	};
 }
@@ -615,14 +615,16 @@ export const channelConnection = {
 	join(address: PlaceAddress) {
 		// A crew session has no call: it takes the session's slot and leaves
 		// the call where it is (docs/SESSIONS.md).
+		// Opening another place moves the device's ride there, still running
+		// (#4259): it is never ended by the way in.
 		if (!address.avToken) {
 			if (session?.address.key === address.key) return session;
-			this.leaveSession();
+			this.leaveSession(true);
 			session = connect(address);
 			return session;
 		}
 		if (current?.address.key === address.key) return current;
-		this.leaveCall();
+		this.leaveCall('rider', true);
 		current = connect(address);
 		return current;
 	},
@@ -638,26 +640,20 @@ export const channelConnection = {
 		this.leaveCall(reason);
 	},
 	/**
-	 * Leaving a crew session ends its ride, saved, and hands the device's ride
-	 * back to the call, whose ride is built again on its own socket.
+	 * Leaving a crew session hands the device's ride back to the call, still
+	 * running: the trainer stays connected and the ride goes on as your own
+	 * (docs/SESSIONS.md). With no call it ends, saved, unless `moving` says
+	 * the next place is about to take it.
 	 */
-	leaveSession() {
+	leaveSession(moving = false) {
 		if (!session) return;
-		// The trainer goes back to the call's ride, still connected.
 		const held = channelRide.current?.live === session.live;
-		const trainer =
-			held && current ? channelRide.current!.ride.handOff() : null;
-		if (held) channelRide.leave();
+		if (held && current) channelRide.hold(current.rideDeps);
+		else if (held && !moving) channelRide.leave();
 		session.dispose();
 		session.live.close();
 		session.av.leave();
 		session = null;
-		if (current && !channelRide.current) {
-			const { address, live, av } = current;
-			current.dispose();
-			current = connect(address, { live, av });
-			if (trainer) void current.ride.ride(trainer);
-		}
 	},
 	/**
 	 * Ends the ride, closes the socket, hangs up voice. `'rider'` is the
@@ -668,16 +664,16 @@ export const channelConnection = {
 	 * nobody noticing. There is no dashboard left to hold a persistent
 	 * status, so the toast carries the way back in.
 	 */
-	leaveCall(reason: 'rider' | 'signedOut' = 'rider') {
+	leaveCall(reason: 'rider' | 'signedOut' = 'rider', moving = false) {
 		if (!current) return;
 		const { address } = current;
 		const name = address.name;
-		// A free ride nobody ended is saved on the way out — the rider left
-		// the channel, not the ride. Its answer arrives after the page has gone.
-		// Until the audience follows the rider (ADR-0093 point 6), the call
-		// is the channel ride's: leaving it ends that ride. A crew session's
-		// ride is not the call's to end.
-		if (channelRide.current?.live === current.live) channelRide.leave();
+		// A free ride nobody ended is saved on the way out of the last place
+		// that holds it. Its answer arrives after the page has gone. Switching
+		// voice channels is not that: `moving` keeps the ride for the next
+		// call (#4259). A crew session's ride is not the call's to end.
+		if (channelRide.current?.live === current.live && !moving)
+			channelRide.leave();
 		current.dispose();
 		current.live.close();
 		current.av.leave();

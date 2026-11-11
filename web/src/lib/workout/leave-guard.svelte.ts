@@ -2,13 +2,11 @@ import { beforeNavigate, goto } from '$app/navigation';
 import { confirm, type ConfirmRequest } from '#lib/confirm.svelte.ts';
 
 /**
- * A stray tap on the rail mid-effort must not eat the effort (#126): one
- * confirm, only while `live()` says the session is alive, plus the browser's
- * own unload guard for a closed tab. Lifted out of /ride because /ramp had
- * none — a back gesture at minute 14 of a maximal test lost the number
- * (audit 2026-09-09). No ride uses it now: a ride outlives its page
- * (ADR-0093), and the workout editor keeps it for unsaved edits. Call during
- * component init, like beforeNavigate.
+ * Unsaved edits in the workout editor are not lost to a stray tap: one
+ * confirm while `live()` says there is something to lose, plus the browser's
+ * own unload guard for a closed tab. It once guarded rides (#126); no ride
+ * uses it now, because navigation never ends a ride (ADR-0093, #4259). Call
+ * during component init, like beforeNavigate.
  */
 export function guardLeaving(live: () => boolean, ask: ConfirmRequest): void {
 	// The guard must cancel synchronously and the dialog answers later, so a

@@ -48,7 +48,7 @@
 	import { goto } from '$app/navigation';
 	import { takeGameDoor, takePickerDoor } from '#lib/session/doors.ts';
 	import { page } from '$app/state';
-	import { sessionPath } from '#lib/channel/address.ts';
+	import { joinSessionPath, sessionPath } from '#lib/channel/address.ts';
 	import {
 		startCrewGame,
 		startCrewSession,
@@ -195,7 +195,7 @@
 			layers.setup.open = false;
 			void startCrewSession(channel.address.crew, picked, route).then((res) => {
 				if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
-				else void goto(sessionPath(channel.address.crew, res.data.id), GO);
+				else void goto(joinSessionPath(channel.address.crew, res.data.id), GO);
 			});
 			return;
 		}
@@ -231,7 +231,7 @@
 		}
 		void startCrewGame(channel.address.crew, game).then((res) => {
 			if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
-			else void goto(sessionPath(channel.address.crew, res.data.id), GO);
+			else void goto(joinSessionPath(channel.address.crew, res.data.id), GO);
 		});
 	}
 	$effect(() => {

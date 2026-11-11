@@ -20,7 +20,7 @@
 	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
 	import { durationSeconds, flatten } from '#lib/workout/engine.ts';
 	import { createHistory, type Snapshot } from '#lib/workout/history.svelte.ts';
-	import { guardLeaving } from '#lib/ride/leave-guard.svelte.ts';
+	import { guardLeaving } from '#lib/workout/leave-guard.svelte.ts';
 	import { LIMITS } from '#lib/workout/validate.ts';
 	import { isTyping } from '#lib/keys.ts';
 	import {

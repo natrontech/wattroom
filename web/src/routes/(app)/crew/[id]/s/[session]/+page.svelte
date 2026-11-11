@@ -1,10 +1,9 @@
 <script lang="ts">
 	// The session's surface (#2450): the Training place — instrument, the
-	// interval strip, the coach's controls, sprints, games, the countdown —
-	// in the voice channel the session runs in.
+	// interval strip, the coach's controls, sprints, games, the countdown.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { sessionPath } from '#lib/channel/address.ts';
+	import { untrack } from 'svelte';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { useChannel } from '#lib/channel/context.ts';
 	import { liveSessionId } from '#lib/channel/tick-session.ts';
@@ -13,47 +12,57 @@
 	import SessionControls from '#lib/session/SessionControls.svelte';
 	import FreeRide from '#lib/ride/FreeRide.svelte';
 	import { device } from '#lib/device.svelte.ts';
+	import {
+		joinIntent,
+		shouldAskJoin,
+		takeJoinDoor,
+	} from '#lib/session/join-intent.svelte.ts';
 
 	const channel = useChannel();
 
-	// Opening the session is joining it (ADR-0059): Join the ride, the
-	// coach's Start and /training's redirect all land here. Asked again while
-	// the hub still has this rider out — a join lost to a reconnect is not a
-	// choice to spectate — at most every few seconds. A phone spectates.
-	let askedAt = 0;
+	// Opening the session watches it (#4469, docs/SESSIONS.md): only a Join
+	// (a "Join the ride" link's door, the page's Join, the coach's Start)
+	// puts this rider on its timeline. The door comes off the address, so a
+	// reload or a shared link watches.
+	// Only the address is tracked: the goto changes page.state, and a read of
+	// it here looped the page solid.
 	$effect(() => {
-		const live = channelConnection.current?.live;
-		const here = page.params.session;
-		if (device.spectator || !live || !here || channel.you.inSession) return;
-		if (liveSessionId(live.tick?.state) !== here) return;
-		if (Date.now() - askedAt < 3000) return;
-		askedAt = Date.now();
-		live.control('join');
+		const door = takeJoinDoor(page.url);
+		if (!door) return;
+		untrack(() => {
+			const here = page.params.session;
+			if (here && !device.spectator) joinIntent.choose(here);
+			void goto(door.rest, { replace: true, reset: false });
+		});
 	});
 
-	// The address is the session's for as long as it runs (#2600). When it
-	// ends — or a newer one is running in its channel — the page lets go: to
-	// the newer session, or back to the channel, so a reload, a shared link
-	// or the next Start does not strand anyone on "This session has ended".
-	// Replaced, not pushed: Back should not return to a session that is over.
+	// A join a reconnect lost is not a choice to watch: asked again while
+	// the hub still has the rider out, at most every few seconds. From the
+	// count-in on: a start line is joined with its own button.
+	let askedAt = 0;
 	$effect(() => {
-		const state = channelConnection.current?.live.tick?.state;
-		const here = page.params.session;
-		if (!state || !here) return;
-		const live = liveSessionId(state);
-		if (live === here) return;
-		// A crew's own session has no channel to fall back to
-		// (docs/SESSIONS.md): its page stays, closing card and all, until
-		// the rider leaves it from the now bar.
-		if (!channel.address.channel) return;
-		const to = live
-			? sessionPath(channel.address.crew, live)
-			: channel.address.home;
-		void goto(to, { replace: true, reset: false });
+		const now = Date.now();
+		const state = channel.shared;
+		if (
+			!shouldAskJoin({
+				chosen: joinIntent.chosen,
+				here: page.params.session,
+				running: state
+					? liveSessionId({ phase: state.phase, id: state.id ?? '' })
+					: undefined,
+				inSession: !!channel.you.inSession,
+				spectator: device.spectator,
+				now,
+				askedAt,
+			})
+		)
+			return;
+		askedAt = now;
+		channel.control('join');
 	});
 </script>
 
-{#if channelConnection.current?.live.tick?.state.together}
+{#if channelConnection.at(channel.address)?.live.tick?.state.together}
 	<!-- Riding together (docs/SESSIONS.md): the crew's numbers on top, the
 	     coach's End, and your own free ride underneath driving your trainer. -->
 	<div class="flex min-h-full flex-col gap-4 px-4 py-5 sm:px-6">
@@ -61,7 +70,15 @@
 			riders={channel.riders.filter((r) => r.inSession && !r.you)}
 			pad=""
 		/>
-		<div class="flex flex-wrap items-center gap-2"><SessionControls /></div>
+		<div class="flex flex-wrap items-center gap-2">
+			{#if !channel.you.inSession && !device.spectator}
+				<button
+					onclick={() => channel.control('join')}
+					class="btn btn-accent btn-lg">Join the ride</button
+				>
+			{/if}
+			<SessionControls />
+		</div>
 		<FreeRide />
 	</div>
 {:else}

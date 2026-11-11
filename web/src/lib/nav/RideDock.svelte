@@ -80,10 +80,12 @@
 		data-testid="ride-dock"
 		class="border-ink/5 border-t px-3 pt-2 pb-3"
 	>
-		<!-- Where the ride shows: today a ride alone is private (ADR-0093
-		     point 6); the voice channel it shows in names itself here. -->
+		<!-- Where the ride rides: alone, or the call or session it moved to
+		     (#4259). Its numbers are the rider's either way. -->
 		<div class="flex min-w-0 items-center gap-2">
-			<span class="eyebrow min-w-0 truncate">Riding alone</span>
+			<span class="eyebrow min-w-0 truncate"
+				>{rideDock.place ? `Riding · ${rideDock.place}` : 'Riding alone'}</span
+			>
 			<span
 				data-testid="ride-dock-time"
 				class="num text-ink ml-auto shrink-0 text-xs"

@@ -443,13 +443,11 @@ func (rm *channelState) publishRidersLocked(pedallingIDs []string, now time.Time
 	rm.onSession.publish(rm.sessionID, riders, now)
 }
 
-// freeRidersLocked is who in riders rides no session of this voice
-// channel's: their numbers stay on their own screens (docs/SESSIONS.md). A
-// crew session's room has no free riders. Caller holds rm.mu.
+// freeRidersLocked is who in riders rides no session of this room's: their
+// numbers stay on their own screens (docs/SESSIONS.md). In a crew session's
+// room that is a member who opened it and has not joined: their ride came
+// along to the page and is still their own (#4469). Caller holds rm.mu.
 func (rm *channelState) freeRidersLocked(riders map[string]protocol.RiderMetrics) map[string]struct{} {
-	if rm.sessionID != "" {
-		return nil
-	}
 	var free map[string]struct{}
 	for id := range riders {
 		if !rm.session.rides(id) {

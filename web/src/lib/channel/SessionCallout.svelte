@@ -4,7 +4,7 @@
 	// crew's live list and the call's roster; nothing is stored.
 	import Radio from '@lucide/svelte/icons/radio';
 	import { account } from '#lib/account.svelte.ts';
-	import { sessionPath } from '#lib/channel/address.ts';
+	import { joinSessionPath } from '#lib/channel/address.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 
@@ -35,7 +35,7 @@
 				>{session.coachName} started <strong>{session.workout}</strong></span
 			>
 			<a
-				href={sessionPath(call.address.crew, session.id)}
+				href={joinSessionPath(call.address.crew, session.id)}
 				class="btn btn-accent btn-sm">Join</a
 			>
 		</div>
