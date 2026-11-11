@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.31] - 2026-11-11
+
+### Fixed
+
+- On the Pass and Valley loops the road no longer breaks into pieces at the start line, and the camera button switches views at once, also before you start pedalling. (#4528)
+- The Controllers link under the shifter opens the Controllers section (#4526)
+
 ## [2026.11.30] - 2026-11-11
 
 ### Added
@@ -4521,7 +4528,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.30...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.31...HEAD
+[2026.11.31]: https://github.com/natrontech/wattroom/compare/2026.11.30...2026.11.31
 [2026.11.30]: https://github.com/natrontech/wattroom/compare/2026.11.29...2026.11.30
 [2026.11.29]: https://github.com/natrontech/wattroom/compare/2026.11.28...2026.11.29
 [2026.11.28]: https://github.com/natrontech/wattroom/compare/2026.11.27...2026.11.28
