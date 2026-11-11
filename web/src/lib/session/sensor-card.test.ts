@@ -96,7 +96,7 @@ describe('cardView', () => {
 	});
 
 	it('says why a network shifter cannot pair yet, and keeps a live one live (#3336)', () => {
-		const why = 'Open BikeControl on this computer';
+		const why = 'Open BikeControl and turn on its network mode';
 		for (const state of ['idle', 'failed'] as const) {
 			const view = cardView({ state, supported: true, unavailable: why });
 			expect(view.button).toBeUndefined();

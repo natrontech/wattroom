@@ -10,12 +10,11 @@ import { createRideShift } from './ride-shift';
 
 // A production rider (#3333): no dev build, no dev sign-in door, so no
 // simulated trainer. A gate that came back through canSimulate fails here.
-// Only the network shifter waits at that gate (#3336) until #3349.
+// The network shifter waited at that gate (#3336) until #3349.
 const dev = vi.hoisted(() => ({ on: false }));
 vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => dev.on }));
 
 const INPUTS = Object.keys(GEAR_INPUTS) as GearInput[];
-const LANDED = INPUTS.filter((input) => input !== 'obc-net');
 
 describe('gears reach every rider (#3333, ADR-0088)', () => {
 	beforeEach(() => vi.useFakeTimers());
@@ -24,21 +23,28 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 		dev.on = false;
 	});
 
-	it('has every landed input on in production: the pair, the keys, the phone and OBC', () => {
+	it('has every input on in production: the pair, the keys, the phone, OBC and OBC over the network', () => {
 		expect(INPUTS).toEqual(['screen', 'keys', 'phone', 'obc', 'obc-net']);
-		for (const input of LANDED) expect(gearsEnabled(input)).toBe(true);
+		for (const input of INPUTS) expect(gearsEnabled(input)).toBe(true);
 		expect(gearsEnabled()).toBe(true);
 	});
 
-	it('holds the network shifter at the dev gate (#3336)', () => {
-		expect(gearsEnabled('obc-net')).toBe(false);
-		dev.on = true;
-		expect(gearsEnabled('obc-net')).toBe(true);
+	// #3349: the network shifter, before its switch-on (dev gate only) and
+	// after (every rider). Leaving it at the gate turns the production row red.
+	it.each([
+		{ rider: 'a production rider', dev: false, before: false, after: true },
+		{ rider: 'a dev sign-in', dev: true, before: true, after: true },
+	])('lets $rider shift over the network', ({ dev: on, before, after }) => {
+		dev.on = on;
+		const gated = { ...GEAR_INPUTS, 'obc-net': on };
+		expect(gearsEnabled('obc-net', gated)).toBe(before);
+		expect(gearsEnabled('obc-net')).toBe(after);
+		expect(gearsEnabled(inputOf('obc-net:harder'))).toBe(after);
 	});
 
-	it.each(LANDED)('switches %s off alone, leaving the others on', (off) => {
+	it.each(INPUTS)('switches %s off alone, leaving the others on', (off) => {
 		const inputs = { ...GEAR_INPUTS, [off]: false };
-		for (const input of LANDED)
+		for (const input of INPUTS)
 			expect(gearsEnabled(input, inputs)).toBe(input !== off);
 		expect(gearsEnabled(undefined, inputs)).toBe(true);
 	});
@@ -82,19 +88,14 @@ describe('gears reach every rider (#3333, ADR-0088)', () => {
 		return { gear, cues };
 	}
 
-	it('shifts a production ride from the pair, a key, the phone and a controller, not the network yet', () => {
+	it('shifts a production ride from the pair, a key, the phone, a controller and the network', () => {
 		expect(pressEach()).toEqual({
-			gear: 4,
-			cues: ['shift-up', 'shift-up', 'shift-up', 'shift-up'],
+			gear: 5,
+			cues: ['shift-up', 'shift-up', 'shift-up', 'shift-up', 'shift-up'],
 		});
 	});
 
-	it('shifts from the network shifter behind the dev gate', () => {
-		dev.on = true;
-		expect(pressEach().gear).toBe(5);
-	});
-
-	it.each(LANDED)('drops a press from %s alone once it is off', (off) => {
-		expect(pressEach({ ...GEAR_INPUTS, [off]: false }).gear).toBe(3);
+	it.each(INPUTS)('drops a press from %s alone once it is off', (off) => {
+		expect(pressEach({ ...GEAR_INPUTS, [off]: false }).gear).toBe(4);
 	});
 });
