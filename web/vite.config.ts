@@ -87,7 +87,9 @@ function eagerShell(): { plugin: Plugin; contains: (id: string) => boolean } {
 			buildEnd() {
 				eager.clear();
 				const stack = [...this.getModuleIds()].filter(isSeed);
-				if (stack.length === 0) {
+				// Vitest runs this hook too, over test files with no app in them:
+				// only a real build has seeds to miss.
+				if (stack.length === 0 && this.environment.config.command === 'build') {
 					// Renamed upstream: the shell silently falls back to Rolldown's
 					// default chunking, which is the 122-preload shape #1516 is about.
 					this.warn('wattroom-eager-shell: no seed module matched');
@@ -162,6 +164,9 @@ export default defineConfig({
 		],
 		// No socket leaves a unit test (src/vitest.setup.ts).
 		setupFiles: ['src/vitest.setup.ts'],
+		// Node 26's own localStorage warns "--localstorage-file was not
+		// provided" on every touch; tests use happy-dom's (vitest.setup.ts).
+		execArgv: ['--no-experimental-webstorage'],
 	},
 	server: {
 		// 5174 for humans; PORT lets agent harnesses run parallel instances.
