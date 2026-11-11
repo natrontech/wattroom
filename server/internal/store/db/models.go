@@ -336,6 +336,7 @@ type Ride struct {
 	OnRoad          *bool
 	Title           *string
 	Blocks          []byte
+	WorkoutOwnName  *string
 }
 
 type RideExport struct {

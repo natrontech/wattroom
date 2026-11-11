@@ -354,10 +354,11 @@ insert into rides (
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
     crew_id, channel_id, session_id,
     route_id, route_key, road_h, ride_mode, timeable,
-    from_m, distance_m, climbed_m, weight_kg, mean_shelter, on_road, blocks
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter, on_road, blocks,
+    workout_own_name
 )
 values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
 returning id
 `
 
@@ -391,12 +392,14 @@ type CreateRideParams struct {
 	MeanShelter     *float32
 	OnRoad          *bool
 	Blocks          []byte
+	WorkoutOwnName  *string
 }
 
 // A session's ride names its crew, the voice channel and the session (#2443);
 // a solo ride leaves all three null. The road summary (#3053) is what exists
 // only at the moment of saving: null where a ride had no road, or the saver
-// did not know. The workout's blocks (#4430) are null on a ride with none.
+// did not know. The workout's blocks (#4430) are null on a ride with none,
+// and its own name is null unless the road named the ride.
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createRide,
 		arg.UserID,
@@ -428,6 +431,7 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.MeanShelter,
 		arg.OnRoad,
 		arg.Blocks,
+		arg.WorkoutOwnName,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -907,7 +911,7 @@ func (q *Queries) GetRideExport(ctx context.Context, arg GetRideExportParams) (G
 
 const getRideForUpload = `-- name: GetRideForUpload :one
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
-       c.name as crew_name, r.route_key, r.distance_m, r.on_road
+       c.name as crew_name, r.route_key, r.distance_m, r.on_road, r.workout_own_name
 from rides r
 join users u on u.id = r.user_id
 left join crews c on c.id = r.crew_id
@@ -915,22 +919,24 @@ where r.id = $1
 `
 
 type GetRideForUploadRow struct {
-	ID           pgtype.UUID
-	UserID       pgtype.UUID
-	WorkoutName  string
-	StartedAt    pgtype.Timestamptz
-	Samples      []byte
-	StravaUpload bool
-	CrewName     *string
-	RouteKey     *string
-	DistanceM    *int32
-	OnRoad       *bool
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	WorkoutName    string
+	StartedAt      pgtype.Timestamptz
+	Samples        []byte
+	StravaUpload   bool
+	CrewName       *string
+	RouteKey       *string
+	DistanceM      *int32
+	OnRoad         *bool
+	WorkoutOwnName *string
 }
 
 // The uploader's one read: the ride plus the owner's consent flag and the
 // crew's name for the activity description (null for solo rides, #2443).
 // A route ride's title is its numbers (#4154): route_key marks one the save
-// placed, and outlives the route; on_road marks every one since.
+// placed, and outlives the route; on_road marks every one since. A workout
+// ridden over a road is titled by its own name instead.
 func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRideForUploadRow, error) {
 	row := q.db.QueryRow(ctx, getRideForUpload, id)
 	var i GetRideForUploadRow
@@ -945,6 +951,7 @@ func (q *Queries) GetRideForUpload(ctx context.Context, id pgtype.UUID) (GetRide
 		&i.RouteKey,
 		&i.DistanceM,
 		&i.OnRoad,
+		&i.WorkoutOwnName,
 	)
 	return i, err
 }

@@ -19,7 +19,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
-	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // upload runs one delivery attempt. A nil activity id with a nil error means
@@ -225,19 +224,30 @@ func exportFailure(err error) string {
 	}
 }
 
-// activityName is the activity's title. A route ride's never carries a
-// place, generated or not (ADR-0063), so its distance stands in for the
-// generated name it was saved under (#4154). A ride saved before on_road
-// has only route_key to say it rode one.
+// activityName is the activity's title: what the rider rode. A workout is
+// its workout's name, on a road too — kept beside the road's name the ride
+// is saved under (rides.workout_own_name). A ride the road alone names
+// never carries a place, generated or not (ADR-0063), so its distance stands
+// in for the generated name it was saved under (#4154), as a virtual route
+// ride, which is what Strava files it under too (a Virtual Ride). A ride
+// saved before on_road has only route_key to say it rode one; a workout
+// ridden over a road before workout_own_name is titled the same way.
 func activityName(ride db.GetRideForUploadRow) string {
 	switch {
+	case ride.WorkoutOwnName != nil:
+		return *ride.WorkoutOwnName
 	case ride.RouteKey == nil && (ride.OnRoad == nil || !*ride.OnRoad):
 		return ride.WorkoutName
-	case ride.DistanceM == nil:
-		return workout.RouteRide(0)
+	case ride.DistanceM == nil || *ride.DistanceM <= 0:
+		return virtualRouteRide
 	}
-	return workout.RouteRide(float64(*ride.DistanceM))
+	return fmt.Sprintf("%s · %.1f km", virtualRouteRide, float64(*ride.DistanceM)/1000)
 }
+
+// virtualRouteRide is a road ride's title on Strava. Mail, the calendar and
+// MCP keep workout.RouteRide's "Route ride": that is the app's word for it,
+// and the one an AI is handed (AGENTS.md).
+const virtualRouteRide = "Virtual route ride"
 
 // activityDescription is what the Strava activity says about where it was
 // ridden: the crew's name for a crew ride (#2443), and only ever the site's

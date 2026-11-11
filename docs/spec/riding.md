@@ -202,6 +202,8 @@ TV mode draws the same rail, with the place, the workout and the way out above i
 
 A closing card offers the pictures for Strava, and the rider saves any of them: the **poster**, drawn by the server from the saved ride, and where the 3D world drew, the **world's two** of one moment: you on the road (**World picture**), and the ride as its Overhead camera saw it (**Overhead picture**).
 
+The activity WattRoom uploads is titled by what was ridden: a workout by its own name, on a road too; a ride the road alone names (a free ride on it, a road workout) as **Virtual route ride · 32.0 km**, never a place, generated or not (ADR-0063).
+
 - A free ride on a road is drawn as the road it rode, painted by zone: the poster. A **workout** is drawn as the workout, on a road or off one ([#4430](https://github.com/natrontech/wattroom/issues/4430)): its blocks in their zones' colours, the watts ridden over them, and on a road the road it rode in a strip under them.
 - WattRoom's mark sits centred along the top, clear of the corners where Strava's feed lays its badges ([#4429](https://github.com/natrontech/wattroom/issues/4429)).
 

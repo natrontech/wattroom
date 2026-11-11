@@ -7,20 +7,25 @@ import (
 	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
-// A route ride's title carries no place, generated or not (#4154, ADR-0063):
-// saved under a generated name that names one, it goes out as its distance.
+// An activity is titled by what was ridden (#3055): a workout by its own
+// name, over a road too. A ride the road alone names carries no place,
+// generated or not (#4154, ADR-0063): saved under a generated name that
+// names one, it goes out as a virtual route ride and its distance.
 func TestActivityName(t *testing.T) {
-	key, km, yes, no := "road-hash", int32(52_940), true, false
+	key, km, zero, yes, no := "road-hash", int32(52_940), int32(0), true, false
 	named := "Road · " + testx.Corridor.Places[0] + " · 52.9 km"
+	own := "Sweet spot"
 	for _, c := range []struct {
 		what string
 		ride db.GetRideForUploadRow
 		want string
 	}{
 		{"a workout", db.GetRideForUploadRow{WorkoutName: "Sweet spot"}, "Sweet spot"},
-		{"a route ride", db.GetRideForUploadRow{WorkoutName: named, RouteKey: &key, DistanceM: &km}, "Route ride · 52.9 km"},
-		{"a route ride never replayed", db.GetRideForUploadRow{WorkoutName: named, RouteKey: &key}, "Route ride"},
-		{"a road ride the save never placed", db.GetRideForUploadRow{WorkoutName: named, OnRoad: &yes}, "Route ride"},
+		{"a workout over a road", db.GetRideForUploadRow{WorkoutName: named, WorkoutOwnName: &own, RouteKey: &key, OnRoad: &yes, DistanceM: &km}, "Sweet spot"},
+		{"a route ride", db.GetRideForUploadRow{WorkoutName: named, RouteKey: &key, DistanceM: &km}, "Virtual route ride · 52.9 km"},
+		{"a route ride never replayed", db.GetRideForUploadRow{WorkoutName: named, RouteKey: &key}, "Virtual route ride"},
+		{"a route ride that went nowhere", db.GetRideForUploadRow{WorkoutName: named, OnRoad: &yes, DistanceM: &zero}, "Virtual route ride"},
+		{"a road ride the save never placed", db.GetRideForUploadRow{WorkoutName: named, OnRoad: &yes}, "Virtual route ride"},
 		{"a workout off any road", db.GetRideForUploadRow{WorkoutName: "Sweet spot", OnRoad: &no}, "Sweet spot"},
 	} {
 		got := activityName(c.ride)
