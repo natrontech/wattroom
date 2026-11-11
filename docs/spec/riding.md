@@ -205,7 +205,7 @@ The now bar and the phone remote draw the ride's controls from one list (`web/sr
 | Control      | Now bar                                    | Phone                                                            |
 | ------------ | ------------------------------------------ | ---------------------------------------------------------------- |
 | Easier / Harder | the trim or the shifter                 | the full-width pair at the foot, answered with the gear or bias  |
-| View         | 3D · Flat · Map · Room, the view switch    | the same segments, the ones the bar draws, pressed where it looks |
+| View         | 3D · Flat · Map · Lounge, the view switch  | the same segments, the ones the bar draws, pressed where it looks |
 | Camera       | on a road; held off 3D                     | the same                                                         |
 | Photo        | on a road; held off 3D and at the ride's **5** photos | the same, with the shutter and "Photo n of 5"        |
 | TV           | opens TV mode                              | toggles TV mode on the riding screen                             |

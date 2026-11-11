@@ -152,7 +152,7 @@
 			<button
 				onclick={() => (rideRoom.on = true)}
 				aria-pressed={state.pressed === 'room'}
-				class={seg(state.pressed === 'room')}>Room</button
+				class={seg(state.pressed === 'room')}>Lounge</button
 			>
 		{/if}
 		<!-- The whole sentence for a screen reader, and for the e2e specs that

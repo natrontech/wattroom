@@ -1044,7 +1044,7 @@
 			<button
 				type="button"
 				onclick={moods}
-				title="Set the room's mood for everyone"
+				title="Set the lounge's mood for everyone"
 				aria-haspopup="menu"
 				class="btn btn-ghost btn-xs text-ink px-0"
 				><Sparkles size={13} />
@@ -1053,7 +1053,7 @@
 			<button
 				type="button"
 				onclick={() => (furnishing = true)}
-				title="Furnish the room with your Batzen"
+				title="Furnish the lounge with your Batzen"
 				class="btn btn-ghost btn-xs text-ink px-0"
 				><Armchair size={13} /> Furnish</button
 			>

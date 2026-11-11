@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Your look in the cozy room (look.ts): parts and colours, with yourself
+	// Your look in the lounge (look.ts): parts and colours, with yourself
 	// on the sofa as you change them. Saved, it reaches every voice channel
 	// you stand in on the next tick.
 	import Modal from '#lib/components/Modal.svelte';
@@ -141,7 +141,7 @@
 <Modal label="Your look in the lounge" {onclose} class="max-w-3xl">
 	<h2 class="font-display text-lg font-bold">Your look in the lounge</h2>
 	<p class="text-muted mt-1 text-sm">
-		Everyone in your voice channels sees it in the cozy room.
+		Everyone in your voice channels sees it in the lounge.
 	</p>
 	<div class="mt-4 flex flex-col gap-6 sm:flex-row">
 		<div
