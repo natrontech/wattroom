@@ -441,6 +441,8 @@ jobs:
         with:
           name: ride-results-${{ matrix.artifact }}
           path: desktop/test-results/
+          # A ride that fails before Playwright starts (the install) has none.
+          if-no-files-found: ignore
           retention-days: 7
 
   publish:
