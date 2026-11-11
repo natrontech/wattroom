@@ -6,7 +6,9 @@ import {
 	WAIT_FOR_TRAINER,
 	lineCue,
 	roadCard,
+	showsStartLine,
 	startLineView,
+	type LineTick,
 } from './start-line';
 
 const rider = (id: string, ftpSource: string, ftpWatts = 250): Rider => ({
@@ -164,5 +166,41 @@ describe('lineCue', () => {
 	it('stays quiet when nothing changed, and when the line goes', () => {
 		expect(lineCue(open, { ready: { jan: {} } })).toBeNull();
 		expect(lineCue(open, null)).toBeNull();
+	});
+});
+
+describe('showsStartLine', () => {
+	const onRoad = route(0);
+	const onLine: LineTick = {
+		startLine: { ready: { jan: {} } },
+		state: { phase: 'idle', route: onRoad },
+	};
+
+	// #4504: a road session from a voice channel opens on the crew's own
+	// session page, idle with its line, and nothing drew it there.
+	it('shows a road session picked and not yet started', () => {
+		expect(showsStartLine(onLine)).toBe(true);
+		expect(showsStartLine({ ...onLine, startLine: { ready: {} } })).toBe(true);
+	});
+
+	it('hides once the count-in starts, the ride runs or the session ends', () => {
+		for (const phase of ['countdown', 'running', 'paused', 'done'])
+			expect(
+				showsStartLine({ ...onLine, state: { phase, route: onRoad } }),
+				phase,
+			).toBe(false);
+	});
+
+	it('hides off a road, with no line, under a game and with no tick', () => {
+		expect(showsStartLine({ ...onLine, state: { phase: 'idle' } })).toBe(false);
+		expect(showsStartLine({ ...onLine, startLine: undefined })).toBe(false);
+		expect(
+			showsStartLine({
+				...onLine,
+				game: { mode: 'sprint' } as LineTick['game'],
+			}),
+		).toBe(false);
+		expect(showsStartLine(undefined)).toBe(false);
+		expect(showsStartLine(null)).toBe(false);
 	});
 });

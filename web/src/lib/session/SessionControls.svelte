@@ -17,6 +17,8 @@
 	import { leaveChannel } from '#lib/channel/leave.ts';
 	import { controlsFor } from '#lib/session/controls.ts';
 	import { endGame } from '#lib/session/end-game.ts';
+	import { showsStartLine } from '#lib/session/start-line.ts';
+	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Pause from '@lucide/svelte/icons/pause';
@@ -55,6 +57,10 @@
 		}),
 	);
 	const coachName = $derived(channel.shared?.coachName || 'the coach');
+	// The start line says who starts the ride (#4504): no second wait here.
+	const onLine = $derived(
+		showsStartLine(channelConnection.at(channel.address)?.live.tick),
+	);
 	// An admin coaching from a phone reaches their own session here too.
 	const whose = $derived(
 		channel.shared?.coach === account.me?.id ? 'the' : `${coachName}'s`,
@@ -223,7 +229,7 @@
 		><Square size={13} />
 		{view === 'clear' ? `Clear ${whose} pick` : `End ${whose} session`}</button
 	>
-{:else if view === 'held' && !compact}
+{:else if view === 'held' && !compact && !onLine}
 	<!-- In place of the Start a member no longer has: who holds the channel. -->
 	<p class="text-muted ride-stage:ride-word text-sm">
 		{coachName} is setting up a session here.
