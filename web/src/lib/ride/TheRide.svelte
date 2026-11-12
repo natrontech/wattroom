@@ -23,6 +23,9 @@
 	import { theRide } from '#lib/ride/the-ride.svelte.ts';
 	import WorldPicture from '#lib/ride/WorldPicture.svelte';
 	import TvOverlay from '#lib/session/TvOverlay.svelte';
+	import GamePanel from '#lib/session/GamePanel.svelte';
+	import { createGameSounds } from '#lib/session/session-sounds.svelte.ts';
+	import { account } from '#lib/account.svelte.ts';
 	import { shareFile } from '#lib/share.ts';
 	import { describeBlock } from '#lib/workout/block.ts';
 	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
@@ -47,6 +50,11 @@
 	const flags = theRide.flags;
 
 	const session = $derived(theRide.session);
+	// A game alone (#4539): its panel in the ride's focus, its cues heard as
+	// a session's game's are.
+	const game = $derived(theRide.game);
+	const me = $derived(account.me?.id);
+	createGameSounds({ game: () => game?.state, me: () => me });
 	const signalLost = $derived(theRide.signalLost);
 	const noCrashSafety = $derived(theRide.noCrashSafety);
 	let tv = $state(false);
@@ -190,10 +198,42 @@
 			{noCrashSafety}
 			onFlag={() => flags.recorder.flag()}
 			onTv={() => (tv = true)}
-			{shelf}
-			onChangeWorkout={theRide.changeWorkout}
+			shelf={game ? undefined : shelf}
+			onChangeWorkout={game ? undefined : theRide.changeWorkout}
+			game={game ? gamePanel : undefined}
+			quiet={!!game?.state?.meterHidden}
 		/>
 	</div>
+
+	{#snippet gamePanel()}
+		{#if game?.lost}
+			<!-- Persistent status, never a toast (errors.md): the score is gone,
+			     the ride is not. -->
+			<div class="py-4" role="status">
+				<p class="text-sm font-medium">
+					The game was lost with the connection.
+				</p>
+				<p class="text-muted mt-1 text-sm">
+					Your ride goes on and is saved as a free ride.
+				</p>
+				<button
+					onclick={theRide.endGame}
+					class="btn btn-secondary mt-3 min-h-11">Close the game</button
+				>
+			</div>
+		{:else if game?.state}
+			<GamePanel
+				flat
+				game={game.state}
+				roster={me ? [{ id: me, name: 'You' }] : []}
+				{me}
+				canControl
+				end={theRide.endGame}
+			/>
+		{:else if game}
+			<p class="text-muted py-4 text-sm" role="status">Starting the game…</p>
+		{/if}
+	{/snippet}
 
 	{#if tv}
 		<!-- A session's TV, riding alone (#1632, ADR-0046): the same screen at

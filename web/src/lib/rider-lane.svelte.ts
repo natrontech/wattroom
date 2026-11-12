@@ -4,6 +4,8 @@ import type {
 	LobbyLane,
 	PauseState,
 	RemoteCommand,
+	SoloGameControl,
+	SoloGameFrame,
 	ViewState,
 } from '#lib/protocol.ts';
 
@@ -32,6 +34,7 @@ let pause = $state.raw<PauseState | null>(null);
 let view = $state.raw<ViewState | null>(null);
 let refusal = $state<string | null>(null);
 const listeners = new Set<(cmd: RemoteCommand) => void>();
+const games = new Set<(frame: SoloGameFrame) => void>();
 
 /** Whether a lobby frame is the lane's rather than a presence ping. */
 export function isLaneFrame(frame: LobbyLane): boolean {
@@ -41,6 +44,7 @@ export function isLaneFrame(frame: LobbyLane): boolean {
 		frame.gear ||
 		frame.pause ||
 		frame.view ||
+		frame.game ||
 		frame.error
 	);
 }
@@ -80,6 +84,7 @@ export const riderLane = {
 		if (frame.view) view = frame.view;
 		refusal = frame.error?.message ?? null;
 		if (frame.remote) for (const hear of listeners) hear(frame.remote);
+		if (frame.game) for (const hear of games) hear(frame.game);
 	},
 
 	/** This screen runs the rider's ride alone, or stopped. The whole state. */
@@ -124,5 +129,15 @@ export const riderLane = {
 	},
 	sendView(state: ViewState) {
 		say({ view: state });
+	},
+
+	// A game alone (#4539): the hub keeps its score on this lane, and answers
+	// the screen riding it only.
+	sendGame(control: SoloGameControl) {
+		say({ game: control });
+	},
+	onGame(hear: (frame: SoloGameFrame) => void) {
+		games.add(hear);
+		return () => void games.delete(hear);
 	},
 };

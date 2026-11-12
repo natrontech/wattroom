@@ -62,6 +62,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 - A planned week comes from intervals.icu, pulled once; the token and the week are kept nowhere.
 - Sprint moments flip the trainer from ERG to SIM for the window, then back.
 - Game modes are rule modules over the workout engine, all targets relative to FTP.
+- A game picked on a ride alone runs on that ride, counted in like a workout. The hub keeps its score on the rider's own lane; no crew sees it.
 
 ## Roads and the world
 

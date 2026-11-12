@@ -6,6 +6,15 @@ import type { Workout } from '#lib/workout/types.ts';
 const fake = vi.hoisted(() => ({
 	state: 'countdown',
 	clear: vi.fn(),
+	sent: [] as unknown[],
+	workout: null as unknown,
+	ask: undefined as undefined | (() => number),
+}));
+vi.mock('#lib/rider-lane.svelte.ts', () => ({
+	riderLane: {
+		sendGame: (control: unknown) => void fake.sent.push(control),
+		onGame: () => () => {},
+	},
 }));
 vi.mock('#lib/channel/connection.svelte.ts', () => ({
 	channelConnection: { current: null },
@@ -26,12 +35,18 @@ vi.mock('#lib/ride/ride-alone-effects.svelte.ts', () => ({
 }));
 vi.mock('#lib/ride/ride-alone-session.ts', () => ({
 	openWorkoutBuffer: async () => ({ crashSafe: true, end() {} }),
-	createWorkoutAlone: () => ({
-		get state() {
-			return fake.state;
-		},
-		async start() {},
-	}),
+	createWorkoutAlone: (deps: { workout: unknown; ask?: () => number }) => {
+		fake.workout = deps.workout;
+		fake.ask = deps.ask;
+		return {
+			get state() {
+				return fake.state;
+			},
+			sample: { watts: 190 },
+			async start() {},
+			abort() {},
+		};
+	},
 }));
 vi.mock('#lib/world/picture.svelte.ts', () => ({
 	worldPicture: { clear: fake.clear },
@@ -59,6 +74,46 @@ describe('theRide (ADR-0093)', () => {
 
 		await theRide.begin(trainer, workout, { borrowed: false });
 		expect(theRide.next, 'a ride with no next leg kept the last').toBeNull();
+	});
+
+	// #4539: a game picked on the solo ride ran as a session in the rider's
+	// crew, started at once. It runs on this ride now: counted in, then
+	// started on the rider's own lane, with no request to any crew.
+	it('runs a game alone on the ride, after its count-in, never in a crew session', async () => {
+		vi.useFakeTimers();
+		const fetch = vi.spyOn(globalThis, 'fetch');
+		try {
+			fake.sent = [];
+			await theRide.beginGame(trainer, 'floor-is-lava');
+			fake.state = 'countdown';
+			expect(theRide.game?.mode).toBe('floor-is-lava');
+			expect(fake.workout).toMatchObject({
+				name: 'Floor is Lava',
+				unscored: true,
+			});
+			vi.advanceTimersByTime(3000);
+			expect(fake.sent, 'the game started before the count-in ended').toEqual(
+				[],
+			);
+
+			fake.state = 'running';
+			vi.advanceTimersByTime(1000);
+			expect(fake.sent).toEqual([
+				expect.objectContaining({ action: 'start', mode: 'floor-is-lava' }),
+			]);
+			expect(fake.ask?.()).toBe(0);
+			expect(fetch, 'the game reached for a crew').not.toHaveBeenCalled();
+
+			// End game leaves the ride riding.
+			theRide.endGame();
+			expect(fake.sent.at(-1)).toMatchObject({ action: 'end' });
+			expect(theRide.game).toBeNull();
+			expect(theRide.session?.state).toBe('running');
+		} finally {
+			theRide.cancelCountdown();
+			fetch.mockRestore();
+			vi.useRealTimers();
+		}
 	});
 
 	it('lets the last ride’s world picture go at the ride’s start', async () => {

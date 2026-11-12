@@ -7,10 +7,6 @@ import { byId } from '#lib/workout/library.ts';
 // A production rider (#3352): no dev build, no dev sign-in door, so no
 // simulated trainer — the gate roads used to share with it.
 vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => false }));
-// The solo games read the crew list; nothing here is about them.
-vi.mock('#lib/nav/crew-live.svelte.ts', () => ({
-	crewLive: { loaded: true, crews: [], reload: async () => {} },
-}));
 
 const workout = byId('openers')!.workout;
 

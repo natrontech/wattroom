@@ -53,9 +53,12 @@ export function createWorkoutAlone(deps: {
 	buffer: () => RideBuffer | undefined;
 	flags: ReturnType<typeof createRideFlags>;
 	session: () => Session | null;
+	/** A game alone's watts over the free ride's drive (#4539). */
+	ask?: () => number;
 }): Session {
 	const { profile, flags } = deps;
 	return createRideSession({
+		ask: deps.ask,
 		trainer: deps.trainer,
 		workout: deps.workout,
 		ftp: profile.current.ftp,

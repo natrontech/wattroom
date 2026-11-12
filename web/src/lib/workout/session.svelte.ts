@@ -35,6 +35,7 @@ export function createRideSession({
 	onRecord,
 	onPlan,
 	kg = () => 0,
+	ask = () => 0,
 }: RideOptions) {
 	const startedAt = new Date(startedAtMs ?? now());
 	let sample = $state<TrainerSample | null>(null);
@@ -112,6 +113,7 @@ export function createRideSession({
 		ftp,
 		road: dot,
 		open: () => open,
+		ask,
 	});
 	const applyTarget = aim.apply;
 	const guarding = wireSoloGuards(guards, {
