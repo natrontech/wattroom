@@ -2,6 +2,7 @@
 // materials, so one world can be drawn in any art style.
 import * as THREE from 'three';
 import { Biome } from './biome';
+import type { RoutePoint } from '#lib/road/along.ts';
 import { type Route } from '#lib/road/route.ts';
 import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
@@ -10,7 +11,7 @@ import type { World } from './world';
 import { bendsOf } from './terrain/road-frame';
 import {
 	bankOf,
-	drawnRows,
+	ribbonRows,
 	ROAD_W,
 	SHOULDER_DROP,
 } from './terrain/road-profile';
@@ -90,9 +91,17 @@ export function road(
 		shoulder > 0 ? [-SHOULDER_DROP, 0, 0, 0, -SHOULDER_DROP] : [0, 0, 0];
 	const cols = offs.length;
 	const [from, to] = opts.rows ?? [0, Infinity];
-	const first = Math.max(0, from - WARM);
-	const centre = drawnRows(route, step, first, to + 1 + BEND_ROWS);
-	const last = Math.min(first + centre.length - 1, to + 1);
+	// A road that goes round is one strip round (#4534): rows before its first and past its last wrap, so its start line is lit, banked and walked as any other row.
+	const rows = ribbonRows(route, step);
+	const end = rows.count - 1;
+	const first = rows.ring ? from - WARM : Math.max(0, from - WARM);
+	const top = Math.min(to, end);
+	const last = rows.ring ? top + 1 : Math.min(top + 1, end);
+	const centre: RoutePoint[] = [];
+	const reach = rows.ring
+		? top + 1 + BEND_ROWS
+		: Math.min(top + 1 + BEND_ROWS, end);
+	for (let k = first; k <= reach; k++) centre.push(rows.row(k));
 	const bends = bendsOf(
 		centre.map((p) => p.x),
 		centre.map((p) => p.z),
@@ -102,7 +111,7 @@ export function road(
 	const prev: THREE.Vector3[] = [];
 	for (let r = first; r <= last; r++) {
 		const p = centre[r - first];
-		const d = r * step;
+		const d = rows.metre(r);
 		const k = bends[r - first]; // curvature, +left
 		const bank = bankOf(k);
 		const lx = Math.cos(p.heading); // left of travel
@@ -131,7 +140,7 @@ export function road(
 	whole.computeVertexNormals();
 	// The rows asked for, lit as the whole ribbon lights them.
 	const lo = Math.max(from, first);
-	const hi = Math.min(to, last);
+	const hi = Math.min(top, last);
 	if (lo === first && hi === last) {
 		whole.computeBoundingSphere();
 		return whole;
