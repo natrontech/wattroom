@@ -12,7 +12,7 @@ import {
 	type Grid,
 	type Level,
 } from './terrain-mesh';
-import { ROAD_W, rowCount } from './terrain/road-profile';
+import { ROAD_W, ribbonRows } from './terrain/road-profile';
 
 /**
  * The ride's ground around the eye (#3606): the place's own detail out to
@@ -156,15 +156,16 @@ const PIECE_ROWS = 200;
  * a ride draws of its road within the ground's reach, as the ground streams.
  */
 export function roadPieces(route: Route, step = 2) {
-	const last = rowCount(route, step) - 1;
+	const rows = ribbonRows(route, step);
+	const last = rows.count - 1;
 	const out: { rows: [number, number]; x: number; z: number; r: number }[] = [];
 	for (let from = 0; from < last; from += PIECE_ROWS) {
 		const to = Math.min(from + PIECE_ROWS, last);
-		const mid = at(route, ((from + to) / 2) * step);
+		const mid = at(route, rows.metre((from + to) / 2));
 		let r = 0;
 		// Every tenth row and the last: the ribbon's width covers what a 20 m chord misses.
 		for (let k = from; ; k = Math.min(k + 10, to)) {
-			const p = at(route, k * step);
+			const p = rows.row(k);
 			r = Math.max(r, Math.hypot(p.x - mid.x, p.z - mid.z));
 			if (k === to) break;
 		}

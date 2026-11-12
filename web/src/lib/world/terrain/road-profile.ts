@@ -1,4 +1,4 @@
-import { at, type RoutePoint } from '#lib/road/along.ts';
+import { at, closes, wrapAngle, type RoutePoint } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
 import type { Road } from '#lib/road/road.ts';
 import type { Line } from './lines';
@@ -44,9 +44,60 @@ export function drawnRows(
 	return rows;
 }
 
-/** How many rows the whole ribbon has, `step` metres apart. */
+/** How many rows the road's line has, `step` metres apart: the ground's. */
 export const rowCount = (route: Route, step = 2): number =>
 	Math.floor((route.length + 1e-6) / step) + 1;
+
+/**
+ * Whether the drawn road goes round (#4534): its ends meet, as a loop's do
+ * (closes), and it leaves its start the way it came back to it. An
+ * out-and-back that ends on its start turns there, and keeps its two ends.
+ * Whether a ride laps it is the ride's to say (compose.ts); a road that goes
+ * round is drawn round either way.
+ */
+export function ringOf(route: Route): boolean {
+	const n = route.x.length - 1;
+	if (n < 3 || !closes({ ...route, loop: true })) return false;
+	const came = Math.atan2(
+		route.x[n] - route.x[n - 1],
+		route.z[n] - route.z[n - 1],
+	);
+	const leaves = Math.atan2(route.x[1] - route.x[0], route.z[1] - route.z[0]);
+	return Math.abs(wrapAngle(leaves - came)) < Math.PI / 4;
+}
+
+/**
+ * The ribbon's rows (#4534), `step` metres apart from the start: the road's
+ * line, except that a road that goes round (ringOf) is one strip round. Its
+ * last row stands on the road's last metre, which is its start, so the last
+ * cross-section is the first: no gap and no overlap at the start line. Its
+ * row before that is the last whole step at least a quarter step short of
+ * it. Any row number names a row of a ring, wrapping round, so a piece by
+ * the start walks in from the end. On a road with two ends this is the
+ * line's rows, 0 to count − 1.
+ */
+export function ribbonRows(route: Route, step = 2) {
+	const ring = ringOf(route);
+	if (!ring)
+		return {
+			ring,
+			count: rowCount(route, step),
+			metre: (k: number) => k * step,
+			row: (k: number) => at(route, k * step),
+		};
+	const round = { ...route, loop: true };
+	const per = Math.max(3, Math.ceil(route.length / step - 0.25));
+	const metre = (k: number) => {
+		const lap = Math.floor(k / per);
+		return lap * route.length + (k - lap * per) * step;
+	};
+	return {
+		ring,
+		count: per + 1,
+		metre,
+		row: (k: number) => at(round, metre(k)),
+	};
+}
 
 /**
  * A stroke as the road library keeps a road (#3047's shape): heights and
