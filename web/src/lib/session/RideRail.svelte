@@ -4,8 +4,9 @@
 	 * world, no panel, read left to right in the same order on every ride.
 	 * Watts first; then a workout's time left and what is next, or a road's
 	 * grade and what it does ahead; then speed and distance on a road, and
-	 * cadence, heart and the ride's time always. A tap on the rail adds its
-	 * second row, the power details, in the same type.
+	 * cadence, heart and the ride's time always. The rail's chevron (the
+	 * riding surface's) adds its second row, the power details, in the same
+	 * type.
 	 *
 	 * Three sizes and one label: the watts, the one number beside them, and
 	 * every other number. Sized in vh, the TV's column, so it reads at three
@@ -152,8 +153,7 @@
 
 <div data-testid="ride-rail" class="flex flex-col gap-[1.6vh] py-1">
 	{#if status}
-		<!-- Above the tap's button: a status line may hold one of its own. -->
-		<div class="relative z-10 [&:not(:has(*))]:hidden">{@render status()}</div>
+		<div class="[&:not(:has(*))]:hidden">{@render status()}</div>
 	{/if}
 	<div
 		class="flex flex-col gap-[1.6vh] md:flex-row md:flex-wrap md:items-end md:gap-x-[max(1.5rem,2.6vw)]"
@@ -260,8 +260,8 @@
 		</div>
 	</div>
 	{#if details}
-		<!-- The second row, a tap away: the same cells, the power's details. -->
-		<div data-testid="rail-details" class={ROW}>
+		<!-- The second row, behind the chevron: the same cells, the power's details. -->
+		<div id="rail-details" data-testid="rail-details" class={ROW}>
 			{#if title}
 				<div class="{CELL} col-span-3 md:max-w-[24ch]" data-cell="Ride">
 					<span class={LABEL}>Ride</span>
@@ -278,8 +278,7 @@
 				{@render cell('Work', `${stats.kj}`, 'kJ')}
 			{/if}
 			{#if more}
-				<!-- Above the tap's button: these are controls. -->
-				<div class="relative z-10 col-span-3 flex items-end gap-4">
+				<div class="col-span-3 flex items-end gap-4">
 					{@render more()}
 				</div>
 			{/if}
