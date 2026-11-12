@@ -61,6 +61,8 @@ export const BIKE_DY = 58;
 export const BIKES_ALWAYS = 2;
 /** The row the front of a tall room's things stand on: a beanbag, a plant, the arcade. */
 export const FRONT_Y = 248;
+/** The whole room's rows: the stage down to the names under the front row. */
+export const WHOLE_H = FRONT_Y + 22;
 
 /** Someone in the voice channel, as the scene dresses them. */
 export interface Figure {
@@ -370,16 +372,17 @@ export function pulseOf(input: SceneInput): number {
 }
 
 /**
- * Where the stage sits in a room of w × h: centred across, and in a tall
- * room (a phone) lowered a little, so the wall grows above it as well as
- * the floor below.
+ * Where the stage sits in a room of w × h: centred across, and in a room
+ * taller than its front row needs (a phone) lowered a little, so the wall
+ * grows above it as well as the floor below. Not before: a row spent on
+ * the wall is a row the room's pixel cannot grow by (fit.ts).
  */
 export function middleOf(w: number, h: number, cinema = false) {
 	return {
 		ox: Math.floor((w - SCENE_W) / 2),
 		oy: cinema
 			? Math.max(0, h - SCENE_H)
-			: Math.max(0, Math.min(48, Math.floor((h - 210) / 3))),
+			: Math.max(0, Math.min(48, Math.floor((h - WHOLE_H) / 3))),
 	};
 }
 

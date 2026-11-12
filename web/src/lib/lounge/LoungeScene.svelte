@@ -117,8 +117,8 @@
 	import { LOUNGE, applyLoungeTheme, skyAt } from '#lib/lounge/palette.ts';
 	import { forgetWalls, shadeFor } from '#lib/lounge/draw-room.ts';
 	import { forgetBackdrops } from '#lib/lounge/draw-window.ts';
+	import { fitOf } from '#lib/lounge/fit.ts';
 	import {
-		SAFE_W,
 		SCENE_H,
 		SCENE_W,
 		ARCADE_SEAT,
@@ -146,8 +146,8 @@
 		screen?: Snippet<[number]>;
 	} = $props();
 
-	/** The fewest rows a room at scale s draws: the stage, and under it the radio's line in page pixels. */
-	const rowsAt = (s: number) => SCENE_H + Math.ceil(28 / s);
+	/** The fewest rows a room at scale s draws: the stage, and under it the room's bar in page pixels. */
+	const rowsAt = (s: number) => SCENE_H + Math.ceil(bar / s);
 	/** How fast the room may darken or brighten, per second: a lamp flipped on and off quickly fades instead of flashing (WCAG 2.3.1). */
 	const SHADE_RATE = 0.3;
 	const KONAMI = [
@@ -181,33 +181,30 @@
 	let boxW = $state(0);
 	let boxH = $state(0);
 	let placeH = $state(0);
-	// The biggest whole pixel at which all that matters on the stage fits (a
-	// 1200 px box takes 4). A phone is never under 2: it sees the middle of
-	// the stage and pans the rest.
-	const fitOf = (w: number, h: number) => {
-		let s = Math.max(1, Math.min(6, Math.floor(w / SAFE_W)));
-		while (s > 1 && h / s < rowsAt(s)) s--;
-		return s >= 2 || h / 2 < rowsAt(2) ? s : 2;
-	};
+	/** The room's bar along its bottom, measured (on a phone it wraps to two lines), and its 4 px off the edge. */
+	let barH = $state(0);
+	const bar = $derived((barH || 24) + 4);
+	// In whole pixels of the screen: at 125 % a room pixel of 3 would be
+	// 3.75, and every fourth row a pixel short.
+	let dpr = $state(1);
 	// A picture on the wall takes the room a whole pixel down: the same floor,
 	// and the rows that win grow the wall. Under 3 it would be under 200 px
 	// tall, YouTube's floor, so it hangs above the room instead. Read from
 	// the whole place, which a picture above the room does not change.
-	const placeFit = $derived(fitOf(boxW, placeH));
+	const placeFit = $derived(fitOf(boxW, placeH, dpr, bar, false));
 	const cinema = $derived(!!screen && placeFit >= 3);
-	// In whole pixels of the screen too: at 125 % a room pixel of 3 would be
-	// 3.75, and every fourth row a pixel short.
-	let dpr = $state(1);
+	// Otherwise the whole room shows, its front row above the bar (fit.ts).
 	const scale = $derived(
-		Math.max(1, Math.round((cinema ? placeFit - 1 : fitOf(boxW, boxH)) * dpr)) /
-			dpr,
+		cinema
+			? Math.max(1, Math.round((placeFit - 1) * dpr)) / dpr
+			: fitOf(boxW, boxH, dpr, bar),
 	);
 	const roomW = $derived(Math.max(SCENE_W, Math.floor(boxW / scale)));
 	const roomH = $derived(
 		Math.max(rowsAt(scale), Math.floor((cinema ? placeH : boxH) / scale)),
 	);
 	// Read by the frame on every tick, outside the effect that starts the loop.
-	let size = { w: SCENE_W, h: rowsAt(1), cinema: false };
+	let size = { w: SCENE_W, h: SCENE_H + 32, cinema: false };
 	$effect(() => {
 		size = { w: roomW, h: roomH, cinema };
 	});
@@ -933,7 +930,7 @@
 								class="font-display pixel-words absolute flex -translate-x-1/2 items-center gap-1 leading-none font-semibold whitespace-nowrap {scale >=
 								4
 									? 'text-sm'
-									: scale === 3
+									: scale >= 3
 										? 'text-xs'
 										: 'text-[11px]'} {r.away ? 'text-muted' : 'text-ink'} {r.you
 									? 'decoration-neon underline decoration-2 underline-offset-2'
@@ -1004,6 +1001,7 @@
 			</div>
 		</div>
 		<div
+			bind:clientHeight={barH}
 			class="font-display pixel-words text-muted bg-surface/85 absolute bottom-1 left-1 flex max-w-[calc(100%-0.5rem)] flex-wrap items-center gap-x-3 rounded px-2 py-0.5 text-xs"
 		>
 			{#if onAir}<button
