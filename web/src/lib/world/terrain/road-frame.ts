@@ -1,14 +1,25 @@
 import type { Line, LineIndex } from './lines';
+import { bankOf } from './road-profile';
+
+/**
+ * Metres either side of a vertex its bank reads the road's turn over (#4556).
+ * A recorded road's line wanders a few degrees every 30–60 m, even smoothed
+ * and walked from whole-degree turns: read over 6 m, a gentle bend's bank
+ * swung between 0° and 2.5° every 20 m, and lit as patches. Over 20 m it
+ * holds through a bend, and a hairpin still turns most of its half turn
+ * inside the span, so it banks fully.
+ */
+export const BANK_SPAN_M = 20;
 
 /**
  * Each vertex's curvature, per metre and +left: the heading's turn across at
- * least 6 m and one segment either side of it — long enough that a track's
- * leftover wiggle does not rock the bank. The drawn ribbon banks by it and
- * road furniture stands on that bank (geometry.ts, ground.ts).
+ * least `span` metres and one segment either side of it. The ribbon clamps
+ * its inside columns to the local one (6 m), so a hairpin never folds.
  */
 export function bendsOf(
 	x: ArrayLike<number>,
 	z: ArrayLike<number>,
+	span = 6,
 ): Float64Array {
 	const n = x.length;
 	const out = new Float64Array(n);
@@ -21,9 +32,9 @@ export function bendsOf(
 	const hi = n - 2; // the last segment
 	for (let g = 0; g < n; g++) {
 		let p = Math.max(0, Math.min(g - 1, hi));
-		while (p > 0 && arc[p] > arc[g] - 6) p--;
+		while (p > 0 && arc[p] > arc[g] - span) p--;
 		let q = Math.min(g, hi);
-		while (q < hi && arc[q + 1] < arc[g] + 6) q++;
+		while (q < hi && arc[q + 1] < arc[g] + span) q++;
 		if (p === q) continue;
 		let turn = heading(q) - heading(p);
 		if (turn > Math.PI) turn -= 2 * Math.PI;
@@ -34,13 +45,29 @@ export function bendsOf(
 }
 
 /**
+ * Each vertex's bank, radians, +left down: what the drawn ribbon tilts by
+ * and road furniture stands on (geometry.ts, ground.ts), from the turn over
+ * BANK_SPAN_M either side.
+ */
+export function banksOf(
+	x: ArrayLike<number>,
+	z: ArrayLike<number>,
+): Float64Array {
+	return bendsOf(x, z, BANK_SPAN_M).map(bankOf);
+}
+
+/**
  * The road as the ribbon is drawn across it (#3075): where a point lies
  * along a line and how far left of its centre, and how the road bends there.
  */
 export function roadFrame(index: LineIndex, lines: readonly Line[]) {
 	const { x, z, h, last, nearest, starts } = index;
 	const bend = new Float64Array(x.length);
-	lines.forEach((l, k) => bend.set(bendsOf(l.x, l.z), starts[k]));
+	const bank = new Float64Array(x.length);
+	lines.forEach((l, k) => {
+		bend.set(bendsOf(l.x, l.z), starts[k]);
+		bank.set(banksOf(l.x, l.z), starts[k]);
+	});
 
 	/**
 	 * Where (px, pz) lies across the road as the ribbon is drawn: rows stand
@@ -114,5 +141,9 @@ export function roadFrame(index: LineIndex, lines: readonly Line[]) {
 	const curvature = (a: number, t: number) =>
 		bend[a] + (bend[a + 1] - bend[a]) * t;
 
-	return { offset, curvature };
+	/** The bank at `t` along segment `a`, as the ribbon is drawn: its ends' banks, blended. */
+	const bankAt = (a: number, t: number) =>
+		bank[a] + (bank[a + 1] - bank[a]) * t;
+
+	return { offset, curvature, bankAt };
 }

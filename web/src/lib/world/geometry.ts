@@ -9,13 +9,8 @@ import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
 import type { World } from './world';
 import { sharedAt } from './shared-road';
-import { bendsOf } from './terrain/road-frame';
-import {
-	bankOf,
-	ribbonRows,
-	ROAD_W,
-	SHOULDER_DROP,
-} from './terrain/road-profile';
+import { BANK_SPAN_M, banksOf, bendsOf } from './terrain/road-frame';
+import { ribbonRows, ROAD_W, SHOULDER_DROP } from './terrain/road-profile';
 
 export const EXAG = 1.2; // vertical exaggeration; the Alps read flat from a chase cam otherwise
 export { ROAD_W } from './terrain/road-profile';
@@ -63,13 +58,16 @@ export function terrain(
 }
 
 // The road, sampled from the same spline riders ride, every 2 m: shoulder,
-// edge, centre, edge, shoulder. Banked into bends (≤ 4°) by the curvature road
-// furniture stands on (bendsOf), inside columns clamped to 0.85 × the bend
-// radius so a hairpin never folds into a bow-tie.
+// edge, centre, edge, shoulder. Banked into bends (≤ 4°) by the bank road
+// furniture stands on (banksOf), inside columns clamped to 0.85 × the bend
+// radius (bendsOf) so a hairpin never folds into a bow-tie.
+// The asphalt is lit as one surface: each row's normal is its banked,
+// pitched cross-section's up, edge to edge, and the shoulder's slope lights
+// only the shoulder (#4556).
 // uv carries (metres across, metres along) for the marking shader.
 // `rows` draws only rows [from, to] of the whole ribbon, the same vertices
 // and normals the whole would have there: it walks in from WARM rows back and
-// lights its ends with the faces beyond them, so pieces meet with no seam.
+// lights its ends with the rows beyond them, so pieces meet with no seam.
 export function road(
 	route: Route,
 	opts: {
@@ -103,11 +101,12 @@ export function road(
 		? top + 1 + BEND_ROWS
 		: Math.min(top + 1 + BEND_ROWS, end);
 	for (let k = first; k <= reach; k++) centre.push(rows.row(k));
-	const bends = bendsOf(
-		centre.map((p) => p.x),
-		centre.map((p) => p.z),
-	);
+	const cx = centre.map((p) => p.x);
+	const cz = centre.map((p) => p.z);
+	const bends = bendsOf(cx, cz);
+	const banks = banksOf(cx, cz);
 	const pos: number[] = [];
+	const sides: THREE.Vector3[] = [];
 	const uv: number[] = [];
 	const prev: THREE.Vector3[] = [];
 	const hidden: boolean[] = [];
@@ -118,9 +117,10 @@ export function road(
 		// A later pass easing onto an earlier one sinks under it, and is not drawn where it is on it (#4531).
 		const w = sharedAt(route, d);
 		// Its bend onto the earlier one is no road's bend: unbanked as it lands, so it never tilts up through the earlier one.
-		const bank = bankOf(k) * (1 - w);
+		const bank = banks[r - first] * (1 - w);
 		const lx = Math.cos(p.heading); // left of travel
 		const lz = -Math.sin(p.heading);
+		sides.push(new THREE.Vector3(lx, -Math.tan(bank), lz)); // across the asphalt, leftward
 		hidden.push(w >= 1);
 		const y = yOf(route, p.ele) + lift - SHARED_SINK * w;
 		const tx = Math.sin(p.heading);
@@ -143,7 +143,10 @@ export function road(
 		}
 	}
 	const whole = strip(pos, uv, cols, hidden);
-	whole.computeVertexNormals();
+	whole.setAttribute(
+		'normal',
+		new THREE.Float32BufferAttribute(normals(pos, sides, cols), 3),
+	);
 	// The rows asked for, lit as the whole ribbon lights them.
 	const lo = Math.max(from, first);
 	const hi = Math.min(top, last);
@@ -178,11 +181,60 @@ export function road(
 
 /** Rows a piece walks in from, so its columns step as the whole ribbon's do through a hairpin. */
 const WARM = 64;
-/** Rows past a piece's end its curvature reads: bendsOf spans at least 6 m and a segment. */
-const BEND_ROWS = 8;
+/** Rows past a piece's end its bank reads: banksOf spans BANK_SPAN_M and a segment. */
+const BEND_ROWS = Math.ceil(BANK_SPAN_M / 2) + 2;
 
 /** Metres a later pass sinks under an earlier one it is easing onto, so the earlier draws over it (#4531). */
 const SHARED_SINK = 0.06;
+
+/**
+ * The ribbon's normals (#4556): the asphalt's, edge to edge, is its row's
+ * cross-section (`across`, leftward, banked) crossed with the road's way
+ * along the centre, so it tilts by the bank and the grade and nothing else.
+ * A shoulder's outer column is lit by its own slope. Averaging face normals
+ * (computeVertexNormals) lit the asphalt's edges with the shoulder's 13°
+ * drop, and the Diorama's banded light drew that tilt as pale patches whose
+ * edge wandered with every bend.
+ */
+function normals(
+	pos: readonly number[],
+	across: readonly THREE.Vector3[],
+	cols: number,
+): number[] {
+	const rows = across.length;
+	const mid = (cols - 1) / 2;
+	const at = (r: number, c: number) => {
+		const i = (r * cols + c) * 3;
+		return new THREE.Vector3(pos[i], pos[i + 1], pos[i + 2]);
+	};
+	const out: number[] = [];
+	const along = new THREE.Vector3();
+	const up = new THREE.Vector3();
+	const side = new THREE.Vector3();
+	for (let r = 0; r < rows; r++) {
+		along.subVectors(
+			at(Math.min(r + 1, rows - 1), mid),
+			at(Math.max(r - 1, 0), mid),
+		);
+		const a = across[r];
+		// A row whose centre did not move (a column walked in place): the way along is square to the row.
+		if (along.lengthSq() < 1e-8) along.set(-a.z, 0, a.x);
+		up.crossVectors(along, a).normalize();
+		for (let c = 0; c < cols; c++) {
+			const n = up.clone();
+			// An outer shoulder column: its slope from the edge, where it has width enough to have one.
+			if (cols > 3 && (c === 0 || c === cols - 1)) {
+				const edge = at(r, c === 0 ? 1 : cols - 2);
+				side.subVectors(at(r, c), edge);
+				if (c > 0) side.negate(); // leftward, as `across`
+				if (side.x * a.x + side.z * a.z > 0.2)
+					n.crossVectors(along, side).normalize();
+			}
+			out.push(n.x, n.y, n.z);
+		}
+	}
+	return out;
+}
 
 /** Quads between rows; none between two `hidden` rows. */
 function strip(pos: number[], uv: number[], cols: number, hidden: boolean[]) {
