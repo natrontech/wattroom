@@ -5,7 +5,6 @@ import type { PickerIntent } from '#lib/channel/context.ts';
  * channel for one thing, once. SessionLayers does it, then takes the ask off
  * the address so a reload finds nothing to do again.
  */
-const GAME = 'game';
 const PICKER = 'picker';
 const PICK = 'pick';
 const ROAD = 'road';
@@ -22,17 +21,6 @@ function without(url: Address, ...params: string[]): URL {
 	const rest = new URL(url.href);
 	for (const param of params) rest.searchParams.delete(param);
 	return rest;
-}
-
-/** /ride's game door (#3276): the lounge's address, asking for this game. */
-export function gameDoor(home: string, mode: string): string {
-	return `${home}?${GAME}=${encodeURIComponent(mode)}`;
-}
-
-/** The game this address asks for, and the address without it; null for none. */
-export function takeGameDoor(url: Address): { mode: string; rest: URL } | null {
-	const mode = url.searchParams.get(GAME);
-	return mode ? { mode, rest: without(url, GAME) } : null;
 }
 
 /**

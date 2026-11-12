@@ -91,4 +91,10 @@ export interface RideOptions {
 	onPlan?: (planned: Workout) => void;
 	/** The rider's weight, kg: a road workout's dot carries it (#3499). */
 	kg?: () => number;
+	/**
+	 * The watts a game alone asks of the rider now (#4539): Backyard Ramp's
+	 * line, or the easy spin once out. Held in ERG over the free ride's own
+	 * drive; 0 asks nothing.
+	 */
+	ask?: () => number;
 }

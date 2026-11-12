@@ -46,7 +46,7 @@
 	import { account } from '#lib/account.svelte.ts';
 	import { useChannel } from '#lib/channel/context.ts';
 	import { goto } from '$app/navigation';
-	import { takeGameDoor, takePickerDoor } from '#lib/session/doors.ts';
+	import { takePickerDoor } from '#lib/session/doors.ts';
 	import { page } from '$app/state';
 	import { joinSessionPath, sessionPath } from '#lib/channel/address.ts';
 	import {
@@ -240,19 +240,6 @@
 		live.followed();
 		const to = sessionPath(channel.address.crew, id);
 		if (page.url.pathname !== to) void goto(to, GO);
-	});
-	// A game door (#3276): /ride sent this rider here to start one. Started
-	// once, by this tab, as the picker's own Start game does — and the mode
-	// comes off the address, so a reload starts nothing.
-	let doorTaken = false;
-	$effect(() => {
-		if (doorTaken) return;
-		doorTaken = true;
-		const door = takeGameDoor(page.url);
-		if (!door) return;
-		goto(door.rest, { shallow: true, replace: true, state: page.state });
-		if (device.spectator) return;
-		startGame({ gameMode: door.mode });
 	});
 	// The picker door (#4082): the editor, opened from this picker, comes
 	// back with it open on what the rider built.

@@ -16,4 +16,4 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 
 Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued pedalling on reconnect).
 
-Alone, a game shows your own score; medals need three riders (Medals, above). Watt Golf, Floor is Lava and Backyard Ramp start from the solo ride's door, in the rider's lounge (#3276).
+Alone, a game shows your own score; medals need three riders (Medals, above). Watt Golf, Floor is Lava and Backyard Ramp are picked on the solo ride's Ride card (#3276) and run on that ride alone (#4539): Start, the ride alone's count-in, then the game, scored by the hub on the rider's own lane of the lobby socket. No session opens and no crew sees it. The ride under it is a free ride with no road, saved as the rider's own; Backyard Ramp holds its line in ERG, the other two leave the drive to the rider. End game stops the game and the ride goes on.

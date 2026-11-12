@@ -113,7 +113,14 @@
 	// The figure card (ADR-0073, #3342) comes once, before a rider's first ride
 	// with a road; its answer, a save or a skip, then starts the ride.
 	let askFigure = $state.raw<Trainer | null>(null);
+	// A game alone, picked on the card (#4539): Start counts it in on this
+	// ride, never in a crew's session.
+	let game = $state<string | null>(null);
 	function start(trainer: Trainer) {
+		if (game) {
+			void beginGame(trainer, game);
+			return;
+		}
 		const hasRoad = (kind === 'free' || ridesRoute) && !!road;
 		if (hasRoad && account.figureUnasked) {
 			askFigure = trainer;
@@ -185,7 +192,7 @@
 			const fixture = await res.json();
 			const replaying = new SimulatedTrainer({ replay: fixture.samples });
 			// A free ride on a road takes the trainer as the card's Start does.
-			if (kind === 'free' && road) start(replaying);
+			if (game || (kind === 'free' && road)) start(replaying);
 			else await begin(replaying);
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
@@ -195,6 +202,15 @@
 	// Paired before the ride, not by starting it (#611): the paired-devices
 	// grid below owns the trainer until Start hands it to the session.
 	const solo = soloTrainer();
+
+	async function beginGame(trainer: Trainer, mode: string) {
+		error = null;
+		try {
+			await theRide.beginGame(trainer, mode);
+		} catch (cause) {
+			error = cause instanceof Error ? cause.message : String(cause);
+		}
+	}
 
 	async function begin(trainer: Trainer) {
 		error = null;
@@ -284,6 +300,7 @@
 		{:else}
 			<PreRide
 				bind:kind
+				bind:game
 				bind:road
 				bind:from
 				roadId={roadId || remembered}

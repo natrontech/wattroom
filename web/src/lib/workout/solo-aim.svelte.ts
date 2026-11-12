@@ -30,7 +30,10 @@ export function createSoloAim(deps: {
 	road: ReturnType<typeof createRoadDot>;
 	/** No workout, the road on (#4257): the free ride's switch rides it. */
 	open: () => boolean;
+	/** A game alone's watts (#4539), over the free ride's drive; 0 for none. */
+	ask?: () => number;
 }) {
+	const ask = () => deps.ask?.() ?? 0;
 	let bias = $state(1);
 	// Road or Watts with no workout on the road (#4283), as a free ride
 	// opens: Road, but Watts on one gear, where a slope has no range (#3203).
@@ -58,7 +61,8 @@ export function createSoloAim(deps: {
 			state === 'countdown' ||
 			deps.guards.spiralActive
 			? 0
-			: (roadWatts ?? deps.hrHold.watts(info.segment, info.targetWatts ?? 0));
+			: ask() ||
+					(roadWatts ?? deps.hrHold.watts(info.segment, info.targetWatts ?? 0));
 	});
 
 	const inBand = $derived.by(() => {
@@ -86,7 +90,8 @@ export function createSoloAim(deps: {
 			deps.state() === 'running' &&
 			!deps.guards.released &&
 			segment?.kind === 'road' &&
-			roadWatts === null
+			roadWatts === null &&
+			ask() === 0
 		)
 			deps.actuator.road(deps.road.here?.felt ?? 0);
 		else deps.actuator.hold(target);
@@ -110,7 +115,7 @@ export function createSoloAim(deps: {
 		},
 		/** What the guards hold the rider to: the block's watts, or the road's. */
 		get prescribed() {
-			return roadWatts ?? deps.clock().info.targetWatts ?? 0;
+			return ask() || (roadWatts ?? deps.clock().info.targetWatts ?? 0);
 		},
 		get roadWatts() {
 			return roadWatts;

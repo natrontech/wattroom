@@ -39,7 +39,7 @@
 	import { skylineOf } from '#lib/workout/road-workout.ts';
 	import { climbView, landed } from '#lib/ride/climb-view.ts';
 	import { blocksAhead, NO_GATES } from '#lib/road/gates.ts';
-	import { untrack } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import { BikeKg } from '#lib/protocol.ts';
 	import { mapView } from '#lib/ride/map-view.ts';
 	import { toggleMap } from '#lib/session/computer-pages.ts';
@@ -78,6 +78,8 @@
 		countIn,
 		shelf,
 		onChangeWorkout,
+		game,
+		quiet = false,
 	}: {
 		session: ReturnType<typeof createRideSession>;
 		/** Where you are in the work, from the page — the TV draws the same one. */
@@ -108,6 +110,13 @@
 		 */
 		shelf?: ShelfEntry[];
 		onChangeWorkout?: (next: Workout | null) => void;
+		/**
+		 * A game alone's panel (#4539): the focus, as a session's game has it.
+		 * Like a session's game, it has no graph in the horizon.
+		 */
+		game?: Snippet;
+		/** Watt Golf hides the meter (Training's `quiet`): no rail, no numbers. */
+		quiet?: boolean;
 	} = $props();
 
 	let changing = $state(false);
@@ -315,7 +324,7 @@
 	<CountdownScreen
 		remaining={countIn.remaining}
 		title={workout.name}
-		note={block
+		note={block && !open
 			? `first up · ${block.label}${block.watts > 0 ? ` ${block.watts} W` : ''}`
 			: undefined}
 	>
@@ -327,6 +336,25 @@
 	</CountdownScreen>
 {:else}
 	{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
+	{#snippet glance()}
+		<RideRail
+			watts={session.live?.seconds ? session.live.power3 : watts}
+			stale={signalLost}
+			target={session.roadWatts ?? target}
+			{ftp}
+			{kg}
+			stats={session.live}
+			block={open ? null : block}
+			road={session.road?.readout}
+			speedKph={session.road ? session.road.mps * 3.6 : undefined}
+			cadence={session.sample?.cadence ?? 0}
+			hr={session.sample?.heartRate ?? 0}
+			elapsed={session.elapsed}
+			title={open && session.road ? freeRideLabel(session.road) : workout.name}
+			gear={open && gearsEnabled() ? session.gear.label : undefined}
+			status={rideStatus}
+		/>
+	{/snippet}
 	<RidingSurface
 		roadMap={map ? roadMapView : undefined}
 		clean={inWorld && cleanView.on && !signalLost && !noCrashSafety}
@@ -340,67 +368,49 @@
 		moment={inWorld && session.sprint ? moment : undefined}
 		centre={countIn ? digit : undefined}
 		dockIn={!!countIn}
+		rail={quiet ? undefined : glance}
 	>
-		{#snippet rail()}
-			<RideRail
-				watts={session.live?.seconds ? session.live.power3 : watts}
-				stale={signalLost}
-				target={session.roadWatts ?? target}
-				{ftp}
-				{kg}
-				stats={session.live}
-				block={open ? null : block}
-				road={session.road?.readout}
-				speedKph={session.road ? session.road.mps * 3.6 : undefined}
-				cadence={session.sample?.cadence ?? 0}
-				hr={session.sample?.heartRate ?? 0}
-				elapsed={session.elapsed}
-				title={open && session.road
-					? freeRideLabel(session.road)
-					: workout.name}
-				gear={open && gearsEnabled() ? session.gear.label : undefined}
-				status={rideStatus}
-			/>
-		{/snippet}
-
 		{#snippet focus()}
 			<!-- On the road the world has the focus; flat, only a sprint takes it,
 			     as its moment card, and the head under it keeps the one watts figure. -->
 			{#if !inWorld && session.sprint}
 				<div class="p-4">{@render moment()}</div>
+			{:else if game}
+				<div class="px-4">{@render game()}</div>
 			{/if}
 		{/snippet}
 
 		{#snippet numbers()}
 			<!-- One panel: the computer with its head, then the trim it trims.
-			     The dot's speed is RIDE's (one home); km and grade are slot 1's. -->
-			<BikeComputer
-				docked
-				wide
-				roadLine
-				road={session.road
-					? {
-							speedKph: session.road.mps * 3.6,
-							km: session.road.m / 1000,
-							ofKm: session.road.toM / 1000,
-						}
-					: undefined}
-				{ftp}
-				cadence={session.sample?.cadence ?? 0}
-				stale={signalLost}
-				hr={session.sample?.heartRate ?? 0}
-				{watts}
-				{kg}
-				{lthr}
-				execution={session.scored ? session.execution : undefined}
-				target={target > 0 ? target : undefined}
-				stats={session.live}
-				{climb}
-				{map}
-				gear={open && gearsEnabled() && session.drive !== 'watts'
-					? session.gear.label
-					: undefined}
-			/>
+			     The dot's speed is RIDE's (one home); km and grade are slot 1's.
+			     A game that hides the meter empties it, as in a session. -->
+			{#if !quiet}<BikeComputer
+					docked
+					wide
+					roadLine
+					road={session.road
+						? {
+								speedKph: session.road.mps * 3.6,
+								km: session.road.m / 1000,
+								ofKm: session.road.toM / 1000,
+							}
+						: undefined}
+					{ftp}
+					cadence={session.sample?.cadence ?? 0}
+					stale={signalLost}
+					hr={session.sample?.heartRate ?? 0}
+					{watts}
+					{kg}
+					{lthr}
+					execution={session.scored ? session.execution : undefined}
+					target={target > 0 ? target : undefined}
+					stats={session.live}
+					{climb}
+					{map}
+					gear={open && gearsEnabled() && session.drive !== 'watts'
+						? session.gear.label
+						: undefined}
+				/>{/if}
 			<!-- No workout, no target to trim (#4257). -->
 			{#if !open}<div class="px-4 pb-3">
 					<BiasTrim
@@ -416,7 +426,11 @@
 		{/snippet}
 
 		{#snippet horizon()}
-			{#if skyline && open}
+			{#if game || (open && !skyline)}
+				<!-- A game has no blocks to draw, and Watt Golf's meter is hidden:
+				     nothing, as a session's game has (Training's `graphed`). The
+				     free ride a game leaves behind has no road to draw either. -->
+			{:else if skyline && open}
 				<!-- A free ride's horizon is the road ahead (ADR-0046 as amended,
 			     #3641): the Skyline. A workout's is its graph, on a road too
 			     (#4426): the blocks, your power and your heart over them. -->

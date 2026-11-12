@@ -2265,6 +2265,10 @@ export interface LobbyClientMessage {
   gear?: GearState;
   pause?: PauseState;
   view?: ViewState;
+  /**
+   * The riding screen's game alone: its start, its seconds, its end.
+   */
+  game?: SoloGameControl;
 }
 /**
  * RideClaim is one screen saying whether it runs its rider's ride alone. The
@@ -2303,10 +2307,54 @@ export interface LobbyLane {
   pause?: PauseState;
   view?: ViewState;
   /**
+   * The game alone, to the screen riding it only.
+   */
+  game?: SoloGameFrame;
+  /**
    * Why the phone's last press went nowhere.
    */
   error?: Error;
 }
+/**
+ * SoloGameControl is the riding screen's word on its game alone.
+ */
+export interface SoloGameControl {
+  /**
+   * "start", "sample" or "end".
+   */
+  action: string;
+  /**
+   * The screen's own name for this game, the same on every frame of it: a
+   * reconnect carries on the same game, and a second tab never feeds it.
+   */
+  id: string;
+  /**
+   * One of the solo modes, on start.
+   */
+  mode?: string;
+  /**
+   * The rider's FTP and weight on start, which the rules score against.
+   */
+  ftpWatts?: number /* int */;
+  weightKg?: number /* int */;
+  /**
+   * This second's watts, on sample.
+   */
+  watts?: number /* int */;
+}
+/**
+ * SoloGameFrame is the hub's answer: the game's state, or that the hub has
+ * no game by that id (a restart, or one let go after its rider went quiet).
+ */
+export interface SoloGameFrame {
+  id: string;
+  state?: GameState;
+  gone?: boolean;
+}
+/**
+ * MaxSoloGameID bounds SoloGameControl.ID: a UUID, with room.
+ */
+export const MaxSoloGameID = 64;
 /**
  * RideElsewhere answers a RideClaim, and every change after it: the device
  * word of another of the rider's screens running a ride alone, or "" when

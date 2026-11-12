@@ -103,15 +103,7 @@ export function createSessionSounds(deps: SoundDeps) {
 	// 2026-09-09 for games): they lived in GamePanel, which only the Training
 	// place draws, so Team Relay handing you the front, your last life
 	// burning or Watt Golf's hole opening was silent on the Lounge.
-	let seenGame: GameState | null = null;
-	$effect(() => {
-		const game = deps.game() ?? null;
-		const before = seenGame;
-		seenGame = game;
-		if (!game) return;
-		for (const cue of gameCues(before, game, deps.me()))
-			play(cue.id, { semitones: cue.shift });
-	});
+	createGameSounds(deps);
 	// The wheel (#3265): in and out of shelter is a state change the legs
 	// feel before the eyes find the RACE page, and a rider going by close
 	// is heard on the side they went by — passed on the left, as on a road.
@@ -130,6 +122,22 @@ export function createSessionSounds(deps: SoundDeps) {
 		if (before && before.at !== race.at)
 			for (const side of passes(before, race))
 				play('whoosh', { pan: side * PAN_LIMIT });
+	});
+}
+
+/**
+ * A game's cues, wherever its state comes from: a session's tick, or the
+ * rider's own lane on a game alone (#4539). Called during component init.
+ */
+export function createGameSounds(deps: Pick<SoundDeps, 'game' | 'me'>): void {
+	let seenGame: GameState | null = null;
+	$effect(() => {
+		const game = deps.game() ?? null;
+		const before = seenGame;
+		seenGame = game;
+		if (!game) return;
+		for (const cue of gameCues(before, game, deps.me()))
+			play(cue.id, { semitones: cue.shift });
 	});
 
 	// Watt Golf's run-in is a clock, not a state change: which second was

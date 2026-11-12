@@ -13,6 +13,11 @@ import {
 	openWorkoutBuffer,
 } from '#lib/ride/ride-alone-session.ts';
 import { createSaveOutcome } from '#lib/ride/save-outcome.svelte.ts';
+import {
+	createSoloGame,
+	gameWorkout,
+	type SoloGame,
+} from '#lib/ride/solo-game.svelte.ts';
 import { soloTrainer } from '#lib/ride/solo-trainer.svelte.ts';
 import { buildRampTest } from '#lib/workout/ramp.ts';
 import { openRoad } from '#lib/workout/ridden.ts';
@@ -34,6 +39,8 @@ type NextRide = { label: string; href: string };
 let session = $state<Session | null>(null);
 let ramp = $state.raw<RampAlone | null>(null);
 let road = $state.raw<RoadAlone | null>(null);
+// A game alone on the ride (#4539): the hub keeps its score on the lane.
+let game = $state.raw<SoloGame | null>(null);
 // The summary's way on that the ride's setup chose: a road's next leg (#3601).
 let next = $state.raw<NextRide | null>(null);
 let noCrashSafety = $state(false);
@@ -88,14 +95,23 @@ function take(trainer: Trainer) {
 	worldPicture.clear();
 }
 
-/** The workout let go, the ramp's hold with it. */
+/** The workout let go, the ramp's hold and the game with it. */
 function drop() {
 	ramp?.dispose();
 	ramp = null;
+	endGame();
 	session = null;
 }
 
+/** The game alone let go; the ride under it goes on. */
+function endGame() {
+	game?.end();
+	game = null;
+}
+
 function save(current: Session) {
+	// The ride is over, and the game it carried with it.
+	endGame();
 	if (recorded || !root) return;
 	recorded = true;
 	const mine = ride;
@@ -112,7 +128,12 @@ function save(current: Session) {
 async function startWorkout(
 	trainer: Trainer,
 	workout: Workout,
-	options: { borrowed: boolean; ramp?: boolean; next?: NextRide | null },
+	options: {
+		borrowed: boolean;
+		ramp?: boolean;
+		next?: NextRide | null;
+		game?: string;
+	},
 ): Promise<void> {
 	// One ride per device (ADR-0093): no Start is drawn while one runs.
 	if (theRide.live) return;
@@ -138,7 +159,22 @@ async function startWorkout(
 			buffer: () => buffer,
 			flags,
 			session: () => session,
+			ask: () => game?.ask ?? 0,
 		});
+		// The game starts when the count-in ends, as a workout's clock does:
+		// its first second goes out once the ride rides (#4539).
+		if (options.game)
+			game = createSoloGame({
+				mode: options.game,
+				ftp: profile.current.ftp,
+				kg: profile.current.kg,
+				watts: () => {
+					const state = session?.state;
+					return !state || state === 'countdown' || state === 'done'
+						? null
+						: (session?.sample?.watts ?? 0);
+				},
+			});
 		// On screen before the clock (#1800): start() counts in for three
 		// seconds, and the page has to draw those seconds, which also takes
 		// PreRide's Start button away, so there is no second tap to build a
@@ -166,6 +202,10 @@ export const theRide = {
 	/** A free ride on a road, riding or on its closing card. */
 	get road() {
 		return road;
+	},
+	/** The game alone the ride carries (#4539), until it ends or the rider ends it. */
+	get game() {
+		return game;
 	},
 	/** The summary's way on, such as a road's next leg, whatever page draws it. */
 	get next() {
@@ -229,6 +269,20 @@ export const theRide = {
 	) {
 		return startWorkout(trainer, workout, options);
 	},
+
+	/**
+	 * A game alone on `trainer` (#4539): a free ride with no road under the
+	 * game, counted in like a workout, the game starting with its clock.
+	 */
+	beginGame(trainer: Trainer, mode: string) {
+		return startWorkout(trainer, gameWorkout(mode), {
+			borrowed: false,
+			game: mode,
+		});
+	},
+
+	/** End game: the game stops, the ride under it goes on as a free ride. */
+	endGame,
 
 	/** The ramp test (#14), a workout that ends itself and measures FTP. */
 	beginRamp(trainer: Trainer) {

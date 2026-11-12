@@ -22,6 +22,8 @@
 		type RideableRoute,
 	} from '#lib/ride/roads.ts';
 	import SoloGames from '#lib/ride/SoloGames.svelte';
+	import { GAME_MODES } from '#lib/session/modes.ts';
+	import { COUNTDOWN_SECONDS } from '#lib/workout/ride-state.ts';
 	import { durationSeconds, flatten } from '#lib/workout/engine.ts';
 	import type { Workout } from '#lib/workout/types.ts';
 	import { untrack } from 'svelte';
@@ -31,6 +33,7 @@
 		road = $bindable(),
 		from = $bindable(),
 		pending = $bindable(false),
+		game = $bindable(null),
 		roadId,
 		remembered,
 		workout,
@@ -43,6 +46,8 @@
 		from: number;
 		/** The road to open on is still loading: nothing may start yet. */
 		pending?: boolean;
+		/** A game alone picked instead (#4539): Start counts it in. */
+		game?: string | null;
 		/** The road to open on: the link's, or the one remembered. */
 		roadId?: string;
 		/** The road last ridden on this device, said as “your last road”. */
@@ -54,6 +59,7 @@
 		ftp: number;
 	} = $props();
 
+	const gameShown = $derived(GAME_MODES.find((mode) => mode.id === game));
 	let roadError = $state<string | null>(null);
 	let picking = $state(false);
 	let carry = $state<number | null>(null);
@@ -121,9 +127,12 @@
 	<div class="grid gap-3 sm:grid-cols-2" role="group" aria-label="how you ride">
 		{#each KINDS as k (k.id)}
 			<button
-				onclick={() => (kind = k.id)}
-				aria-pressed={kind === k.id}
-				class="{tile} {kind === k.id
+				onclick={() => {
+					kind = k.id;
+					game = null;
+				}}
+				aria-pressed={kind === k.id && !game}
+				class="{tile} {kind === k.id && !game
 					? 'border-neon'
 					: 'border-frame hover:border-muted'}"
 			>
@@ -139,70 +148,84 @@
 		{/each}
 	</div>
 
-	<div class="border-frame mt-4 rounded-lg border p-4">
-		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-			<span class="eyebrow">road</span>
-			{#if pending}
-				<Skeleton class="h-5 w-48" />
-			{:else if road}
-				<span class="min-w-0 truncate font-semibold">{road.name}</span>
-				{#if road.id === remembered}
-					<span class="text-muted text-sm">your last road</span>
+	{#if gameShown}
+		<!-- The game picked (#4539): what it asks, and where it runs. No road:
+		     a game alone rides the free ride's drive, flat. -->
+		<div class="mt-4" data-testid="solo-game-pick">
+			<h2 class="page-title-sm">{gameShown.label}</h2>
+			<p class="text-muted mt-1 text-sm">{gameShown.blurb}</p>
+			<p class="text-muted mt-2 text-sm">
+				On your own ride, after a {COUNTDOWN_SECONDS} s count-in. Nobody else sees
+				it, and the ride is saved as yours.
+			</p>
+		</div>
+	{:else}
+		<div class="border-frame mt-4 rounded-lg border p-4">
+			<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+				<span class="eyebrow">road</span>
+				{#if pending}
+					<Skeleton class="h-5 w-48" />
+				{:else if road}
+					<span class="min-w-0 truncate font-semibold">{road.name}</span>
+					{#if road.id === remembered}
+						<span class="text-muted text-sm">your last road</span>
+					{/if}
+				{:else}
+					<span class="text-muted">No road</span>
 				{/if}
-			{:else}
-				<span class="text-muted">No road</span>
-			{/if}
-		</div>
-		<div class="mt-3 flex flex-wrap gap-2">
-			<button
-				onclick={() => (picking = !picking)}
-				aria-expanded={picking}
-				class="btn btn-secondary btn-lg">{picking ? 'Close' : 'Change'}</button
-			>
-			{#if road}
+			</div>
+			<div class="mt-3 flex flex-wrap gap-2">
 				<button
-					onclick={() => {
-						road = null;
-						from = 0;
-					}}
-					class="btn btn-secondary btn-lg">No road</button
+					onclick={() => (picking = !picking)}
+					aria-expanded={picking}
+					class="btn btn-secondary btn-lg"
+					>{picking ? 'Close' : 'Change'}</button
 				>
+				{#if road}
+					<button
+						onclick={() => {
+							road = null;
+							from = 0;
+						}}
+						class="btn btn-secondary btn-lg">No road</button
+					>
+				{/if}
+			</div>
+			{#if roadError}
+				<p class="text-danger mt-2 text-sm">{roadError}</p>
+			{/if}
+			{#if picking}
+				<div class="mt-3"><RoadPick onpick={(next) => onto(next)} /></div>
+			{/if}
+			{#if road}
+				<!-- A road's own workout starts where its leg does (#3601). -->
+				{#if kind !== 'workout' || !workout.road?.stepEndM}
+					<div
+						class="mt-3 flex flex-wrap gap-2"
+						role="group"
+						aria-label="where to start"
+					>
+						{#each starts as [m, name] (m)}
+							<button
+								onclick={() => (from = m)}
+								aria-pressed={from === m}
+								class="btn btn-lg rounded-full border {from === m
+									? 'border-neon text-ink'
+									: 'border-muted/30 hover:border-muted/60'}">{name}</button
+							>
+						{/each}
+					</div>
+				{/if}
+				{#if kind === 'free' && felt}
+					<p class="text-muted num mt-3 text-sm">
+						Feel: road {pct(felt.road)}, you feel {pct(felt.you)}
+					</p>
+				{/if}
 			{/if}
 		</div>
-		{#if roadError}
-			<p class="text-danger mt-2 text-sm">{roadError}</p>
-		{/if}
-		{#if picking}
-			<div class="mt-3"><RoadPick onpick={(next) => onto(next)} /></div>
-		{/if}
-		{#if road}
-			<!-- A road's own workout starts where its leg does (#3601). -->
-			{#if kind !== 'workout' || !workout.road?.stepEndM}
-				<div
-					class="mt-3 flex flex-wrap gap-2"
-					role="group"
-					aria-label="where to start"
-				>
-					{#each starts as [m, name] (m)}
-						<button
-							onclick={() => (from = m)}
-							aria-pressed={from === m}
-							class="btn btn-lg rounded-full border {from === m
-								? 'border-neon text-ink'
-								: 'border-muted/30 hover:border-muted/60'}">{name}</button
-						>
-					{/each}
-				</div>
-			{/if}
-			{#if kind === 'free' && felt}
-				<p class="text-muted num mt-3 text-sm">
-					Feel: road {pct(felt.road)}, you feel {pct(felt.you)}
-				</p>
-			{/if}
-		{/if}
-	</div>
+	{/if}
 
-	{#if kind === 'workout'}
+	{#if kind === 'workout' && !game}
 		<div class="mt-4">
 			<h2 class="page-title-sm">{workout.name}</h2>
 			<p class="text-muted num mt-1 text-sm">
@@ -226,5 +249,10 @@
 	{/if}
 
 	<!-- One line, whichever ride is chosen (ride-preride 9). -->
-	<div class="border-frame mt-4 border-t pt-3"><SoloGames /></div>
+	<div class="border-frame mt-4 border-t pt-3">
+		<SoloGames
+			picked={game}
+			onpick={(mode) => (game = game === mode ? null : mode)}
+		/>
+	</div>
 </section>

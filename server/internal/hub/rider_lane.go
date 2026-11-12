@@ -57,6 +57,8 @@ type riderLanes struct {
 	riders map[string]map[*lobbyClient]struct{}
 	// The last press per rider and kind, for remoteMinGap.
 	last map[string]time.Time
+	// Each rider's game alone (solo_game.go), by rider.
+	games map[string]*soloGame
 }
 
 func newRiderLanes(now func() time.Time) *riderLanes {
@@ -64,6 +66,7 @@ func newRiderLanes(now func() time.Time) *riderLanes {
 		now:    now,
 		riders: make(map[string]map[*lobbyClient]struct{}),
 		last:   make(map[string]time.Time),
+		games:  make(map[string]*soloGame),
 	}
 }
 
@@ -104,7 +107,7 @@ func (l *riderLanes) remove(c *lobbyClient) []laneSend {
 // laneKinds is every rate-limit key the lane writes, so a rider's last
 // socket closing forgets them all.
 var laneKinds = func() []string {
-	kinds := []string{"gear", "pause", "view"}
+	kinds := []string{"gear", "pause", "view", "game"}
 	for _, a := range protocol.RemoteActions {
 		kinds = append(kinds, "remote:"+a)
 	}
@@ -266,6 +269,8 @@ func (l *riderLanes) heard(c *lobbyClient, data []byte) []laneSend {
 		return l.claim(c, *msg.Ride)
 	case msg.Remote != nil:
 		return l.remote(c, *msg.Remote)
+	case msg.Game != nil:
+		return l.soloGame(c, *msg.Game)
 	default:
 		return l.answer(c, msg)
 	}

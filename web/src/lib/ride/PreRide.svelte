@@ -26,6 +26,7 @@
 	import SensorOverview from '#lib/session/SensorOverview.svelte';
 	import type { Workout } from '#lib/workout/types.ts';
 	import { heldTrainer } from '#lib/session/sensor-status.ts';
+	import { gameMode } from '#lib/session/modes.ts';
 	import { account, unchosen } from '#lib/account.svelte.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 
@@ -33,6 +34,7 @@
 		kind = $bindable(),
 		road = $bindable(),
 		from = $bindable(),
+		game = $bindable(null),
 		roadId,
 		remembered,
 		lastWorkout,
@@ -54,6 +56,8 @@
 		kind: RideKind;
 		road: RideableRoute | null;
 		from: number;
+		/** A game alone, picked on the card instead (#4539). */
+		game?: string | null;
 		roadId?: string;
 		remembered?: string;
 		lastWorkout?: string;
@@ -86,7 +90,11 @@
 	// and asked above Start rather than after it.
 	const guessed = $derived(unchosen(account.me?.ftpSource));
 	// A free ride alone rides one of your roads: there is no flat one here.
-	const roadless = $derived(kind === 'free' && !road);
+	// A game alone needs none: it rides the free ride's drive, flat.
+	const roadless = $derived(kind === 'free' && !road && !game);
+	const startLabel = $derived(
+		game ? `Start ${gameMode(game)?.label ?? 'the game'}` : 'Start the ride',
+	);
 	let pending = $state(false);
 </script>
 
@@ -104,6 +112,7 @@
 	>
 		<RideCard
 			bind:kind
+			bind:game
 			bind:road
 			bind:from
 			bind:pending
@@ -160,9 +169,9 @@
 						held.fault === 'reconnecting' ||
 						pending ||
 						roadless}
-					class="btn btn-primary btn-lg">Start the ride</button
+					class="btn btn-primary btn-lg">{startLabel}</button
 				>
-				{#if kind === 'workout' && pick}
+				{#if kind === 'workout' && pick && !game}
 					<SessionDoor {pick} road={pickRoad} />
 				{/if}
 				{#if held.fault === 'reconnecting'}

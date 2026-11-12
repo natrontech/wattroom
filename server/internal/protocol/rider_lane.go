@@ -22,6 +22,8 @@ type LobbyClientMessage struct {
 	Gear  *GearState  `json:"gear,omitempty"`
 	Pause *PauseState `json:"pause,omitempty"`
 	View  *ViewState  `json:"view,omitempty"`
+	// The riding screen's game alone: its start, its seconds, its end.
+	Game *SoloGameControl `json:"game,omitempty"`
 }
 
 // RideClaim is one screen saying whether it runs its rider's ride alone. The
@@ -47,9 +49,44 @@ type LobbyLane struct {
 	Gear  *GearState  `json:"gear,omitempty"`
 	Pause *PauseState `json:"pause,omitempty"`
 	View  *ViewState  `json:"view,omitempty"`
+	// The game alone, to the screen riding it only.
+	Game *SoloGameFrame `json:"game,omitempty"`
 	// Why the phone's last press went nowhere.
 	Error *Error `json:"error,omitempty"`
 }
+
+// A game alone (#4539): a game picked on a ride alone runs on that ride. The
+// rules are the hub's, as in a session (hub/mode_*.go), and the hub judges it
+// on the rider's own lane, so nothing of it reaches a crew or another rider.
+// The riding screen starts it when its count-in ends, sends one sample a
+// second while it rides, and ends it with the ride.
+
+// SoloGameControl is the riding screen's word on its game alone.
+type SoloGameControl struct {
+	// "start", "sample" or "end".
+	Action string `json:"action"`
+	// The screen's own name for this game, the same on every frame of it: a
+	// reconnect carries on the same game, and a second tab never feeds it.
+	ID string `json:"id"`
+	// One of the solo modes, on start.
+	Mode string `json:"mode,omitempty"`
+	// The rider's FTP and weight on start, which the rules score against.
+	FtpWatts int `json:"ftpWatts,omitempty"`
+	WeightKg int `json:"weightKg,omitempty"`
+	// This second's watts, on sample.
+	Watts int `json:"watts,omitempty"`
+}
+
+// SoloGameFrame is the hub's answer: the game's state, or that the hub has
+// no game by that id (a restart, or one let go after its rider went quiet).
+type SoloGameFrame struct {
+	ID    string     `json:"id"`
+	State *GameState `json:"state,omitempty"`
+	Gone  bool       `json:"gone,omitempty"`
+}
+
+// MaxSoloGameID bounds SoloGameControl.ID: a UUID, with room.
+const MaxSoloGameID = 64
 
 // RideElsewhere answers a RideClaim, and every change after it: the device
 // word of another of the rider's screens running a ride alone, or "" when
