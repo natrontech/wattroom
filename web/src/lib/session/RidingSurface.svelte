@@ -12,6 +12,7 @@
 	 * drawn here: `bar` hands them to the now bar.
 	 */
 	import { untrack, type Snippet } from 'svelte';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { intoBar, rideBar } from '#lib/nav/ride-bar.svelte.ts';
 	import { device } from '#lib/device.svelte.ts';
 	import { createMoments } from '#lib/moments/index.ts';
@@ -168,7 +169,7 @@
 				? `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;right:${railRight}`
 				: `left:${INSET_PX}px;top:${INSET_PX}px;bottom:${floor}px;max-width:min(${BAND_MAX_PX}px, calc(${seatLeft} - ${INSET_PX + GAP_PX}px))`,
 	);
-	// The rail's details: a tap on it opens its second row. The computer
+	// The rail's details: its chevron opens its second row. The computer
 	// stays mounted behind it for MAP, which shows while it is asked for (M,
 	// the view switch).
 	const details = $derived(!clean && computerShown.details);
@@ -268,24 +269,34 @@
 		bind:offsetWidth={slotWidth}
 	>
 		{#if rail}
-			<!-- One button the rail's size behind its numbers: a tap anywhere
-			     on them opens its second row. -->
+			<!-- The numbers are only numbers (#4538): the chevron at the rail's
+			     edge opens its second row, and stays put either way. -->
 			<div
 				data-dock="rail"
-				class="relative w-full {dockClass}"
+				class="flex w-full items-start gap-3 {dockClass}"
 				style={dock(0, '0', '-40px')}
 				bind:offsetHeight={railH}
 			>
+				<div class="min-w-0 flex-1">{@render rail()}</div>
 				<button
 					type="button"
 					data-testid="rail-toggle"
 					onclick={toggleDetails}
 					aria-expanded={details}
+					aria-controls="rail-details"
 					aria-label={details ? 'Hide ride details' : 'Show ride details'}
 					title={details ? 'Hide ride details' : 'Show ride details'}
-					class="focus-visible:outline-neon absolute inset-0 rounded-[inherit] focus-visible:outline-2"
-				></button>
-				{@render rail()}
+					class="icon-btn border-neon/60 text-neon hover:bg-neon/10 size-[max(2.75rem,7vh)] border {details
+						? 'bg-neon/10'
+						: 'bg-surface/85'}"
+				>
+					<ChevronDown
+						aria-hidden="true"
+						class="size-[60%] motion-safe:transition-transform {details
+							? 'rotate-180'
+							: ''}"
+					/>
+				</button>
 			</div>
 		{/if}
 		{#if numbers}

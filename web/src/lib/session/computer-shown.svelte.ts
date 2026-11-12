@@ -13,7 +13,7 @@ export const computerShown = $state<{
 	maps: boolean;
 	world: boolean;
 	camera: CameraPreset | null;
-	/** The ride rail's second row, its details, is open (a tap on the rail). */
+	/** The ride rail's second row, its details, is open (the rail's chevron). */
 	details: boolean;
 }>({
 	page: 'ride',
