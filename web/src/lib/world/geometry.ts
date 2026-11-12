@@ -8,6 +8,7 @@ import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
 import type { World } from './world';
+import { sharedAt } from './shared-road';
 import { bendsOf } from './terrain/road-frame';
 import {
 	bankOf,
@@ -109,6 +110,7 @@ export function road(
 	const pos: number[] = [];
 	const uv: number[] = [];
 	const prev: THREE.Vector3[] = [];
+	const hidden: boolean[] = [];
 	for (let r = first; r <= last; r++) {
 		const p = centre[r - first];
 		const d = rows.metre(r);
@@ -116,7 +118,10 @@ export function road(
 		const bank = bankOf(k);
 		const lx = Math.cos(p.heading); // left of travel
 		const lz = -Math.sin(p.heading);
-		const y = yOf(route, p.ele) + lift;
+		// A later pass easing onto an earlier one sinks under it, and is not drawn where it is on it (#4531).
+		const w = sharedAt(route, d);
+		hidden.push(w >= 1);
+		const y = yOf(route, p.ele) + lift - SHARED_SINK * w;
 		const tx = Math.sin(p.heading);
 		const tz = Math.cos(p.heading);
 		for (let c = 0; c < cols; c++) {
@@ -136,7 +141,7 @@ export function road(
 			uv.push(offs[c], d);
 		}
 	}
-	const whole = strip(pos, uv, cols);
+	const whole = strip(pos, uv, cols, hidden);
 	whole.computeVertexNormals();
 	// The rows asked for, lit as the whole ribbon lights them.
 	const lo = Math.max(from, first);
@@ -156,6 +161,7 @@ export function road(
 		keep(whole.attributes.position as THREE.BufferAttribute),
 		keep(whole.attributes.uv as THREE.BufferAttribute),
 		cols,
+		hidden.slice(lo - first, hi - first + 1),
 	);
 	piece.setAttribute(
 		'normal',
@@ -174,14 +180,20 @@ const WARM = 64;
 /** Rows past a piece's end its curvature reads: bendsOf spans at least 6 m and a segment. */
 const BEND_ROWS = 8;
 
-function strip(pos: number[], uv: number[], cols: number) {
+/** Metres a later pass sinks under an earlier one it is easing onto, so the earlier draws over it (#4531). */
+const SHARED_SINK = 0.06;
+
+/** Quads between rows; none between two `hidden` rows. */
+function strip(pos: number[], uv: number[], cols: number, hidden: boolean[]) {
 	const rows = pos.length / 3 / cols;
 	const idx: number[] = [];
-	for (let r = 0; r < rows - 1; r++)
+	for (let r = 0; r < rows - 1; r++) {
+		if (hidden[r] && hidden[r + 1]) continue;
 		for (let c = 0; c < cols - 1; c++) {
 			const a = r * cols + c;
 			idx.push(a, a + 1, a + cols, a + 1, a + cols + 1, a + cols); // columns run left → right: counter-clockwise from above
 		}
+	}
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
 	g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));

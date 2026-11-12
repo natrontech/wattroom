@@ -4,6 +4,7 @@ import { gainOf, gradeOf, roadName } from '#lib/road/profile.ts';
 import type { Road } from '#lib/road/road.ts';
 import type { Route } from '#lib/road/route.ts';
 import { walk } from './place/stroke';
+import { shareRoad } from './shared-road';
 
 /** Metres between the route's samples, as a route file's are (route.ts). */
 const STEP_M = 10;
@@ -13,9 +14,11 @@ const STEP_M = 10;
  * and turns, walked in the road's own frame and centred on it. A rider on a
  * crewmate's road holds only this, never the owner's coordinates (ADR-0063),
  * so the owner's world and the crew's are built alike. Metre 0 is the
- * road's first sample, the one the ride's own metres count from.
+ * road's first sample, the one the ride's own metres count from. A stretch
+ * it rides twice is drawn once (shared-road.ts); `share` false draws every
+ * pass where it was recorded.
  */
-export function routeOfRoad(road: Road): Route {
+export function routeOfRoad(road: Road, share = true): Route {
 	const { x: wx, z: wz, part } = walk(road);
 	const n = Math.max(2, Math.round(road.length / STEP_M) + 1);
 	const step = road.length / (n - 1);
@@ -40,13 +43,15 @@ export function routeOfRoad(road: Road): Route {
 		z[k] -= cz;
 	}
 	const gain = gainOf(ele);
+	// A road ridden twice is drawn once (#4531): its metres and grades stay as recorded.
+	const drawn = share ? shareRoad(x, z, ele, step) : null;
 	return {
 		name: roadName(road.length, gain),
 		step,
 		length: road.length,
-		x,
-		z,
-		ele,
+		x: drawn?.x ?? x,
+		z: drawn?.z ?? z,
+		ele: drawn?.ele ?? ele,
 		grade: gradeOf(ele, step),
 		gain,
 		minEle: Math.min(...ele),
@@ -57,6 +62,7 @@ export function routeOfRoad(road: Road): Route {
 		shape: '',
 		climbs: climbsOf(road),
 		fixed: { spikes: 0, heldM: 0 },
+		...(drawn && { shared: drawn.shared }),
 	};
 }
 

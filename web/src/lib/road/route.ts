@@ -71,6 +71,12 @@ export type Route = {
 	 * stored range.
 	 */
 	fixed: { spikes: number; heldM: number };
+	/**
+	 * The world's road only (#4531): per sample, how far it is drawn on an
+	 * earlier pass of the same road, 1 on it, easing between (shared-road.ts).
+	 * Absent where the route never rides a road twice.
+	 */
+	shared?: Float64Array;
 };
 
 /** docs/SPEC.md: resample every 10 m, store every 20 m. */
