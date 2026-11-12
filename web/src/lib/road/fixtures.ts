@@ -174,6 +174,33 @@ export function hairpinClimb(): TrackPoint[] {
 	return toPoints(drive(moves, 8), height);
 }
 
+/** How far beside the way out the out-and-back's way back runs, metres. */
+export const OUT_AND_BACK_APART = 3.5;
+/** The street the out-and-back rides twice, metres. */
+export const OUT_AND_BACK_STREET = 2000;
+
+/**
+ * Out and back along one street (#4531): 2 km east climbing 2 %, round a
+ * lollipop, and 2 km back down the same street, the way back 3.5 m south
+ * of the way out, as a second GPS trace of a street lies beside the first.
+ * Its height is the street's at each place, ridden either way.
+ */
+export function outAndBack(): TrackPoint[] {
+	const xy = drive(
+		[
+			{ straight: OUT_AND_BACK_STREET },
+			{ arc: 80, turn: -60 },
+			{ straight: 4 }, // the jog that sets the way back 3.5 m to the side
+			{ arc: 80, turn: 300 },
+			{ arc: 80, turn: -60 },
+			{ straight: OUT_AND_BACK_STREET },
+		],
+		10,
+	);
+	const total = xy[xy.length - 1].s;
+	return toPoints(xy, (s) => 500 + 0.02 * Math.min(s, total - s));
+}
+
 /** Every fixture /dev/road can ride, by name. */
 export const FIXTURES: Record<string, () => TrackPoint[]> = {
 	'Bridge and tunnel': bridgeAndTunnel,
