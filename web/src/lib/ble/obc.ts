@@ -29,7 +29,8 @@ export type ObcAction =
 	| 'page-prev'
 	| 'page-next'
 	| 'details'
-	| 'back';
+	| 'back'
+	| 'next-view';
 
 /**
  * The buttons WattRoom answers, and exactly the list App Information sends
@@ -41,9 +42,9 @@ export type ObcAction =
  * (#4532): its left pad's arrows are Up, Down, Steer Left and Steer Right,
  * A is Select and B is Back. The road holds the rider's line, so steering
  * turns the computer's pages as ← → do; Select is the tap on the ride rail
- * and Back brings it home. Menu (the Click V2's Y), Lap, Home and the
- * emotes have nothing to run here and stay out: BikeControl then says so
- * instead of WattRoom doing nothing.
+ * and Back brings it home. Menu, the Click V2's Y, moves the view switch to
+ * its next segment. Lap, Home and the emotes have nothing to run here and
+ * stay out: BikeControl then says so instead of WattRoom doing nothing.
  */
 export const OBC_BUTTONS: Readonly<Record<number, ObcAction>> = {
 	0x01: 'harder', // Shift Up
@@ -63,6 +64,7 @@ export const OBC_BUTTONS: Readonly<Record<number, ObcAction>> = {
 	0x19: 'page-next', // Steer Right
 	0x14: 'details', // Select/Confirm
 	0x15: 'back', // Back/Cancel
+	0x16: 'next-view', // Menu
 };
 
 /** The actions a navigation ID runs: a button's fallback where it also shifts. */
@@ -71,6 +73,7 @@ const NAVIGATION = new Set<ObcAction>([
 	'page-next',
 	'details',
 	'back',
+	'next-view',
 ]);
 
 export interface ObcButton {
@@ -195,7 +198,7 @@ export type ObcEdge = 'down' | 'up' | 'drop';
  * The spec's own example sends Select with Shift Up, for an app that cannot
  * shift. WattRoom shifts, so a navigation ID pressed in the same message as
  * a shift is that fallback and runs nothing (#4532): a shift never turns a
- * page or opens the rail.
+ * page, opens the rail or changes the view.
  */
 export function createObcButtons(
 	onEdge: (action: ObcAction, edge: ObcEdge) => void,

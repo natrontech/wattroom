@@ -14,12 +14,15 @@
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { hasChannel } from '#lib/channel/context.ts';
 	import { rideRoom } from '#lib/channel/ride-room.svelte.ts';
+	import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
 	import { askPage } from '#lib/session/computer-pages.ts';
 	import { tooltip } from '#lib/tooltip.svelte.ts';
 	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
 	import { rideOffers } from '#lib/ride/ride-offers.svelte.ts';
 	import {
 		flipped,
+		nextSegment,
+		offeredSegments,
 		press,
 		REASONS,
 		VIEW_ASK,
@@ -93,22 +96,33 @@
 		window.addEventListener(VIEW_ASK, flip);
 		return () => window.removeEventListener(VIEW_ASK, flip);
 	});
+	// What it draws live, in its order: the phone's view row and a
+	// controller's Menu go by it.
+	const offered = $derived(
+		offeredSegments({
+			road,
+			worldOffered: state.worldOffered,
+			maps: computerShown.maps,
+			roomy,
+		}),
+	);
 	// The phone's view row is this switch (ride-controls.ts): each segment
 	// drawn here, and live, is offered to it, and runs as a tap here does.
 	$effect(() => {
-		if (!road && !roomy) return;
-		const offs = [
-			...(road && state.worldOffered
-				? [rideOffers.offer('view-3d', () => to('3d'))]
-				: []),
-			rideOffers.offer('view-flat', () => to('flat')),
-			...(computerShown.maps
-				? [rideOffers.offer('view-map', () => to('map'))]
-				: []),
-			...(roomy ? [rideOffers.offer('view-room', () => to('room'))] : []),
-		];
+		const offs = offered.map((segment) =>
+			rideOffers.offer(`view-${segment}`, () => to(segment)),
+		);
 		return () => offs.forEach((off) => off());
 	});
+	// A controller's Menu, the Zwift Click V2's Y through BikeControl, is a
+	// tap on the next segment, wrapping round (#4532).
+	$effect(() =>
+		shifterSlot.onAction((action, edge) => {
+			if (action !== 'next-view' || edge !== 'down') return;
+			const next = nextSegment(state.pressed, offered);
+			if (next) to(next);
+		}),
+	);
 	$effect(() => {
 		computerShown.world = drawn;
 		return () => {
