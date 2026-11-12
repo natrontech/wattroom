@@ -11,6 +11,7 @@ import {
 	gradeStep,
 	leadM,
 	nodesOf,
+	postsIn,
 	SKYLINE,
 	stepsPerTick,
 	tileOf,
@@ -176,6 +177,42 @@ describe('the chips and the band', () => {
 		expect(blocks.map((b) => b.zone)).toEqual([2, 4]);
 		expect(blocks[0].x).toBeCloseTo(1500 * frame.scale, 6);
 		expect(blocks[0].width).toBeCloseTo(100 * frame.scale, 6);
+	});
+});
+
+describe('the ground, flat (#4536)', () => {
+	it('puts the grade on the road itself, in the steps the areas use', () => {
+		const wall = road([
+			...Array(50).fill(500),
+			...Array.from({ length: 50 }, (_, i) => 500 + (i + 1) * 2),
+			...Array(50).fill(600),
+		]);
+		const frame = frameFor(wall, 1000, 3000, 1000, 200);
+		for (const tile of tilesIn(frame, wall).map((i) => tileOf(frame, wall, i)))
+			expect(tile.roads.map(Boolean)).toEqual(tile.areas.map(Boolean));
+	});
+
+	it('closes the land under the slot, so the road at its foot stands on land', () => {
+		const hill = ramp(5, 4000);
+		const frame = frameFor(hill, 1000, 3000, 1000, 200);
+		const ys = [
+			...tileOf(frame, hill, 0).land.matchAll(/[ML][\d.]+,([\d.]+)/g),
+		].map((m) => Number(m[1]));
+		expect(Math.max(...ys)).toBeGreaterThan(frame.height);
+	});
+
+	it('posts every kilometre in view, and every fifth when they would crowd', () => {
+		const long = ramp(0, 20_000);
+		const near = frameFor(long, 9000, 1500, 1440, 600);
+		expect(postsIn(near, long).map((p) => p.km)).toEqual([9, 10]);
+		// 5.5 km over 300 px: a kilometre is 55 px, too narrow for its label.
+		const far = frameFor(long, 9000, 5000, 300, 600);
+		expect(postsIn(far, long).map((p) => p.km)).toEqual([10]);
+		// None at the road's start, and none past its end.
+		const start = frameFor(long, 0, 1500, 1440, 600);
+		expect(postsIn(start, long).map((p) => p.km)).toEqual([1, 2]);
+		const end = frameFor(long, 19_000, 5000, 1440, 600);
+		expect(postsIn(end, long).map((p) => p.km)).toEqual([19, 20]);
 	});
 });
 

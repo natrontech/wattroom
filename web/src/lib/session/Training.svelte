@@ -136,6 +136,13 @@
 		landed(climbView(channel.ridden), channel.ridden?.lands),
 	);
 	const map = $derived(mapView(channel.ridden));
+	// The other racers in a race on the road, on the Skyline and the Map as
+	// in the world (#4536); a racer whose screen has gone is left out.
+	const racers = $derived(
+		(channel.ridden?.racers ?? [])
+			.filter((r) => r.name && !r.faded)
+			.map((r) => ({ m: r.m, mps: r.mps, label: r.name })),
+	);
 	// Called only where the trainer rides the grade (#4426): in a workout's
 	// ERG block the watts are the work.
 	watchClimbCues(() => (ridesTheRoad(channel.block) ? climb : null));
@@ -411,7 +418,10 @@
 			>{channel.shared?.countdownRemaining}</span
 		>
 	{/snippet}
-	{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
+	{#snippet roadMapView()}{#if map}<RoadMap
+				view={map}
+				mates={racers}
+			/>{/if}{/snippet}
 	<RidingSurface
 		roadMap={map ? roadMapView : undefined}
 		class="h-full"
@@ -587,6 +597,7 @@
 						ftp={channel.you.ftp}
 						m={channel.ridden.m}
 						mps={channel.ridden.mps}
+						mates={racers}
 						strip={inFocus === 'media'}
 					/>
 				</div>
@@ -596,6 +607,7 @@
 					<div class="absolute inset-0">
 						<Skyline
 							road={channel.ridden.road}
+							mates={racers}
 							watts={channel.you.watts}
 							ftp={channel.you.ftp}
 							m={channel.ridden.m}
@@ -611,6 +623,7 @@
 					<div class="absolute inset-0">
 						<Skyline
 							road={channel.ridden.road}
+							mates={racers}
 							watts={channel.you.watts}
 							ftp={channel.you.ftp}
 							m={channel.ridden.m}

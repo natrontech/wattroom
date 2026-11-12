@@ -216,6 +216,13 @@ export interface Tile {
 	/** Five area paths, one per grade step; '' where the tile has none. */
 	areas: string[];
 	line: string;
+	/**
+	 * Flat, as the ground (#4536): the land under the road, one area, and the
+	 * road's own line cut into the five grade steps, so the road on top of
+	 * the land carries the grade.
+	 */
+	land: string;
+	roads: string[];
 }
 
 export function tileOf(frame: Frame, road: Road, index: number): Tile {
@@ -228,15 +235,19 @@ export function tileOf(frame: Frame, road: Road, index: number): Tile {
 	const x = (i: number) => ((i * step - startM) * frame.scale).toFixed(1);
 	const y = (i: number) => yOf(frame, road.heights[i]).toFixed(1);
 	const base = frame.height.toFixed(1);
+	const foot = (frame.height * 1.5).toFixed(1);
 	const areas = ['', '', '', '', ''];
+	const roads = ['', '', '', '', ''];
 	let line = '';
 	let run = -1;
 	let runStart = first;
 	const close = (to: number) => {
 		if (run < 0) return;
-		let d = `M${x(runStart)},${base}`;
-		for (let i = runStart; i <= to; i++) d += `L${x(i)},${y(i)}`;
-		areas[run] += `${d}L${x(to)},${base}Z`;
+		let d = '';
+		for (let i = runStart; i <= to; i++)
+			d += `${i === runStart ? 'M' : 'L'}${x(i)},${y(i)}`;
+		roads[run] += d;
+		areas[run] += `M${x(runStart)},${base}L${d.slice(1)}L${x(to)},${base}Z`;
 	};
 	for (let i = first; i < last; i++) {
 		const s = gradeStep(((road.heights[i + 1] - road.heights[i]) / step) * 100);
@@ -255,6 +266,12 @@ export function tileOf(frame: Frame, road: Road, index: number): Tile {
 		width: (endM - startM) * frame.scale,
 		areas,
 		line,
+		// Closed well under the slot, so the land under a road at the foot of
+		// its window is as deep as anywhere else.
+		land: line
+			? `M${x(first)},${foot}L${line.slice(1)}L${x(last)},${foot}Z`
+			: '',
+		roads,
 	};
 }
 
@@ -275,6 +292,32 @@ export function chipsIn(
 			x: c.topM * frame.scale,
 			y: yOf(frame, heightAt(road, c.topM)),
 		}));
+}
+
+/**
+ * The distance posts in view (#4536): one at every whole kilometre of the
+ * road as ridden, or every fifth where a kilometre is drawn narrower than
+ * `minPx`, so a label never crowds the next. In road px, as the chips are.
+ */
+export function postsIn(
+	frame: Frame,
+	road: Road,
+	minPx = 72,
+): { x: number; y: number; km: number }[] {
+	const every = 1000 * frame.scale >= minPx ? 1000 : 5000;
+	const toM = Math.min(road.length, frame.fromM + frame.width / frame.scale);
+	const out: { x: number; y: number; km: number }[] = [];
+	for (
+		let at = Math.max(every, Math.ceil(frame.fromM / every) * every);
+		at <= toM;
+		at += every
+	)
+		out.push({
+			x: at * frame.scale,
+			y: yOf(frame, heightAt(road, at)),
+			km: at / 1000,
+		});
+	return out;
 }
 
 /**
@@ -314,9 +357,17 @@ export function bandIn(
 		});
 }
 
-/** Every SVG node a frame draws: an area per grade step that has one, and a line, per tile. */
+/**
+ * Every SVG node a frame draws, per tile: an area and a road per grade step
+ * that has one, the land, the road's bed, and the line twice (ridden and
+ * ahead).
+ */
 export const nodesOf = (tiles: Tile[]): number =>
-	tiles.reduce((n, t) => n + t.areas.filter(Boolean).length + 1, 0);
+	tiles.reduce(
+		(n, t) =>
+			n + t.areas.filter(Boolean).length + t.roads.filter(Boolean).length + 4,
+		0,
+	);
 
 /** Everything the Skyline draws a ride from, handed through a surface to TV mode too. */
 export interface SkylineView {

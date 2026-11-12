@@ -226,7 +226,7 @@
 	<div
 		class="absolute inset-0 flex flex-col {world
 			? 'bg-(--world-sky-zenith)'
-			: ''}"
+			: 'flat-ground'}"
 		style={groundTop}
 		data-dock={world ? 'world' : 'horizon'}
 	>
@@ -252,12 +252,18 @@
 	{/if}
 	{#if rail && mapShown && roadMap}
 		<!-- Map is a view: the road from above over the ground, between the
-		     rail and the Skyline (the ride HUD, 2026-11). -->
+		     rail and the Skyline (the ride HUD, 2026-11), on land (#4536).
+		     The rail's own surface fades into it, as it does over the world. -->
 		<div
 			data-dock="map"
-			class="bg-surface absolute inset-0 px-[6%]"
+			class="map-land absolute inset-0 px-[6%] forced-colors:bg-[Canvas]"
 			style="padding-top:{INSET_PX + railH}px;padding-bottom:{floor}px"
 		>
+			<div
+				aria-hidden="true"
+				class="from-surface via-surface/85 pointer-events-none absolute inset-x-0 top-0 bg-linear-to-b to-transparent"
+				style="height:{INSET_PX + railH + 48}px"
+			></div>
 			{@render roadMap()}
 		</div>
 	{/if}
