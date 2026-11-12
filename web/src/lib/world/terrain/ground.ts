@@ -5,7 +5,7 @@ import { patchJunctions } from './junctions';
 import { canonical, FAR_W, indexLines, type Line } from './lines';
 import { roadFrame } from './road-frame';
 import type { RegionAt } from './region-relief';
-import { across, bankOf, FORMATION } from './road-profile';
+import { across, FORMATION } from './road-profile';
 
 /**
  * The place's ground as one function of position (#3075, ADR-0081): the same
@@ -192,7 +192,7 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	function roadSurfaceAt(x: number, z: number): number | null {
 		const at = frame.offset(x, z);
 		if (!at || Math.abs(at.u) > FORMATION) return null;
-		return at.h + across(at.u, bankOf(frame.curvature(at.i, at.t)));
+		return at.h + across(at.u, frame.bankAt(at.i, at.t));
 	}
 
 	/**

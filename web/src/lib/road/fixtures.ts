@@ -286,12 +286,45 @@ function lerpTable(table: [number, number][], m: number): number {
 	return table[table.length - 1][1];
 }
 
+/** The winding road's bends, metres of radius: a hairpin, tight, a valley road's, gentle. */
+export const WINDING_RADII = [12, 30, 60, 120, 250, 500];
+
+/**
+ * A valley road that winds (#4556): each of WINDING_RADII as an S-bend, 70°
+ * one way and 70° back, 150 m of straight between, climbing 3 %, with a fix
+ * every 8 m (a FIT's second at 29 km/h) and up to a metre of seeded GPS
+ * noise, as a recorded ride carries.
+ */
+export function windingRoad(): TrackPoint[] {
+	const moves: Move[] = [{ straight: 300 }];
+	for (const r of WINDING_RADII)
+		moves.push(
+			{ arc: r, turn: r < 20 ? 180 : 70 },
+			{ straight: 150 },
+			{ arc: r, turn: r < 20 ? -180 : -70 },
+			{ straight: 150 },
+		);
+	moves.push({ straight: 300 });
+	let seed = 4556;
+	const noise = () => {
+		seed = (seed * 1103515245 + 12345) % 2147483648;
+		return seed / 2147483648 - 0.5;
+	};
+	const xy = drive(moves, 8).map((p) => ({
+		...p,
+		x: p.x + noise() * 2,
+		y: p.y + noise() * 2,
+	}));
+	return toPoints(xy, (s) => 600 + 0.03 * s);
+}
+
 /** Every fixture /dev/road can ride, by name. */
 export const FIXTURES: Record<string, () => TrackPoint[]> = {
 	'Bridge and tunnel': bridgeAndTunnel,
 	Switchback: switchback,
 	'GPS spikes': spiky,
 	'21 hairpins': hairpinClimb,
+	'Winding road': windingRoad,
 };
 
 /**

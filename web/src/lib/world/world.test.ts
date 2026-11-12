@@ -9,8 +9,8 @@ import { generate, type World } from './world';
 import { BUILD_MS, folds, worstRiseThroughRoad } from './world.test-helper';
 import { check } from './placement/check';
 import type { Placement } from './placement/types';
-import { bendsOf } from './terrain/road-frame';
-import { across, bankOf, drawnRows, ROAD_W } from './terrain/road-profile';
+import { banksOf, bendsOf } from './terrain/road-frame';
+import { across, drawnRows, ROAD_W } from './terrain/road-profile';
 
 /**
  * The prototype's check.ts, as tests (#3021): the smallest set of things
@@ -215,10 +215,10 @@ describe('the world', () => {
 	it('banks the road surface into bends as the ribbon is drawn', () => {
 		// The ribbon's own rows and curvature, as geometry.ts builds them.
 		const rows = drawnRows(route);
-		const curve = bendsOf(
-			rows.map((p) => p.x),
-			rows.map((p) => p.z),
-		);
+		const xs = rows.map((p) => p.x);
+		const zs = rows.map((p) => p.z);
+		const curve = bendsOf(xs, zs);
+		const bank = banksOf(xs, zs);
 		let bends = 0;
 		let worst = 0;
 		for (let r = 50; r < rows.length - 50; r += 12) {
@@ -231,7 +231,7 @@ describe('the world', () => {
 				const surface = world.roadSurfaceAt(p.x + lx * u, p.z + lz * u)!;
 				worst = Math.max(
 					worst,
-					Math.abs(surface - (p.ele + across(u, bankOf(k)))),
+					Math.abs(surface - (p.ele + across(u, bank[r]))),
 				);
 			}
 		}

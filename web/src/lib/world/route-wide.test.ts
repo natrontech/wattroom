@@ -20,7 +20,10 @@ import { BUILD_MS, longLoopPoints } from './world.test-helper';
  * frames the road; and when a hairpin came to stand at the middle of its turn
  * rather than at its first sharpest step, which moves what is kept clear of it.
  * The set pieces' were retaken when a village's street got its lamps, which
- * only adds: without them each digest is the one before.
+ * only adds: without them each digest is the one before. The things
+ * around the start were retaken when the road's bank came to read its turn
+ * over 20 m (#4556): the ground under the road's edge, and what stands on
+ * it, moved.
  *
  * The two horizon digests are the exception: they were re-taken when a
  * westward heading stopped counting toward bins up to 80° away (#3829),
@@ -143,7 +146,7 @@ describe('a 29 km loop, its route-wide work', () => {
 	it(
 		'stands the same things around the start, and along the whole loop',
 		() => {
-			expect(aroundStart(route, world)).toBe('4114060b');
+			expect(aroundStart(route, world)).toBe('cbd455ab');
 			const all = world.everything;
 			expect(
 				digestOf([
@@ -153,7 +156,7 @@ describe('a 29 km loop, its route-wide work', () => {
 					all.arches,
 					all.placements,
 				]),
-			).toBe('3b4b000f');
+			).toBe('8c2508cf');
 		},
 		BUILD_MS,
 	);
@@ -175,6 +178,6 @@ describe('a 124 km loop, its route-wide work', () => {
 
 	// Its start meets its end: the pieces planned before the finish are decided too.
 	it('stands the same things around the start', () => {
-		expect(aroundStart(route, world)).toBe('df0bca30');
+		expect(aroundStart(route, world)).toBe('dfc68a30');
 	});
 });

@@ -243,7 +243,8 @@
 	 *  ride's own look; `light=1` is the World control's Light, `pixels=0` or
 	 *  `pixels=d` sets the 3D look (Smooth or Diorama 3D) before it mounts,
 	 *  `sky=night` and `weather=rain|snow` dress Diorama for the night and the room's weather,
-	 *  `at=village` starts everyone 150 m before the loop's first village. The real
+	 *  `at=village` starts everyone 150 m before the loop's first village, `at=<m>` that
+	 *  many metres in, and `road=winding` rides the winding road's bends instead. The real
 	 *  scene, imported here so no other case loads three.js. */
 	function world(node: HTMLCanvasElement) {
 		let scene: { dispose(): void } | undefined;
@@ -256,6 +257,8 @@
 			import('#lib/world/test-crew.ts'),
 			import('#lib/road/route.ts'),
 			import('#lib/world/mode.ts'),
+			import('#lib/road/fixtures.ts'),
+			import('#lib/world/road-route.ts'),
 		]).then(
 			([
 				{ mount },
@@ -265,11 +268,17 @@
 				{ devCrew },
 				{ toRoute },
 				{ setWorldDiorama, worldDiorama },
+				{ windingRoad },
+				{ routeOfRoad },
 			]) => {
 				if (gone) return;
 				const look = params.get('pixels');
 				if (look !== null) setWorldDiorama(look !== '0');
-				const route = toRoute(syntheticPoints());
+				// `road=winding`: the winding road's bends (#4556), walked from its road as a ride's world is.
+				const route =
+					params.get('road') === 'winding'
+						? routeOfRoad(toRoute(windingRoad()).road)
+						: toRoute(syntheticPoints());
 				const world = generate(route);
 				const at =
 					params.get('at') === 'village'
