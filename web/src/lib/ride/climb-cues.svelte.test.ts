@@ -48,6 +48,24 @@ describe('the climb card says so (#3645)', () => {
 		vi.useRealTimers();
 	});
 
+	it('runs no clock while no climb moment is on (#4533)', async () => {
+		vi.useFakeTimers();
+		vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
+		let view = $state<ClimbView | null>(null);
+		const stop = $effect.root(() => watchClimbCues(() => view));
+		await tick();
+		vi.advanceTimersByTime(1000);
+		expect(vi.getTimerCount()).toBe(0);
+		view = at(5000);
+		await tick();
+		expect(vi.getTimerCount()).toBe(1);
+		vi.advanceTimersByTime(10_000); // the card's slide-in, its hold and its exit
+		expect(climbStage.slide).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+		stop();
+		vi.useRealTimers();
+	});
+
 	it('spends confetti at HC and I only, and stamps the flamme once on ease-pop', async () => {
 		vi.useFakeTimers();
 		vi.spyOn(performance, 'now').mockImplementation(() => Date.now());

@@ -28,6 +28,7 @@ import {
 	type Ghosts,
 } from './ghosts';
 import { makeRoadside } from './roadside';
+import { sheetsPending } from './rider-sprite';
 import { DIORAMA, MOTION } from './pixel';
 import { bunchLooks, type Loadout } from './loadout';
 import { makeTags, type Tags } from './tags';
@@ -612,7 +613,7 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			progress = p;
 			light();
 		},
-		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands, nobody turns the model and no cheer blinks. */
+		/** Nothing moves: a held moment, or you have stopped pedalling, every rider stands, nobody turns the model, no cheer blinks and every rider's sprite sheet is drawn. */
 		idle: () =>
 			!!moment ||
 			(!recut &&
@@ -624,7 +625,14 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 				you.watts === 0 &&
 				!controls &&
 				cheered.size === 0 &&
-				riders.every((r) => r.v < 0.05)),
+				riders.every((r) => r.v < 0.05) &&
+				!sheetsPending()),
+		/**
+		 * The ride stands, but someone by the road waves close enough to see
+		 * the arm (roadside.ts): what the loop keeps drawing at AMBIENT_FPS. A
+		 * held moment's picture waves not at all.
+		 */
+		stirring: () => !moment && (roadside?.waving(camera) ?? false),
 		/**
 		 * What a design capture measures (#3672, docs/design/TARGETS.md): the
 		 * field of view, the moment drawn, and your figure's height on screen

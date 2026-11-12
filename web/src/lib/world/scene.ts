@@ -1,7 +1,8 @@
 // The ride world on a canvas. Owns the renderer and the loop: the sim, the
 // camera rig, the riders and the trail advance only on frames it renders —
-// 30 fps on the display's vsync divisor, one a second while nothing moves,
-// none while a gate is shut (loop.ts). It builds no DOM — the caller hands it
+// 30 fps on the display's vsync divisor, 15 while you stand and rain falls
+// or someone waves in sight, one a second while nothing moves, none while a
+// gate is shut (loop.ts). It builds no DOM — the caller hands it
 // a canvas and takes it back on dispose. mount() throws when the scene will
 // not start (no WebGL, most often), having released whatever it had made; a
 // world that stops later — its context lost, its shaders refused — says so
@@ -12,7 +13,14 @@
 import * as THREE from 'three';
 import { pixelRatio } from './budget';
 import { compose, type CameraMode, type MountOptions } from './compose';
-import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
+import {
+	ambientWatch,
+	createLoop,
+	type LoopStats,
+	missWatch,
+	type Pace,
+	watchPage,
+} from './loop';
 import { softwareDrawing } from './software-drawing';
 import { describeLongFrames, watchLongFrames } from './long-frames';
 import { gpuTimer } from './gpu-timer';
@@ -210,7 +218,22 @@ export function mount(
 			frames.push({ at, ms: performance.now() - at });
 			if (frames.length > FRAMES_KEPT) frames.shift();
 		}
-	}, world.idle);
+	}, pace);
+	/**
+	 * The ride stands: still at a frame a second, unless something on screen
+	 * moves by itself, the pass's rain or snow or someone waving near
+	 * (#4533). The lowest rung, a machine that struggles, draws no weather
+	 * and keeps standing cheap; so does one that missed its 15 fps standing
+	 * (ambientWatch), for the rest of the ride.
+	 */
+	let stirs = true;
+	const slowStanding = ambientWatch();
+	function pace(): Pace {
+		if (!world.idle()) return 'moving';
+		if (!stirs || rung <= 1) return 'still';
+		const falling = !!pass && !!style.weather;
+		return falling || world.stirring() ? 'ambient' : 'still';
+	}
 	let failed = false;
 	function fail(why: Failure) {
 		if (failed) return;
@@ -270,6 +293,7 @@ export function mount(
 	const longFrames = watchLongFrames();
 	const judge = setInterval(() => {
 		const stats = loop.stats();
+		if (stirs && slowStanding(stats)) stirs = false;
 		if (watch?.(stats)) {
 			// Above the floor the Fallback is one more rung down, and the
 			// watch starts over on it: only L1 hands the ride to the Skyline (#4423).

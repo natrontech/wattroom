@@ -113,7 +113,12 @@ describe('a forced slow window (acceptance)', () => {
 describe('windows', () => {
 	it('counts only seconds that drew', () => {
 		const cut = windows();
-		let s = { rendered: 0, missed: 0, hz: 60 };
+		let s = {
+			rendered: 0,
+			missed: 0,
+			hz: 60,
+			ambient: { rendered: 0, missed: 0 },
+		};
 		expect(cut(s, [])).toBeNull();
 		const out: (Measured | null)[] = [];
 		for (let i = 0; i < 25; i++) {

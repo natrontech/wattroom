@@ -182,6 +182,8 @@ function cow(g: Ctx, c: Cell, grazing: boolean) {
 
 /** A person's frames side by side, this far apart: arms down, then a wave's two sways. */
 const WAVE_STEP = 28;
+/** Screen pixels an art pixel takes where a wave still shows: the half copy's threshold (rider-sprite.ts STEP_GLSL). */
+const WAVE_PX = 0.45;
 
 /** Someone at the verge, facing the road: the room's watcher, arms down and waving (draw-rider.ts). */
 function person(g: Ctx, c: Cell, id: number) {
@@ -281,6 +283,37 @@ const VERTEX = /* glsl */ `
 		gl_Position = depth > uReach ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * mv;
 	}`;
 
+const frustum = new THREE.Frustum();
+const viewProjection = new THREE.Matrix4();
+const body = new THREE.Sphere(new THREE.Vector3(), 1);
+
+/**
+ * One of `wavers` (where each stands) is in `camera`'s view, near enough
+ * that an art pixel takes at least WAVE_PX screen pixels on a drawing
+ * buffer `halfH` pixels half high. Farther, the sprite is its quarter copy
+ * and the arm no pixel of its own. `camera`'s matrices as last drawn.
+ */
+export function wavesInSight(
+	wavers: readonly THREE.Vector3[],
+	camera: THREE.PerspectiveCamera,
+	halfH: number,
+): boolean {
+	if (wavers.length === 0) return false;
+	const reach =
+		(SPRITE_M * camera.projectionMatrix.elements[5] * halfH) / WAVE_PX;
+	viewProjection.multiplyMatrices(
+		camera.projectionMatrix,
+		camera.matrixWorldInverse,
+	);
+	frustum.setFromProjectionMatrix(viewProjection);
+	for (const p of wavers) {
+		if (p.distanceToSquared(camera.position) > reach * reach) continue;
+		body.center.set(p.x, p.y + 0.9, p.z); // a person's middle, a metre round
+		if (frustum.intersectsSphere(body)) return true;
+	}
+	return false;
+}
+
 /**
  * The roadside, built a stretch at a time round where you are (`update`):
  * a long road holds a few stretches, never the whole of it.
@@ -311,11 +344,16 @@ export function makeRoadside(route: Route, world: World) {
 	const stretches = new Map<number, Spot[]>();
 	const placer = roadsidePlacer(route, world);
 	let drawn: { dispose(): void } | null = null;
+	/** Where the people who wave stand, for `waving`. */
+	let wavers: THREE.Vector3[] = [];
 
 	/** Everything standing, as one instanced draw and its shade as another, whatever the stretches. */
 	function redraw() {
 		drawn?.dispose();
 		const places = [...stretches.values()].flat();
+		wavers = places
+			.filter((p) => s.kinds[p.art].wave > 0)
+			.map((p) => new THREE.Vector3(p.x, p.y, p.z));
 		const geometry = new THREE.PlaneGeometry(1, 1).translate(0.5, 0.5, 0);
 		const cells = new Float32Array(places.length * 4);
 		const flips = new Float32Array(places.length);
@@ -361,6 +399,13 @@ export function makeRoadside(route: Route, world: World) {
 		group,
 		/** Things standing now. */
 		count: () => [...stretches.values()].reduce((n, b) => n + b.length, 0),
+		/**
+		 * Someone who waves stands in `camera`'s view near enough to see the
+		 * arm (wavesInSight). They wave a few seconds in eleven, each on their
+		 * own beat (VERTEX), so a frame a second shows the arm jump.
+		 */
+		waving: (camera: THREE.PerspectiveCamera) =>
+			wavesInSight(wavers, camera, SPRITE_SCREEN.halfH.value),
 		/**
 		 * You are `d` along the road: the stretches round you stand, the rest
 		 * go. One is built a frame, the nearest first, once the stage has
