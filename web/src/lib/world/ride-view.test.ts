@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	flipped,
+	nextSegment,
+	offeredSegments,
 	press,
 	REASONS,
 	rideView,
@@ -187,5 +189,73 @@ describe('the phone remote’s 3D / Flat (#4223)', () => {
 	it('asks nothing where no world can draw', () => {
 		expect(flipped({ pressed: 'flat', worldOffered: false })).toBeNull();
 		expect(flipped({ pressed: 'map', worldOffered: false })).toBeNull();
+	});
+});
+
+describe('the view switch’s segments, in order (#4532)', () => {
+	const all = { road: true, worldOffered: true, maps: true, roomy: true };
+
+	it('draws 3D, Flat, Map and Lounge in that order', () => {
+		expect(offeredSegments(all)).toEqual(['3d', 'flat', 'map', 'room']);
+	});
+
+	it('leaves out 3D where the world cannot be tried, Map with no MAP page, Lounge out of a voice channel', () => {
+		expect(offeredSegments({ ...all, worldOffered: false })).toEqual([
+			'flat',
+			'map',
+			'room',
+		]);
+		expect(offeredSegments({ ...all, maps: false })).toEqual([
+			'3d',
+			'flat',
+			'room',
+		]);
+		expect(offeredSegments({ ...all, roomy: false })).toEqual([
+			'3d',
+			'flat',
+			'map',
+		]);
+	});
+
+	it('offers Flat and Lounge off a road, and nothing with neither', () => {
+		expect(offeredSegments({ ...all, road: false })).toEqual([
+			'flat',
+			'map',
+			'room',
+		]);
+		expect(offeredSegments({ ...all, road: false, roomy: false })).toEqual([]);
+	});
+});
+
+describe('a controller’s Menu: the next segment (#4532)', () => {
+	const every = ['3d', 'flat', 'map', 'room'] as const;
+	const solo = ['3d', 'flat', 'map'] as const;
+	const noWorld = ['flat', 'map', 'room'] as const;
+
+	it.each([
+		['3d', every, 'flat'],
+		['flat', every, 'map'],
+		['map', every, 'room'],
+		['room', every, '3d'],
+		['3d', solo, 'flat'],
+		['flat', solo, 'map'],
+		['map', solo, '3d'],
+		['flat', noWorld, 'map'],
+		['map', noWorld, 'room'],
+		['room', noWorld, 'flat'],
+		['flat', ['flat', 'map'], 'map'],
+		['map', ['flat', 'map'], 'flat'],
+	] as const)('goes from %s through %j to %s', (from, offered, to) => {
+		expect(nextSegment(from, offered)).toBe(to);
+	});
+
+	it('starts again at the first where the pressed segment went away', () => {
+		expect(nextSegment('room', solo)).toBe('3d');
+		expect(nextSegment('3d', noWorld)).toBe('flat');
+	});
+
+	it('moves nowhere with one segment or none', () => {
+		expect(nextSegment('flat', ['flat'])).toBeNull();
+		expect(nextSegment('flat', [])).toBeNull();
 	});
 });

@@ -133,6 +133,39 @@ export function press(
 }
 
 /**
+ * The segments the view switch draws live, in its order (#4217): 3D on a
+ * road whose world can be tried, Flat, Map where the computer has it, and
+ * Lounge in a voice channel. None where it draws nothing at all.
+ */
+export function offeredSegments(s: {
+	road: boolean;
+	worldOffered: boolean;
+	maps: boolean;
+	roomy: boolean;
+}): ViewSegment[] {
+	if (!s.road && !s.roomy) return [];
+	return [
+		...(s.road && s.worldOffered ? (['3d'] as const) : []),
+		'flat',
+		...(s.maps ? (['map'] as const) : []),
+		...(s.roomy ? (['room'] as const) : []),
+	];
+}
+
+/**
+ * The segment after the pressed one, wrapping round: a controller's Menu,
+ * the Zwift Click V2's Y through BikeControl. A pressed segment no longer
+ * offered starts again at the first. Null with nothing to move to.
+ */
+export function nextSegment(
+	pressed: ViewSegment,
+	offered: readonly ViewSegment[],
+): ViewSegment | null {
+	const next = offered[(offered.indexOf(pressed) + 1) % offered.length];
+	return next && next !== pressed ? next : null;
+}
+
+/**
  * Asks the riding screen's view switch to flip between 3D and Flat: the V
  * key (#4236). From MAP it goes to 3D, as its 3D
  * segment does. Says whether a switch took it: none where no world can draw.

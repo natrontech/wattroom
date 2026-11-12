@@ -42,6 +42,7 @@ const OBC: Record<ObcAction, string> = {
 	talk: 'Talk',
 	details: 'Ride details',
 	back: 'Back to RIDE',
+	'next-view': 'Next view',
 };
 
 export const pressOfController = (action: ObcAction): string => OBC[action];

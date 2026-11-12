@@ -93,7 +93,7 @@ describe('OpenBikeControl messages (#3335)', () => {
 	});
 
 	// BikeControl's defaults for a Zwift Click V2 (#4532): the left pad's
-	// arrows, A and B. Y (Menu) and Z (no OBC ID at all) have nothing to run.
+	// arrows, A, B and Y. Z sends no OBC ID at all.
 	it.each([
 		['Up, the left pad’s ↑', 0x10, 'page-prev'],
 		['Down, the left pad’s ↓', 0x11, 'page-next'],
@@ -101,13 +101,14 @@ describe('OpenBikeControl messages (#3335)', () => {
 		['Steer Right, the left pad’s →', 0x19, 'page-next'],
 		['Select, A', 0x14, 'details'],
 		['Back, B', 0x15, 'back'],
+		['Menu, Y', 0x16, 'next-view'],
 	] as const)('answers %s, and tells the controller so', (_, id, action) => {
 		expect(OBC_BUTTONS[id]).toBe(action);
 		expect([...WATTROOM_APP_INFO.slice(13)]).toContain(id);
 	});
 
-	it('leaves Menu, Home and Lap out: WattRoom has nothing to run for them', () => {
-		for (const id of [0x16, 0x17, 0x35]) {
+	it('leaves Home and Lap out: WattRoom has nothing to run for them', () => {
+		for (const id of [0x17, 0x35]) {
 			expect(OBC_BUTTONS[id]).toBeUndefined();
 			expect([...WATTROOM_APP_INFO.slice(13)]).not.toContain(id);
 		}
@@ -166,19 +167,27 @@ describe('OBC buttons into action edges', () => {
 
 	it('ignores buttons it does not answer, Gear Set and device status', () => {
 		const { seen, take } = edges();
-		take(0x01, 0x03, 0x05, 0x16, 0x01, 0x1b, 0x94);
+		take(0x01, 0x03, 0x05, 0x17, 0x01, 0x1b, 0x94);
 		take(0x02, 0x55, 0x01);
 		expect(seen).toEqual([]);
 	});
 
 	it('runs each Click V2 button BikeControl sends, press and release', () => {
 		const { seen, take } = edges();
-		for (const id of [0x10, 0x11, 0x18, 0x19, 0x14, 0x15]) {
+		for (const id of [0x10, 0x11, 0x18, 0x19, 0x14, 0x15, 0x16]) {
 			take(0x01, id, 0x01);
 			take(0x01, id, 0x00);
 		}
 		expect(seen).toEqual(
-			['page-prev', 'page-next', 'page-prev', 'page-next', 'details', 'back']
+			[
+				'page-prev',
+				'page-next',
+				'page-prev',
+				'page-next',
+				'details',
+				'back',
+				'next-view',
+			]
 				.map((a) => [
 					[a, 'down'],
 					[a, 'up'],
@@ -194,11 +203,15 @@ describe('OBC buttons into action edges', () => {
 		take(0x01, 0x01, 0x00, 0x30, 0x00, 0x14, 0x00);
 		take(0x01, 0x02, 0x01, 0x11, 0x01);
 		take(0x01, 0x02, 0x00, 0x11, 0x00);
+		take(0x01, 0x01, 0x01, 0x16, 0x01);
+		take(0x01, 0x01, 0x00, 0x16, 0x00);
 		expect(seen).toEqual([
 			['harder', 'down'],
 			['harder', 'up'],
 			['easier', 'down'],
 			['easier', 'up'],
+			['harder', 'down'],
+			['harder', 'up'],
 		]);
 		// Alone, the same Select opens the rail.
 		take(0x01, 0x14, 0x01);
