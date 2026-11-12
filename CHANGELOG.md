@@ -17,6 +17,30 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.32] - 2026-11-12
+
+### Added
+
+- Flat and Map now look like the world you ride in, in light and dark: a dusk sky over the ridges, the road on a meadow with its grade on the road, a post every kilometre, and the riders around you by name. The map shows how far there is to go. (#4554)
+- Settings → Devices → Controllers now lists every controller action WattRoom answers, the Zwift Click V2 button BikeControl puts it on, and what it does here. A press lights its row. (#4550)
+- With BikeControl's network mode, a Zwift Click V2's Y button now changes the view: each press moves to the next of 3D, Flat, Map and Lounge that the view switch shows, and round again. (#4549)
+
+### Changed
+
+- Standing in the 3D world before you pedal, in a voice channel with no trainer, rain, snow and waving spectators now move smoothly instead of jumping once a second, and your rider appears at once. (#4557)
+
+### Fixed
+
+- In the 3D world, the asphalt no longer shows pale, wavy patches on bends. Tight corners and hairpins still lean into the turn. (#4559)
+- A route that leaves and comes home along the same street now (#4555)
+- A route that leaves and comes back along the same street draws that street once in the 3D world, instead of two overlapping roads with grass between them. (#4552)
+- A game you pick on the Ride card (Watt Golf, Floor is Lava, Backyard Ramp) now runs on your own ride: pick it, press Start, count in, play. It no longer opens a session your crew sees, and no longer starts the moment you tap it. (#4551)
+- On the Pass and Valley loops the road is one piece across the start line: no more strip of grass between its end and its start right under you. (#4548)
+- The lounge now fits the whole room into the window, so the arcade, the bar, the repair stand and the poufs along its bottom show at every window size, with or without a ride, instead of only in a small window. (#4546)
+- With BikeControl's network mode, a Zwift Click V2's arrows now turn the bike computer's pages, A opens and closes the ride details row and B goes back to RIDE. Y and Z still have nothing to do in WattRoom: give them an action in BikeControl. (#4545)
+- The second row of ride numbers (ride name, W/kg, zone, power averages) now opens with a chevron button at the right edge of the numbers. Tapping the numbers no longer toggles it. (#4544)
+- Lounge is one press from Map (#4542)
+
 ## [2026.11.31] - 2026-11-11
 
 ### Fixed
@@ -4528,7 +4552,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.31...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.32...HEAD
+[2026.11.32]: https://github.com/natrontech/wattroom/compare/2026.11.31...2026.11.32
 [2026.11.31]: https://github.com/natrontech/wattroom/compare/2026.11.30...2026.11.31
 [2026.11.30]: https://github.com/natrontech/wattroom/compare/2026.11.29...2026.11.30
 [2026.11.29]: https://github.com/natrontech/wattroom/compare/2026.11.28...2026.11.29
