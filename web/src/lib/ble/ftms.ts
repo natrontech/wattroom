@@ -1,5 +1,6 @@
 import { reattachDelay } from './reattach';
 import { CPS_SERVICE } from './cyclingpower';
+import { begin, endAfterFlush } from '#lib/perf/trace.ts';
 import {
 	resolveSim,
 	type ControlMode,
@@ -336,6 +337,8 @@ export class FtmsTrainer implements Trainer {
 				this.lastRaw = this.pendingRaw;
 				this.pendingRaw = [];
 				const merged = this.lastFrame;
+				// `?perf` (#4541): the sample, everything it feeds and the HUD's update.
+				endAfterFlush('trainer-sample', begin());
 				for (const cb of this.#sampleCbs) {
 					cb({
 						watts: data.watts,

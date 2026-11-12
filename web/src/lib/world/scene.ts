@@ -16,6 +16,7 @@ import { createLoop, type LoopStats, missWatch, watchPage } from './loop';
 import { softwareDrawing } from './software-drawing';
 import { describeLongFrames, watchLongFrames } from './long-frames';
 import { gpuTimer } from './gpu-timer';
+import { begin, end, watchWorld } from '#lib/perf/trace.ts';
 import { dioramaPass } from './diorama';
 import { worldDiorama } from './mode';
 import { DIORAMA, rampAll, WORDS } from './pixel';
@@ -187,12 +188,17 @@ export function mount(
 	let frames: Frame[] = [];
 	const loop = createLoop((seconds) => {
 		const at = performance.now();
+		const span = begin();
 		try {
 			// The bunch keeps the wall's time: where the hub has everyone does not wait for a slow frame.
 			world.advanceBy(Math.min(seconds, MAX_DT), seconds);
+			const drawn = begin();
+			end('world-advance', span);
 			timer?.begin();
 			draw(scene, camera);
 			timer?.end();
+			end('world-draw', drawn);
+			end('world-frame', span);
 		} catch (err) {
 			// A frame that throws throws every frame after it: a frozen world
 			// the miss watch never sees, since each one counts as drawn.
@@ -296,11 +302,34 @@ export function mount(
 		renderer.forceContextLoss(); // stay clear of the browser's cap on live contexts
 	}
 
+	function rendererInfo() {
+		return {
+			draws: renderer.info.render.calls,
+			triangles: renderer.info.render.triangles,
+			geometries: renderer.info.memory.geometries,
+			textures: renderer.info.memory.textures,
+			programs: renderer.info.programs?.length ?? 0,
+			pixelRatio: renderer.getPixelRatio(),
+		};
+	}
+	function takeFrames() {
+		const out = frames;
+		frames = [];
+		return out;
+	}
+
 	fit();
 	const observer = new ResizeObserver(fit);
 	observer.observe(canvas);
 	canvas.addEventListener('webglcontextlost', lost);
 	const unwatch = watchPage(canvas, loop.gate);
+	// `?perf` (#4541): the overlay and the bench read this world's numbers.
+	const unperf = watchWorld({
+		stats: loop.stats,
+		renderer: () => rendererInfo(),
+		frames: () => takeFrames(),
+		rung: () => rung,
+	});
 	// The shaders compile off the main thread where the driver allows, and
 	// the first frame waits for them rather than stalling on them.
 	// Into the target where Diorama draws: a program built for the screen's sRGB would build again on the first frame.
@@ -328,22 +357,8 @@ export function mount(
 		},
 		hold: loop.gate,
 		stats: loop.stats,
-		probe: () => ({
-			...world.probe(),
-			renderer: {
-				draws: renderer.info.render.calls,
-				triangles: renderer.info.render.triangles,
-				geometries: renderer.info.memory.geometries,
-				textures: renderer.info.memory.textures,
-				programs: renderer.info.programs?.length ?? 0,
-				pixelRatio: renderer.getPixelRatio(),
-			},
-		}),
-		frames() {
-			const out = frames;
-			frames = [];
-			return out;
-		},
+		probe: () => ({ ...world.probe(), renderer: rendererInfo() }),
+		frames: takeFrames,
 		async picture(at) {
 			failed = true; // the world's last frame was drawn: what follows is not a failure to report
 			loop.stop();
@@ -402,6 +417,7 @@ export function mount(
 			clearInterval(judge);
 			longFrames.stop();
 			unwatch();
+			unperf();
 			observer.disconnect();
 			canvas.removeEventListener('webglcontextlost', lost);
 			release();

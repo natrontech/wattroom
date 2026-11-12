@@ -29,6 +29,7 @@ import {
 } from '#lib/protocol.ts';
 import type { PlaceAddress } from '#lib/channel/address.ts';
 import { reconnectDelay } from '#lib/reconnect.ts';
+import { begin, endAfterFlush } from '#lib/perf/trace.ts';
 import { fillDeck, type DeckHeard } from '#lib/channel/deck-heard.ts';
 import { account } from '#lib/account.svelte.ts';
 import { deviceWord } from '#lib/device.svelte.ts';
@@ -430,6 +431,8 @@ export function createChannelLive(address: PlaceAddress) {
 			}
 		};
 		socket.onmessage = (event) => {
+			// `?perf` (#4541): the message and the Svelte update it causes.
+			endAfterFlush('channel-message', begin());
 			heard();
 			const msg = JSON.parse(event.data) as ServerMessage;
 			if (msg.poke?.kind === PokeKindBottle) lastBottle = msg.poke;

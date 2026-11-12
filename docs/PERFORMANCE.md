@@ -5,6 +5,47 @@ A 6 px glow on three 11 px bars cost up to a third of an M2 Max GPU. On the same
 - **`make perf`** measures the app's real components one at a time. It says which element costs what.
 - **`make perf-scenes`** measures whole screens as a rider sees them. A crew's voice channel fills up step by step: people in voice, their statuses, someone riding, someone talking, a screen share, then your own ride. It says what a rider pays, and what a fix is worth in practice.
 
+To see where a frame goes on the screen in front of you, turn on the overlay (`?perf`) and record a trace: the next two sections. For the world's frame budget headless, `make world-bench` and `make voice-bench` ("The world on the slow rig").
+
+## In the running app: `?perf`
+
+Add `?perf` to any app address (`/ride?road=intro&perf`, `/crew/…/v/…?perf`). The tab keeps it through reloads and navigation (sessionStorage); `?perf=0` turns it off. Off, nothing is observed and nothing is marked: every hook is one false check, read once when the app loads.
+
+A box in the bottom-right corner, above the now bar, takes no clicks and shows the last five seconds:
+
+| Line | What it is |
+|---|---|
+| **page** | Animation frames a second and the interval between them, p50 / p95 / max. Below the display's rate, something held the main thread or the frame's commit |
+| **long tasks** | Tasks over 50 ms (`PerformanceObserver('longtask')`): how many, their total and the longest |
+| **world** | The world's own frames a second (30 riding, 1 standing still: loop.ts), the share of its 30 fps intervals missed, the quality rung and pixel ratio |
+| **draws · tris · tex · geo · prog** | three.js's `renderer.info` for the last frame: draw calls, triangles, textures, geometries, shader programs |
+| **video** | Videos with a picture, their decoded and dropped frames a second, the largest in MP: camera tiles and the stage |
+| **`wattroom:` table** | Each named span: runs a second, ms a run p50 / p95, and ms a second, busiest first |
+| **held** | The two longest animation frames of the last 10 s and the script that ran longest in each (Long Animation Frames); `rendering` when no script did |
+
+The spans, around the hot paths (`web/src/lib/perf/trace.ts`):
+
+| Span | Around |
+|---|---|
+| `world-frame` | One world frame: `world-advance` (the sim, rig, riders, ground) then `world-draw` (three.js submitting it) |
+| `lounge-frame` | One frame of the lounge's pixel room (15 fps) |
+| `channel-message` | A voice channel's socket message, through the Svelte update it causes (the tick is one a second) |
+| `trainer-sample` | A trainer sample, real or simulated, through everything it feeds and the HUD's Svelte update |
+
+Each span is also a `performance.measure('wattroom:<name>')`, so a Chrome or Electron Performance trace names it in its Timings track. Only with `?perf`: the browser keeps every measure until it is cleared, and the world alone makes 90 a second, so always-on marks would grow a two-hour ride's heap or put a clear on the frame path, for a trace nobody records. With the flag, each name's measures are cleared every 600; a trace has them already.
+
+**The overlay costs a little:** its own animation frame on every vsync (how it counts the page's frames) and a repaint of the box twice a second. Read GPU numbers with it off.
+
+`window.wattroomPerf` is the bench's handle: `summary()` is the overlay's numbers, `world()` the live world's stats, renderer info and frames.
+
+## A trace in the desktop app
+
+1. **Open DevTools:** View → Toggle Developer Tools (⌥⌘I on macOS; Ctrl+Shift+I on Windows and Linux, whose frameless window keeps the menu's shortcuts).
+2. **Turn the marks on** in its Console, as the window has no address bar: `sessionStorage.setItem('wattroom.perf.v1', '1'); location.reload()`. The overlay appears; `removeItem` and reload turn it off.
+3. **Record:** Performance → ⏺, ride for 5–10 s, stop. The `wattroom:` spans are in the Timings track over the Main thread's flame chart, the GPU's work in the GPU track, and every frame in Frames. A frame that misses its vsync is red there; its span says whose it was.
+
+DevTools in the window it measures costs that window a little. For a cleaner trace, start the app with a debugging port and record from Chrome instead: quit WattRoom, run `/Applications/WattRoom.app/Contents/MacOS/WattRoom --remote-debugging-port=9222` (Windows: `"%LOCALAPPDATA%\Programs\WattRoom\WattRoom.exe" --remote-debugging-port=9222`), open `chrome://inspect` in Chrome, add `localhost:9222` under Configure, and inspect the WattRoom page. Nothing in either way leaves the machine: a trace is a file you save, or don't.
+
 ## Running it
 
 macOS only: it reads the Apple GPU driver's per-process accounting.
@@ -149,7 +190,29 @@ The click's own script cost was never the problem: about 50–80 ms on that rig,
 
 `make world-bench` (needs `make dev-web`) is the low tier's rig without the hardware (#3082). It opens `/dev/perf?case=world` in headless Chromium on SwiftShader twice: once as it is, once with the page's CPU throttled 4× through DevTools. Each run warms up for 15 s and measures for 60 s. It prints the frame interval and the render's JS time (p50 and p95), the frames a second, the share of vsync-divisor intervals missed, and the draws and triangles, set against docs/spec/world.md's tiers and Fallback. The dev build's frame judge stands down for it, so the world keeps drawing past the Fallback and every miss is counted.
 
-Knobs: `BENCH_VIEW` (default `1280x720`, the realism lab's; `960x540` is about the low tier's 0.5 MP), `BENCH_LOOK` (`diorama`, the app's default, or `smooth`), `BENCH_SECONDS` (60), `BENCH_WARMUP` (15).
+Knobs: `BENCH_VIEW` (default `1280x720`, the realism lab's; `960x540` is about the low tier's 0.5 MP), `BENCH_LOOK` (`diorama`, the app's default, or `smooth`), `BENCH_SECONDS` (60), `BENCH_WARMUP` (15), `BENCH_RATES` (`1 4`, the CPU throttles, one run each), `BENCH_DPR` (1; 2 is a Retina screen), `BENCH_GL` (`swiftshader`; `gpu` draws on this machine's own GPU, still headless, Metal on a Mac), `BENCH_PROFILE=1` (a CPU profile of 10 s of each run, its ten busiest functions printed).
+
+`BENCH_SCENES` picks what is ridden, one run each: `world` (the default, `/dev/perf?case=world`), `ride` (`/ride` on the Pass loop, the simulated trainer riding), `voice` (the same ride from a crew's voice channel, in voice) and `voice-standing` (the voice channel's ride with no trainer, standing at the start). The app scenes load with `?perf` and print a second table from the overlay's handle: videos playing, the CPU of the browser's renderer and GPU processes, page frames, long tasks and the busiest `wattroom:` spans. `BENCH_CAMS=n` puts n crew-mates in the call with Chromium's fake camera on, each in its own context of the same browser.
+
+**`make voice-bench`** (needs `make dev-server` too) is `BENCH_SCENES="ride voice voice-standing" BENCH_RATES=1`: the world in a voice channel set against `/ride` alone (#4533).
+
+## The world in a voice channel
+
+A rider, 2026-11-12 (#4533): in a voice channel, Ride with no trainer, the 3D world is "really buggy and slow"; /ride is smoother. `make voice-bench` on an M5 Pro, November 2026, 30 s after 15 s at 1280 × 720, Diorama 3D, the machine shared with two other agents:
+
+| Scene | GPU: world fps, missed, frame p50 / p95 | Render JS p50 / p95 | Renderer / GPU-process CPU | Software (SwiftShader): world fps, frame p50 / p95 |
+|---|---|---|---|---|
+| `/ride`, simulated trainer | 30.1, 0 %, 33.3 / 34.2 ms | 1.4 / 2.0 ms | 11 % / 7 % | 4.5, 228 / 258 ms |
+| voice channel in voice, simulated trainer | 30.1, 0 %, 33.3 / 34.1 ms | 1.7 / 2.1 ms | 20 % / 7 % | 4.4, 236 / 289 ms |
+| voice channel in voice, no trainer | **1.0**, 0 %, 1000 / 1001 ms | 1.4 / 6.1 ms | 12 % / 1 % | 1.0, 1000 / 1001 ms |
+
+On the GPU, both rides: no long tasks, page frames at 60 a second, 18–19 draws and 94k triangles. A 60 s run and one at 2× with two cameras in the call (`BENCH_DPR=2 BENCH_CAMS=2`, the canvas at its 1 MP budget) read the same: 30.1 fps, 0 % missed, render JS 1.6–2.8 ms p50.
+
+- **Riding, the voice channel costs the world nothing measurable on a GPU.** Same frames, same misses, render JS within the run-to-run spread. Voice itself is about 9 % of a core more in the renderer (the call, its noise filter and the mic meter, off the main thread); `channel-message` is about 1 ms a second.
+- **No video tile draws under the ride's 3D view.** With two cameras in the call, the lounge shows a 320 × 180 tile; the ride's 3D view has no video element at all.
+- **The lounge is not drawn behind the world.** Switched to the Lounge view, `world-frame` stops and `lounge-frame` runs at 14 a second, 0.7 ms each.
+- **With no trainer the world draws one frame a second.** Nothing moves, so loop.ts's idle clock holds it at `IDLE_MS`, as designed (#4528). `/ride` cannot start without a trainer or the simulated one, so there the world is always moving: the rider was comparing a still world against a moving one. Standing, each frame draws 27 draws against riding's 19, and its JS stays at 6–10 ms for the first ~40 s: the rider sprite sheets are drawn 3 ms a frame (rider-sprite.ts `drawSheets`), at one frame a second.
+- **On the software rig voice costs about 4–8 % of the frame rate,** reproduced in three runs (4.7 → 4.4, 4.7 → 4.3, 4.5 → 4.4 fps). SwiftShader rasterises on 8–10 cores of the GPU process, so the renderer's extra 8 % of a core competes with it. On a machine without a usable GPU, voice and the world share the CPU.
 
 The throttle slows only the page's own thread. SwiftShader draws in the GPU process, at the speed of the machine's CPU, so its frame times are a software rig's and say nothing about a GPU. The results are in docs/spec/world.md, "The slow rig".
 

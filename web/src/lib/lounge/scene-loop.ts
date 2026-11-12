@@ -4,6 +4,8 @@
  * motion. The browser stops animation frames in a hidden tab, so a tab out of
  * sight costs nothing. Returns the stop.
  */
+import { begin, end } from '#lib/perf/trace.ts';
+
 const FRAME_MS = 1000 / 15;
 const HELD_MS = 1000;
 
@@ -21,7 +23,9 @@ export function sceneLoop(
 	let timer = 0;
 	let last = performance.now();
 	const tick = (now: number) => {
+		const span = begin();
 		draw(g, (now - last) / 1000);
+		end('lounge-frame', span);
 		last = now;
 		timer = window.setTimeout(
 			() => (raf = requestAnimationFrame(tick)),
