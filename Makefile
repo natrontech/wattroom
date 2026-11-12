@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra radio dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol themes migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes world-bench licenses
+.PHONY: infra radio dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol themes migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes world-bench voice-bench licenses
 
 DEV_ENV := scripts/dev-env.sh
 # "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
@@ -137,6 +137,9 @@ perf-scenes: ## the same, for whole screens: a crew's voice channel filling up, 
 
 world-bench: web-deps ## the world's frame time, draws and triangles on software WebGL, plain and CPU-throttled 4x: the low tier's rig (#3082; needs `make dev-web`) — docs/PERFORMANCE.md
 	@eval "$$($(DEV_ENV) print)"; cd web && node scripts/world-bench.mjs
+
+voice-bench: web-deps ## the same numbers for the world ridden in a voice channel against /ride alone (#4533; needs `make dev-server` + `make dev-web`) — docs/PERFORMANCE.md
+	@eval "$$($(DEV_ENV) print)"; cd web && BENCH_SCENES="$${BENCH_SCENES:-ride voice voice-standing}" BENCH_RATES="$${BENCH_RATES:-1}" node scripts/world-bench.mjs
 
 build: web ## single binary with embedded frontend
 	cd server && go build -o ../bin/wattroom-server .

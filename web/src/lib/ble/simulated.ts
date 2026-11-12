@@ -5,6 +5,7 @@ import {
 	ReferenceRiderKg,
 } from '#lib/protocol.ts';
 import { nextSpeed } from '#lib/road/pace.ts';
+import { begin, endAfterFlush } from '#lib/perf/trace.ts';
 import { simulatedSteady } from './simulated-steady';
 import {
 	resolveSim,
@@ -200,6 +201,8 @@ export class SimulatedTrainer implements Trainer {
 
 	#tick(): void {
 		if (this.#dropped) return;
+		// `?perf` (#4541): the sample, everything it feeds and the HUD's update.
+		endAfterFlush('trainer-sample', begin());
 		if (this.#replay) {
 			const sample = this.#replay[this.#replayAt++];
 			if (!sample) return; // series over: silence, like a stopped rider

@@ -62,6 +62,7 @@
 	import { keepAwakeWhile } from '#lib/workout/keep-awake.svelte.ts';
 	import { notify } from '#lib/notify.svelte.ts';
 	import { toasts } from '#lib/toast.svelte.ts';
+	import { perfOn } from '#lib/perf/flag.ts';
 
 	let { children } = $props();
 
@@ -635,6 +636,12 @@
      friends panel draw people too, and the channel it reads is the one you
      are standing in. -->
 <ConnectionInfo />
+<!-- `?perf` (#4541): what the page spends, for whoever chases a slow screen; loaded only with the flag on. -->
+{#if perfOn}
+	{#await import('#lib/perf/PerfOverlay.svelte') then { default: PerfOverlay }}
+		<PerfOverlay />
+	{/await}
+{/if}
 <DevicePicker
 	devices={devicePicker.devices}
 	onpick={(id) => devicePicker.pick(id)}
