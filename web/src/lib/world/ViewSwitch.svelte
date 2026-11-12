@@ -10,6 +10,7 @@
 	 * Chrome, so neon and flat (ADR-0005), in the ride's one segmented
 	 * control's shape (FreeRiding's "what you set").
 	 */
+	import { untrack } from 'svelte';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { hasChannel } from '#lib/channel/context.ts';
 	import { rideRoom } from '#lib/channel/ride-room.svelte.ts';
@@ -19,10 +20,12 @@
 	import { rideOffers } from '#lib/ride/ride-offers.svelte.ts';
 	import {
 		flipped,
+		press,
 		REASONS,
 		VIEW_ASK,
 		viewSwitch,
 		type SkylineReason,
+		type ViewSegment,
 	} from './ride-view';
 
 	let {
@@ -65,14 +68,20 @@
 	);
 	const why = $derived(world.reason ? REASONS[world.reason] : null);
 
-	// 3D and Flat are the horizon's, and a rider on MAP who picks one is
-	// leaving the map for it: the computer goes back to RIDE.
-	function to(segment: '3d' | 'flat') {
-		rideRoom.on = false;
-		if (onMap) askPage('ride');
+	// One view at a time (#4535): a rider on MAP who picks any other segment
+	// is leaving the map for it, so the computer goes back to RIDE; MAP
+	// would otherwise stay drawn over the room.
+	function to(segment: ViewSegment) {
+		const next = press(segment, onMap);
+		rideRoom.on = next.room;
+		if (next.page) askPage(next.page);
 		if (segment === '3d' && !drawn) world.retry();
 		if (segment === 'flat' && drawn) world.flatten();
 	}
+	// MAP asked for another way, the M key or the phone, leaves the room.
+	$effect(() => {
+		if (onMap) untrack(() => (rideRoom.on = false));
+	});
 	// The V key's 3D / Flat (#4236).
 	$effect(() => {
 		const flip = (event: Event) => {
@@ -86,10 +95,6 @@
 	});
 	// The phone's view row is this switch (ride-controls.ts): each segment
 	// drawn here, and live, is offered to it, and runs as a tap here does.
-	function toMap() {
-		rideRoom.on = false;
-		askPage('map');
-	}
 	$effect(() => {
 		if (!road && !roomy) return;
 		const offs = [
@@ -97,10 +102,10 @@
 				? [rideOffers.offer('view-3d', () => to('3d'))]
 				: []),
 			rideOffers.offer('view-flat', () => to('flat')),
-			...(computerShown.maps ? [rideOffers.offer('view-map', toMap)] : []),
-			...(roomy
-				? [rideOffers.offer('view-room', () => (rideRoom.on = true))]
+			...(computerShown.maps
+				? [rideOffers.offer('view-map', () => to('map'))]
 				: []),
+			...(roomy ? [rideOffers.offer('view-room', () => to('room'))] : []),
 		];
 		return () => offs.forEach((off) => off());
 	});
@@ -143,14 +148,14 @@
 		>
 		{#if computerShown.maps}
 			<button
-				onclick={toMap}
+				onclick={() => to('map')}
 				aria-pressed={state.pressed === 'map'}
 				class={seg(state.pressed === 'map')}>Map</button
 			>
 		{/if}
 		{#if roomy}
 			<button
-				onclick={() => (rideRoom.on = true)}
+				onclick={() => to('room')}
 				aria-pressed={state.pressed === 'room'}
 				class={seg(state.pressed === 'room')}>Lounge</button
 			>

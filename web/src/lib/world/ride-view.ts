@@ -119,6 +119,20 @@ export function viewSwitch(s: {
 }
 
 /**
+ * What a press on a segment sets (#4535): the cozy room is on for Lounge
+ * alone, and the computer asks for MAP on Map alone. MAP draws over the
+ * ground, the room's too, so every other segment pressed on MAP takes the
+ * computer back to RIDE: Lounge from Map is one press, as 3D and Flat are.
+ */
+export function press(
+	segment: ViewSegment,
+	onMap: boolean,
+): { room: boolean; page: 'map' | 'ride' | null } {
+	if (segment === 'map') return { room: false, page: 'map' };
+	return { room: segment === 'room', page: onMap ? 'ride' : null };
+}
+
+/**
  * Asks the riding screen's view switch to flip between 3D and Flat: the V
  * key (#4236). From MAP it goes to 3D, as its 3D
  * segment does. Says whether a switch took it: none where no world can draw.
