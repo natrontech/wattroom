@@ -201,6 +201,91 @@ export function outAndBack(): TrackPoint[] {
 	return toPoints(xy, (s) => 500 + 0.02 * Math.min(s, total - s));
 }
 
+/** The street a loop from a front door leaves and comes home along, metres. */
+export const HOME_STREET = 2200;
+
+/**
+ * How far the way home runs beside the way out at each metre of the street
+ * (from the door), as a rider's two GPS traces of their own street measured
+ * (#4531): 4 m by the door, a 20 m jog across to 15 m off for 330 m, a
+ * detour round a block 120 m off, 13 m, then 5–9 m for 850 m, where the
+ * way home turns in off the loop. Offsets only, no place.
+ */
+const HOME_OFFSETS: [street: number, off: number][] = [
+	[0, 0],
+	[40, 4],
+	[400, 4],
+	[420, 15],
+	[750, 15],
+	[800, 120],
+	[930, 120],
+	[980, 15],
+	[1250, 12],
+	[1300, 7],
+	[1700, 5],
+	[2100, 9],
+];
+
+/**
+ * A loop from a front door (#4531): 2.2 km east along the home street
+ * climbing 1 %, a 1.3 km loop, and home along the street again, the way home
+ * `offset(m)` metres south of the way out at each metre m of it, and 2.5 m
+ * higher, as a second GPS trace of a street lies beside the first.
+ * The way home turns in off the loop 30° off the street. Default: the
+ * offsets a rider's street measured.
+ */
+export function homeStreet(
+	offset: (m: number) => number = (m) => lerpTable(HOME_OFFSETS, m),
+): TrackPoint[] {
+	const xy: { x: number; y: number }[] = [];
+	for (let m = 0; m < HOME_STREET; m += 10) xy.push({ x: m, y: 0 });
+	// The loop: on east, round to the south, and back to turn in off it.
+	const corners = [
+		{ x: HOME_STREET, y: 0 },
+		{ x: HOME_STREET + 400, y: 0 },
+		{ x: HOME_STREET + 400, y: -300 },
+		{ x: HOME_STREET + 100, y: -offset(HOME_STREET - 100) - 115 },
+		{ x: HOME_STREET - 100, y: -offset(HOME_STREET - 100) },
+	];
+	for (let c = 0; c + 1 < corners.length; c++) {
+		const a = corners[c];
+		const b = corners[c + 1];
+		const len = Math.hypot(b.x - a.x, b.y - a.y);
+		for (let d = 0; d < len; d += 10)
+			xy.push({
+				x: a.x + ((b.x - a.x) * d) / len,
+				y: a.y + ((b.y - a.y) * d) / len,
+			});
+	}
+	for (let m = HOME_STREET - 100; m >= 0; m -= 10)
+		xy.push({ x: m, y: -offset(m) });
+	let s = 0;
+	const walked = xy.map((p, i) => {
+		if (i > 0) s += Math.hypot(p.x - xy[i - 1].x, p.y - xy[i - 1].y);
+		return { ...p, s };
+	});
+	const out = walked[HOME_STREET / 10].s;
+	const home = walked[walked.length - (HOME_STREET - 100) / 10 - 1].s;
+	// Climbing 1 % east, and 2.5 m higher home than out, risen round the loop: two traces' heights differ as much.
+	const rise = (along: number) =>
+		2.5 * Math.min(1, Math.max(0, (along - out) / (home - out)));
+	const height = new Map(
+		walked.map((p) => [p.s, 500 + 0.01 * p.x + rise(p.s)]),
+	);
+	return toPoints(walked, (along) => height.get(along)!);
+}
+
+/** The value of a table of [at, value] at `m`, in line between its rows. */
+function lerpTable(table: [number, number][], m: number): number {
+	if (m <= table[0][0]) return table[0][1];
+	for (let i = 1; i < table.length; i++) {
+		const [a, va] = table[i - 1];
+		const [b, vb] = table[i];
+		if (m <= b) return va + ((vb - va) * (m - a)) / (b - a);
+	}
+	return table[table.length - 1][1];
+}
+
 /** Every fixture /dev/road can ride, by name. */
 export const FIXTURES: Record<string, () => TrackPoint[]> = {
 	'Bridge and tunnel': bridgeAndTunnel,
