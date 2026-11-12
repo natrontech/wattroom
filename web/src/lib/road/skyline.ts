@@ -359,13 +359,13 @@ export function bandIn(
 
 /**
  * Every SVG node a frame draws, per tile: an area and a road per grade step
- * that has one, the land, the road's bed, and the line twice (ridden and
+ * that has one, the land and its deeper field, the road's bed, and the line twice (ridden and
  * ahead).
  */
 export const nodesOf = (tiles: Tile[]): number =>
 	tiles.reduce(
 		(n, t) =>
-			n + t.areas.filter(Boolean).length + t.roads.filter(Boolean).length + 4,
+			n + t.areas.filter(Boolean).length + t.roads.filter(Boolean).length + 5,
 		0,
 	);
 
