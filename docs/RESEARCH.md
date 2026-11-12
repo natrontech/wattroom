@@ -206,7 +206,7 @@ Not re-decided here — it changes a locked doc, so it needs an ADR. The WCPS pr
 **Multi-source arbitration (TrainerRoad's mature pattern, adopt as-is):** a paired power meter **always wins** display/record over the trainer; PowerMatch closes the loop by offsetting the ERG command by the measured meter↔trainer delta (default sensitivity 0.5). Cadence: dedicated sensor > power-meter crank data > trainer estimate.
 
 **Zwift accessories (reverse-engineered state):**
-- Play/Ride controllers expose proprietary service `00000001-19ca-4651-86e5-fa29dcdd09d1` speaking protobuf "ZAP" messages; Ride-family button presses are message 0x23 with an **active-low** 32-bit bitmap. ~~But the **handshake/encryption story is unresolved** (all three competing accounts refuted each other) — reading Click/Play buttons from Web Bluetooth is NOT currently viable to plan on. Sprint-grade-instead-of-shifting stands validated: virtual shifting runs on Zwift's closed per-agreement trainer protocol (Elite/JetBlack/Van Rysel firmware deals; SHIFTR/BikeControl exist precisely to bridge it).~~ (written 2026-08-25, struck 2026-09-29) **Revised 2026-09-29 (#3322, ADR-0084)**: the Play and Ride handshakes are documented (Makinolo, 2023-10-08 and 2024-07-26); Click v2 adds a daily unlock; OpenBikeControl exists as an open controller protocol (MIT, spec v1); and Rouvy has belonged to Zwift since 2026-04-29. WattRoom speaks none of Zwift's protocols. Its shift input is its own: the on-screen Easier / Harder pair, the keyboard, the rider's phone as a remote, and OpenBikeControl controllers over Web Bluetooth.
+- Play/Ride controllers expose proprietary service `00000001-19ca-4651-86e5-fa29dcdd09d1` speaking protobuf "ZAP" messages; Ride-family button presses are message 0x23 with an **active-low** 32-bit bitmap. ~~But the **handshake/encryption story is unresolved** (all three competing accounts refuted each other) — reading Click/Play buttons from Web Bluetooth is NOT currently viable to plan on. Sprint-grade-instead-of-shifting stands validated: virtual shifting runs on Zwift's closed per-agreement trainer protocol (Elite/JetBlack/Van Rysel firmware deals; SHIFTR/BikeControl exist precisely to bridge it).~~ (written 2026-08-25, struck 2026-09-29) **Revised 2026-09-29 (#3322, ADR-0084)**: the Play and Ride handshakes are documented (Makinolo, 2023-10-08 and 2024-07-26); Click v2 adds a daily unlock; OpenBikeControl exists as an open controller protocol (MIT, spec v1); and Rouvy has belonged to Zwift since 2026-04-29. WattRoom speaks none of Zwift's protocols. Its shift input is its own: the on-screen Easier / Harder pair, the keyboard, the rider's phone as a remote, and OpenBikeControl controllers over Web Bluetooth. Since then Click v2 and Ride v2 lock to Zwift's app daily, and a direct driver stays out: see §23 (2026-11-12).
 - **Tacx NEO generation** needs FE-C tunneled over BLE: service `6e40fec1-b5a3-f393-e0a9-e50e24dcca9e`, FEC_TX `…fec2` notify / FEC_RX `…fec3` write (Nordic-UART framing of ANT+ FE-C pages; pycycling has a clean reference module). A future `FecTrainer` driver slots behind the same `Trainer` interface if a NEO owner joins.
 - Pre-2020 proprietary-BLE trainers: shipping apps simply declare them unsupported (ANT+-dongle advice doesn't transfer to Web Bluetooth). **M1 support line = FTMS + WCPS is validated.**
 
@@ -1051,6 +1051,119 @@ Echo from a rider on speakers, the §22.6 call (B's mic carrying A's voice at �
 Two of three one-path runs stalled (concealment, and about 100 ms taken out of the jitter buffer), and the echo then leaked at −20 to −28 dBFS for 5 to 15 s. The rig's echo is a second playback of the file, so a jitter-buffer jump moves it against the reference. Real echo moves with the reference.
 
 Not reproduced: the order flip on a local LiveKit. Eight unmutes over loopback all arrived in order, so a unit test pins the flipped order instead. The doubled sound was never heard here: `--mute-audio` keeps the element's output out of reach.
+
+## 23. Zwift controllers without BikeControl (research for #4540; run of 2026-11-12)
+
+**Question.** Jan, 2026-11-12: a Zwift Click, Play or Ride reaches WattRoom only
+through BikeControl speaking OpenBikeControl (OBC), which is a second app to
+install, start and pair. Could WattRoom talk to these controllers itself, from
+the browser or from the desktop shell? This builds on §11's revision of
+2026-09-29 and on ADR-0084 (in git, `docs/decisions/0084-wattroom-shifts.md`
+before #4318), whose rule 4 is WATTROOM.md's "no Zwift protocol". Not legal
+advice.
+
+**Short answer: don't build a Zwift driver; keep BikeControl and say what it
+costs.** A third party can still read the older models and firmware (Click v1,
+the 2024 Ride, a Play before 2.0.1). Click v2 and Ride v2 are locked to Zwift's
+app by a daily unlock that only Zwift's app can perform. Reading even the open
+ones means speaking ZAP, which ADR-0084 keeps out for patent reasons.
+
+### 23.1 What changed since §11 (2026-09-29)
+
+- **Click v2's lock is server-side and daily.** BikeControl's author, 2025-11-22: "Zwift's new encryption is server-side and difficult to work around" ([#68](https://github.com/OpenBikeControl/bikecontrol/issues/68)). Without it a Click v2 sends button events for about a minute after it connects. Connecting it in Zwift's own app (no subscription needed) unlocks it for about 24 hours. The unlock is a vendor message (opcode 0xFF04) that differs on every connection; replaying it does nothing (same thread, 2025-09-30).
+- **Ride v2 is locked too.** BikeControl's guide ([2026-05-14, updated 2026-09-28](https://bikecontrol.app/blog/zwift-click-v2-with-other-trainer-apps/)) gives Ride v2 firmware 1.3 and later the same daily unlock: "the daily unlock with the Zwift app is currently the way to use a Ride V2 outside Zwift."
+- **Ride moved its service.** A January 2025 Ride firmware replaced `00000001-19ca-4651-86e5-fa29dcdd09d1` with the 16-bit UUID `0xFC82` ([Makinolo, Ride protocol, updated 2025-01-31](https://www.makinolo.com/blog/2024/07/26/zwift-ride-protocol/)).
+- **Play joined the newer line.** Play firmware 2.0.1 (2026-05-27) merges the two controllers into one Bluetooth connection "in line with the Click v2 and Zwift Ride controllers" ([Zwift Insider](https://zwiftinsider.com/?p=133962)). Whether it also took the daily lock is not published; we found no report either way.
+- **Zwift owns the one third-party app that read them.** Rouvy reverse-engineered the protocol in February 2025 ([DC Rainmaker](https://dcrainmaker.com/2025/02/rouvy-adds-zwift-cog-click-ride-virtual-shifting-battle-royale-begins.html)). Zwift bought Rouvy on 2026-04-29, and Rouvy's 2026/27 update lists Cog, Click and Ride as compatible ([bike-magazin, 2026-09-02](https://www.bike-magazin.de/en/training/fitness/rouvy-update-2026-27-zwift-hardware-new-dream-routes-and-pro-rides/)). That is first-party support. We found no SDK, licence programme or published spec for anyone else.
+- **Zwift's terms name this.** The Terms of Service of 2026-06-02, §5(a)(ix), forbid users to "bypass, or tamper with authentication measures, firmware, or software of any Platform connected devices, including any action intended to circumvent security measures of connected devices to interact with, transmit data to, or be controlled by any platform, application, or service other than the official Zwift Platform" ([terms](https://support.zwift.com/en_us/terms-of-service-HJt7VBYyH.md)). §5(a)(xiii) adds "applications that emulate or redirect the communication protocols used by Zwift in any way."
+- **BikeControl costs a rider money.** A 5-day trial (7 on Windows), then 15 button actions a day until the rider buys Base (about $4.99 per platform, free on Linux) or Pro, a subscription ([bikecontrol.app](https://bikecontrol.app/), read 2026-11-12). Its licence is now a non-commercial one; versions before the `gpl3` tag stay GPL-3.0 ([LICENSE](https://github.com/OpenBikeControl/bikecontrol/blob/main/LICENSE)).
+
+### 23.2 What each controller needs
+
+| Controller | BLE service | Handshake | Encryption | Third party today |
+|---|---|---|---|---|
+| Click (v1) | `00000001-19ca-…` | "RideOn" | optional; runs without | yes; replaced by Click v2 (2025-09) |
+| Play, firmware before 2.0.1 | `00000001-19ca-…`, two devices | "RideOn" + 01 02 + a P-256 public key | ECDH P-256, HKDF-SHA256, AES-CCM (Makinolo) or AES-GCM (ajchellew): the two accounts disagree | yes, with the crypto |
+| Play, firmware 2.0.1 | one connection | not published | not published | unknown |
+| Ride (2024) | `0xFC82` since 2025-01 (before: `00000001-19ca-…`) | "RideOn" | none | yes |
+| Click v2; Ride v2 at firmware 1.3+ | same family | "RideOn", then Zwift's vendor message | server-side, renewed every ~24 h | only after the rider unlocks it in Zwift's app that day |
+
+- All of them speak ZAP behind the handshake: protobuf messages on a three-part link (Measurement notify `…0002`, Control Point write `…0003`, Command Response indicate `…0004`). Ride buttons are message 0x23, a 32-bit little-endian bitmap, active low; the two orange paddles are analog, −100 to 100; haptics use the Play's command ([Makinolo, Play, 2023-10-08](https://www.makinolo.com/blog/2023/10/08/connecting-to-zwift-play-controllers/); Ride, above). Zwift's company ID is 0x094A.
+- Makinolo's pages are prose with no licence and say "no information contained in this document is official." Nothing is documented by Zwift.
+- WebCrypto has ECDH P-256 and HKDF but no AES-CCM ([W3C Web Crypto](https://www.w3.org/TR/WebCryptoAPI/)), so an encrypted Play would need CCM built on AES-CTR plus a CBC-MAC, or a library.
+
+**Who implements it, and under which licence** (pointers; none of this may be copied into WattRoom while rule 4 holds):
+
+- [ajchellew/zwiftplay](https://github.com/ajchellew/zwiftplay): Android and .NET, Play handshake and decryption. No licence, so all rights reserved. Last push 2024-02.
+- [jat255/zwift_click_handling](https://github.com/jat255/zwift_click_handling): Python, Click v1 without encryption ("I couldn't get that part working"). MIT, 2024.
+- [qdomyos-zwift](https://github.com/cagnulein/qdomyos-zwift) (`src/zwift_play`): GPL-3.0.
+- [BikeControl](https://github.com/OpenBikeControl/bikecontrol): Click, Click v2 with the unlock bridge, Play, Ride. Non-commercial licence. Read for comments and UUID constants only, as for #3335.
+- Auuki: AGPL-3.0, carries the Zwift service in its Web Bluetooth layer. Named only; not opened.
+
+### 23.3 Who can reach what
+
+| Where WattRoom runs | Web Bluetooth | Zwift controllers directly | BikeControl today |
+|---|---|---|---|
+| Chrome / Edge, macOS and Windows | yes | the open ones; a Play before 2.0.1 or a Click v2 is two choosers, one per side | OBC over BLE, BikeControl on a phone |
+| Chrome, Linux | only behind the experimental-features flag, BlueZ 5.41+ ([status](https://github.com/WebBluetoothCG/web-bluetooth/blob/main/implementation-status.md)) | same, with the flag | same, with the flag |
+| Chrome, Android | yes | the open ones | OBC over BLE from a second phone; BikeControl on the same phone cannot reach the browser |
+| iOS, any browser | no (WebKit has no Web Bluetooth) | no | no; the phone is the remote |
+| Desktop shell, Web Bluetooth | as Chrome, through `select-bluetooth-device` (`desktop/bluetooth.js`) | as Chrome | OBC over BLE, and OBC over the network (#3336) with BikeControl on the same computer |
+| Desktop shell, a native module | [@stoprocent/noble](https://github.com/stoprocent/noble) (MIT, active): native macOS and Windows bindings, BlueZ over D-Bus without root. [@abandonware/noble](https://github.com/abandonware/noble) (MIT, last push 2025-02) needs a WinUSB dongle on Windows and raw-socket privileges on Linux | as Web Bluetooth, plus Linux without the flag and no chooser per side | — |
+
+- Neither Zwift UUID is on the Web Bluetooth blocklist ([gatt_blocklist](https://github.com/WebBluetoothCG/registries/blob/master/gatt_blocklist.txt)); HID (0x1812) is. So BLE-HID buttons never reach a page as BLE, only as keys when they act as a keyboard.
+- The shell passes no switch that enables Web Bluetooth on Linux (`desktop/main.js`). Whether its Linux build pairs anything at all is untested; that is a hardware question for all of BLE, not for this one.
+- A native module reaches no controller that Web Bluetooth cannot. It gains Linux without the flag and one pairing for a two-sided controller, and it loses the chooser, which §15.1 keeps so that a rider never silently pairs someone else's device, and it adds a native build per OS to sign.
+- The lock is the same on every platform. Transport does not matter for a Click v2.
+
+### 23.4 What BikeControl gives that a Zwift driver would not replace
+
+- **Other controllers:** Shimano Di2 (D-Fly), SRAM AXS and eTap, Wahoo KICKR Bike shifters, CYCPLUS BC2, Thinkrider VS200, Magene Onelap, Elite Sterzo and Square, Stages SB20, cheap BLE and classic HID buttons ([README](https://github.com/OpenBikeControl/bikecontrol)). A Zwift driver removes BikeControl only for riders whose one controller is an open Zwift one.
+- **The Click v2 / Ride v2 unlock.** BikeControl advertises a bridge that Zwift's app connects to and unlocks the controller through, and it keeps the 24-hour window. Doing that ourselves is exactly what ToS §5(a)(ix) names.
+- **Firmware churn.** Zwift has changed the service UUID, the connection count and the lock in two years. BikeControl tracks it; we would chase it.
+- **Ride's analog paddles.** OBC carries analog (brake 0x1A, steering 0x1B). WattRoom uses neither, so nothing is lost today.
+- **Haptics.** WattRoom already sends OBC Haptic Feedback (`controller.ts`, `feel`). Whether BikeControl passes it on to a Zwift controller's motor was not checked.
+- **Not lost:** keys and the phone remote are WattRoom's own inputs (ADR-0084, "Inputs"), and gamepads, if ever, would come through the browser's Gamepad API, not BikeControl.
+
+### 23.5 The case against a direct driver
+
+1. **It reaches a shrinking set.** Click v1 is replaced; Click v2 and Ride v2 are locked; Play 2.0.1 is unknown. The rider who asked is most likely holding a Click v2, the one bundled with today's Cog trainers ([DC Rainmaker, 2025-09](https://www.dcrainmaker.com/2025/09/zwift-click-v2-in-depth-review.html)), and a direct driver would still send them to Zwift's app every day, or to BikeControl.
+2. **It breaks rule 4.** ADR-0084 rejected ZAP because US 12,465,816 claims a three-part link of ZAP's shape, and the controllers use that same notify / write / indicate trio. The pending 19/234,077 (EP4670807A1), Zwift's own application on controller pairing, claims an input device that sends the game client a bitmap of the inputs it supports; OBC runs the other way. A ZAP reader is the app end of both. Their status was not re-read for this question.
+3. **The terms.** For the open controllers there is nothing to circumvent, and WattRoom is not a party to Zwift's terms. A rider is, and §5(a)(xiii) reads on "applications that emulate or redirect the communication protocols used by Zwift". For the locked ones, any route other than the rider unlocking in Zwift's app is circumvention under §5(a)(ix), and in the US a question under 17 USC §1201 as well.
+4. **The cost is not one driver.** A handshake, a protobuf decoder, an optional AES-CCM, two-sided devices, a stall detector for locked firmware, and a hardware report per controller and firmware, all of it for code Zwift can break with an over-the-air update.
+
+**Revisit when** Zwift publishes the controller protocol or a licence for it, or Rouvy's support turns into a programme others can join; or a granted 19/234,077 or '816 continuation is read and leaves a controller reader outside it.
+
+### 23.6 Recommendation: hybrid, without Zwift code
+
+Keep BikeControl as the bridge. Most of the short path already exists: the
+Controllers section in settings (#4236) explains BikeControl's keystroke mode,
+the sensor overview points a Zwift rider there, and the desktop shell's Network
+shifter pairs the first BikeControl it hears (#3336). What the copy does not say
+is what §23.1 found. The two issues below would be filed for that. They touch no
+Zwift protocol and need no change to WATTROOM.md.
+
+> **fix(web): the Controllers section says what BikeControl costs and that a Click v2 locks daily**
+> Context: #4540, RESEARCH.md §23. A rider who installs BikeControl on the strength of "BikeControl bridges them" meets a 15-press daily cap after the trial, and a Click v2 or Ride v2 that goes quiet after a minute.
+> Scope: two lines in "Zwift Click, Play and Ride" (`settings/equipment/Controllers.svelte`): BikeControl is free to try, then a one-time Base purchase per platform (free on Linux); a Click v2 or a Ride v2 must be opened in Zwift's app once a day (no subscription), or set to BikeControl's one-side mode. No prices in the copy, which go stale; link BikeControl's own page. No Zwift UUID or detection in the code.
+> Acceptance: the section reads right at phone width; the link opens.
+
+> **test(desktop): does the Linux shell pair BLE at all** (`needs-human-input`)
+> Context: Chrome enables Web Bluetooth on Linux only behind a flag, and the shell passes none (§23.3).
+> Scope: a hardware report from a Linux machine: a trainer, a heart-rate strap and BikeControl as an OBC controller, through the shell's chooser. If it fails, a follow-up adds the switch on Linux only.
+
+**If Jan overrides and wants a direct driver,** these come first, in order:
+
+> **docs: amend "no Zwift protocol" for a read-only controller reader**
+> Scope: WATTROOM.md's gears line and ADR-0084 rule 4 narrowed to "never sends Zwift-format gear commands, never a trainer-side ZAP"; read US 12,465,816's claims and 19/234,077's current claims against a reader that only receives button bitmaps; record Jan's decision and the risk he accepts, as ADR-0084 did. Nothing below starts before this merges.
+
+> **feat(ble): Zwift Click v1 and Ride over Web Bluetooth, its own input switch**
+> Scope: `createZwiftController()` beside the OBC controller, behind `gearsEnabled()`'s own `zwift` switch; filter on Zwift's company ID 0x094A, optional services `0xFC82` and `00000001-19ca-…`; unencrypted "RideOn" handshake; decode message 0x23's active-low bitmap to Harder/Easier and Talk; haptics by the Play command; a lost link drops every hold. Written from Makinolo's prose only, fixtures from his published bytes; nothing from BikeControl, qdomyos-zwift, ajchellew or Auuki. Play waits for its own issue (crypto, or 2.0.1 once documented). The Controllers section's "never show under Shifter" changes with it.
+> Acceptance: fixture tests; the desktop chooser pairs it; a hardware report per controller and firmware.
+
+> **feat(ble): a locked Zwift controller says so instead of going quiet**
+> Scope: a Click v2 or Ride v2 that stops sending events after connecting is shown as "Locked by Zwift: open the Zwift app once today, or pair it through BikeControl." WattRoom never sends the vendor message and never bridges for Zwift's app.
+> Acceptance: a fixture of a silent controller produces the hint, never a failed shift.
 
 ## Ranked risks to the plan
 
