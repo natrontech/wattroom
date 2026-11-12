@@ -210,6 +210,21 @@
 	const haunts = $derived(
 		[ghost?.rider, pacer?.rider].filter((g) => g != null),
 	);
+	// The riders around you on this road, as the Skyline and the Map draw
+	// them (#4536): the Skyline carries each on along the road as you ride
+	// it, the Map places each at its metre that way round.
+	const around = $derived.by(() => {
+		const on = road;
+		if (!on || !mates) return [];
+		return mates()
+			.filter((mate) => mate.name && !mate.faded)
+			.map((mate) => ({
+				m: mate.m,
+				mps: on.reverse ? -mate.mps : mate.mps,
+				label: mate.name,
+				ridden: on.reverse ? on.profile.length - mate.m : mate.m,
+			}));
+	});
 	// The pacer at each Category's par, one menu (#3281).
 	const pacerItems = () => [
 		...PACER_CATEGORIES.map((category) => ({
@@ -498,6 +513,7 @@
 		mps={on.virtualMps}
 		reverse={on.reverse}
 		ghosts={haunts}
+		mates={around}
 		{watts}
 		{ftp}
 	/>
@@ -538,7 +554,10 @@
 
 <RideNarrator {view} {watts} {ftp} {stale} />
 
-{#snippet roadMapView()}{#if map}<RoadMap view={map} />{/if}{/snippet}
+{#snippet roadMapView()}{#if map}<RoadMap
+			view={map}
+			mates={around.map((mate) => ({ m: mate.ridden, label: mate.label }))}
+		/>{/if}{/snippet}
 <RidingSurface
 	roadMap={map ? roadMapView : undefined}
 	class="flex-1 {worldClass} {extra}"

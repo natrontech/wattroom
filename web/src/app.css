@@ -294,6 +294,41 @@
 	--color-grade-3: color-mix(in oklab, var(--color-neon) 50%, transparent);
 	--color-grade-4: color-mix(in oklab, var(--color-neon) 70%, transparent);
 	--color-grade-5: color-mix(in oklab, var(--color-neon) 100%, transparent);
+	/* The place the Flat and Map views stand in (#4536): the 3D world's own
+	   dusk, meadow and ridges (the world tokens below) seen through the
+	   theme's surface, so every theme gets a land of its own colour and no
+	   view is a white page with a line on it. Flat, as the world is: bands
+	   and silhouettes, never a texture. Held to the text floor in
+	   ground-tint.test.ts, since the rail's words and the map's labels stand
+	   on them. */
+	--color-sky-1: light-dark(
+		color-mix(in oklab, var(--world-dio-sky-zenith) 7%, var(--color-surface)),
+		color-mix(in oklab, var(--world-dio-sky-zenith) 6%, var(--color-surface))
+	);
+	--color-sky-2: light-dark(
+		color-mix(in oklab, var(--world-dio-sky-horizon) 14%, var(--color-surface)),
+		color-mix(in oklab, var(--world-dio-sky-zenith) 10%, var(--color-surface))
+	);
+	--color-sky-3: light-dark(
+		color-mix(in oklab, var(--world-dio-sky-horizon) 26%, var(--color-surface)),
+		color-mix(in oklab, var(--world-dio-sky-horizon) 14%, var(--color-surface))
+	);
+	--color-ridge-far: light-dark(
+		color-mix(in oklab, var(--world-px-ridge) 14%, var(--color-surface)),
+		color-mix(in oklab, var(--world-px-ridge) 30%, var(--color-surface))
+	);
+	--color-ridge-near: light-dark(
+		color-mix(in oklab, var(--world-px-ridge-rock) 24%, var(--color-surface)),
+		color-mix(in oklab, var(--world-px-ridge-rock) 40%, var(--color-surface))
+	);
+	--color-land: light-dark(
+		color-mix(in oklab, var(--world-px-biome-meadow) 30%, var(--color-surface)),
+		color-mix(in oklab, var(--world-px-biome-meadow) 30%, var(--color-surface))
+	);
+	--color-land-deep: light-dark(
+		color-mix(in oklab, var(--world-px-biome-forest) 40%, var(--color-surface)),
+		color-mix(in oklab, var(--world-px-biome-forest) 34%, var(--color-surface))
+	);
 }
 
 /*
@@ -741,6 +776,30 @@ body {
  * behind — which is why they had each retyped the border chain instead. */
 @utility shell-card {
 	@apply border-muted/20 rounded-xl border;
+}
+
+/* The sky over the Flat view's road (#4536): the theme's surface where the
+ * rail's numbers stand, deepening to the world's dusk at the horizon. One
+ * background, painted once. */
+@utility flat-sky {
+	background: linear-gradient(
+		to bottom,
+		var(--color-surface),
+		var(--color-sky-1) 25%,
+		var(--color-sky-2) 50%,
+		var(--color-sky-3) 75%
+	);
+}
+/* The Map view's ground (#4536): the land, and a survey grid of hairlines
+ * in the theme's muted ink, 64 px apart. Static, painted once. */
+@utility map-land {
+	background-color: var(--color-land);
+	--grid: color-mix(in oklab, var(--color-muted) 16%, transparent);
+	background-image:
+		linear-gradient(var(--grid) 1px, transparent 1px),
+		linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+	background-size: 64px 64px;
+	background-position: center;
 }
 
 /* A panel over the world (TARGETS G3, ADR-0071, #3668): flat, so the GPU

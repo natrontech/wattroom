@@ -18,6 +18,12 @@
 	 * for stillness nothing scrolls at all — a fixed 2 km page the dot walks
 	 * across, turned at once at its end (#3080). Your dot is the only glow, a
 	 * halo painted once.
+	 *
+	 * Flat, as the ground under the rail (a `.flat-ground` ancestor, #4536), it
+	 * is a place: the world's dusk over its ridges, the road on a meadow with
+	 * the grade on the road itself, a post at each kilometre and the riders
+	 * around you by name. The sky and ridges are static and painted once; only
+	 * the road layer moves, as before. Over the 3D world it stays the band.
 	 */
 	import { untrack } from 'svelte';
 	import { innerHeight } from 'svelte/reactivity/window';
@@ -34,8 +40,10 @@
 		createAheadEase,
 		frameFor,
 		GRADE_FILL,
+		GRADE_STROKE,
 		leadM,
 		pagedFrame,
+		postsIn,
 		SKYLINE,
 		stepsPerTick,
 		tileOf,
@@ -53,6 +61,7 @@
 		strip = false,
 		tv = false,
 		ghosts = [],
+		mates = [],
 		watts,
 		ftp = 0,
 	}: {
@@ -73,6 +82,12 @@
 		tv?: boolean;
 		/** Your ghost (#3245) and the pacer (#3281): each one's metre on the stored road, its speed and its name. */
 		ghosts?: { m: number; mps: number; label: string }[];
+		/**
+		 * The riders around you on this road (#4536), as the world draws them:
+		 * each one's metre on the stored road, its speed along the road as you
+		 * ride it, and its name.
+		 */
+		mates?: { m: number; mps: number; label: string }[];
 		/**
 		 * Your watts (the ride HUD, 2026-11): drawn as a line along the road
 		 * ridden, a sample a second at its metre, and the window reaches
@@ -218,6 +233,28 @@
 		const on = frame;
 		return ghosts.map((ghost) => placed(on, ghost));
 	});
+	// The riders around you, the same way: only those in the window.
+	const around = $derived.by(() => {
+		if (!frame || strip) return [];
+		const on = frame;
+		return mates
+			.map((mate) => placed(on, mate))
+			.filter((p) => p.x - shift >= 0 && p.x - shift <= width);
+	});
+	// The distance posts, flat only (the ground hides them in a band).
+	const posts = $derived(frame && !strip ? postsIn(frame, road) : []);
+	// The road on the land, flat: wide enough to carry its grade at arm's length.
+	const roadW = $derived(tv ? 10 : 8);
+	// How deep the meadow under the road runs before the deeper field.
+	const verge = $derived(Math.max(28, height * 0.07));
+	// The ridges keep their shape at any width: a narrow window sees less of
+	// the range rather than the range squeezed into spikes. Their 1200 units
+	// span a desk window about 2.6 times as wide as the ground is tall.
+	const ridgeW = $derived(
+		width && height
+			? Math.min(1200, Math.round((1200 * width) / height / 2.6))
+			: 1200,
+	);
 	function placed(
 		on: NonNullable<typeof frame>,
 		ghost: { m: number; mps: number; label: string },
@@ -245,14 +282,44 @@
 	data-along={Math.round(m)}
 	role="img"
 	aria-label="the road ahead: {((road.length - m) / 1000).toFixed(1)} km to go"
-	class="relative h-full w-full overflow-hidden"
+	class="in-[.flat-ground]:flat-sky relative h-full w-full overflow-hidden forced-colors:bg-[Canvas]"
 >
+	<!-- Flat, the Skyline is the ground (#4536): the world's ridges stand
+	     behind the road, still as far hills are, drawn once. Over the 3D
+	     world (a band) none of it is drawn: the world is the place there. -->
+	<svg
+		viewBox="0 0 {ridgeW} 100"
+		preserveAspectRatio="none"
+		class="pointer-events-none absolute inset-x-0 top-[16%] hidden h-[84%] w-full in-[.flat-ground]:block forced-colors:hidden"
+		aria-hidden="true"
+	>
+		<path
+			d="M0,100V40L70,26L130,34L210,12L290,30L350,22L430,4L520,28L600,20L680,32L760,8L850,26L920,18L1010,34L1090,14L1160,24L1200,20V100Z"
+			class="fill-ridge-far"
+		/>
+		<path
+			d="M0,100V50L90,38L170,46L260,30L360,44L450,34L540,48L640,32L730,42L830,28L930,40L1030,34L1120,44L1200,36V100Z"
+			class="fill-ridge-near"
+		/>
+		<!-- The valley's floor before them, so a road low in its window
+		     runs through meadow rather than under a wall. -->
+		<path
+			d="M0,100V66L160,62L340,68L520,63L700,69L880,62L1060,67L1200,64V100Z"
+			class="fill-land"
+		/>
+	</svg>
+	<!-- Flat, the profile stands on a foot of land, so the road never runs
+	     along the screen's edge and its posts have room under it. -->
+	<span
+		class="bg-land-deep absolute inset-x-0 bottom-0 hidden h-[14%] in-[.flat-ground]:block forced-colors:hidden"
+	></span>
 	<div
 		bind:clientWidth={width}
 		bind:clientHeight={height}
-		class="absolute inset-x-0"
+		class="absolute inset-x-0 {tv
+			? 'bottom-[2vh]'
+			: 'bottom-3'} in-[.flat-ground]:bottom-[14%]"
 		style:top={pad}
-		style:bottom={pad}
 	>
 		{#if frame}
 			<div
@@ -269,10 +336,23 @@
 						class="absolute top-0 overflow-visible forced-color-adjust-none"
 						aria-hidden="true"
 					>
+						<!-- Flat: the land under the road, which carries the grade,
+						     and a deeper field below its verge. -->
+						<path
+							d={tile.land}
+							class="fill-land hidden in-[.flat-ground]:block forced-colors:fill-[Canvas]"
+						/>
+						<path
+							d={tile.land}
+							transform="translate(0 {verge})"
+							class="fill-land-deep hidden in-[.flat-ground]:block forced-colors:hidden"
+						/>
 						{#each tile.areas as area, step (step)}
 							{#if area}<path
 									d={area}
-									class="{GRADE_FILL[step]} forced-colors:fill-[GrayText]"
+									class="{GRADE_FILL[
+										step
+									]} in-[.flat-ground]:hidden forced-colors:fill-[GrayText]"
 								/>{/if}
 						{/each}
 						<!-- The road ridden is muted, the road ahead neon (TARGETS
@@ -285,9 +365,43 @@
 								height={height * 3}
 							/>
 						</clipPath>
+						<clipPath id="{uid}-{tile.index}-r">
+							<rect
+								x={-tile.width}
+								y={-height}
+								width={tile.width + cut}
+								height={height * 3}
+							/>
+						</clipPath>
+						<!-- Flat: the road's bed, then the road ahead in its grade's
+						     step, so the grade reads off the road itself. -->
 						<path
 							d={tile.line}
 							fill="none"
+							class="stroke-paper hidden in-[.flat-ground]:block forced-colors:stroke-[Canvas]"
+							stroke-width={roadW + 4}
+							stroke-linejoin="round"
+						/>
+						<g
+							clip-path="url(#{uid}-{tile.index})"
+							class="hidden in-[.flat-ground]:block"
+						>
+							{#each tile.roads as run, step (step)}
+								{#if run}<path
+										d={run}
+										fill="none"
+										class="{GRADE_STROKE[
+											step
+										]} forced-colors:stroke-[CanvasText]"
+										stroke-width={roadW}
+										stroke-linejoin="round"
+									/>{/if}
+							{/each}
+						</g>
+						<path
+							d={tile.line}
+							fill="none"
+							clip-path="url(#{uid}-{tile.index}-r)"
 							class="stroke-muted forced-colors:stroke-[GrayText]"
 							stroke-width={tv ? 3 : 2}
 						/>
@@ -295,7 +409,7 @@
 							d={tile.line}
 							fill="none"
 							clip-path="url(#{uid}-{tile.index})"
-							class="stroke-neon forced-colors:stroke-[CanvasText]"
+							class="stroke-neon in-[.flat-ground]:hidden forced-colors:stroke-[CanvasText]"
 							stroke-width={tv ? 3 : 2}
 						/>
 					</svg>
@@ -338,6 +452,45 @@
 						style:top="{chip.y}px">{chip.cls}</span
 					>
 				{/each}
+				{#each posts as post (post.km)}
+					<!-- A distance post (#4536): a stake under the road and its
+					     kilometre, on the land; flat only. -->
+					<span
+						data-testid="skyline-post"
+						class="absolute top-0 left-0 hidden -translate-x-1/2 flex-col items-center in-[.flat-ground]:flex"
+						style:transform="translate({post.x}px, {post.y + roadW}px)"
+					>
+						<span class="bg-ink/60 block h-3 w-0.5"></span>
+						<span
+							class="num text-ink mt-0.5 leading-none font-bold whitespace-nowrap {tv
+								? 'text-[2.6vh]'
+								: 'text-[max(14px,1.8vh)]'}">{post.km} km</span
+						>
+					</span>
+				{/each}
+				{#each around as mate, i (i)}
+					<!-- The riders around you (#4536): solid ink, as the world's
+					     names are, never the watt colour (that is you) and no
+					     glow. -->
+					<span
+						data-testid="skyline-mate"
+						class="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 will-change-transform"
+						style:transform="translate({mate.x}px, {mate.y}px)"
+					>
+						<span
+							class="bg-ink border-surface block rounded-full border-2 forced-colors:bg-[CanvasText] {tv
+								? 'size-[3vh]'
+								: 'size-5'}"
+						></span>
+						<span
+							data-testid="skyline-mate-label"
+							class="text-ink bg-surface/85 absolute bottom-full mb-1.5 rounded px-1 leading-tight font-semibold whitespace-nowrap forced-colors:text-[CanvasText] {mate.early
+								? 'left-1/2'
+								: 'right-1/2'} {tv ? 'text-[3vh]' : 'text-[max(14px,1.8vh)]'}"
+							>{mate.label}</span
+						>
+					</span>
+				{/each}
 				{#each haunts as haunt, i (i)}
 					<!-- Your ghost, a hollow tick named for its day (#3245, #3615), and
 					     the pacer named for its Category (#3281): neither is live, so
@@ -354,7 +507,7 @@
 						></span>
 						<span
 							data-testid="skyline-ghost-label"
-							class="text-muted absolute bottom-full mb-1 leading-none whitespace-nowrap forced-colors:text-[CanvasText] {haunt.early
+							class="text-muted in-[.flat-ground]:bg-surface/85 absolute bottom-full mb-1 leading-none whitespace-nowrap in-[.flat-ground]:rounded in-[.flat-ground]:px-1 in-[.flat-ground]:py-0.5 forced-colors:text-[CanvasText] {haunt.early
 								? 'left-1/2'
 								: 'right-1/2'} {tv ? 'text-[3vh]' : 'text-sm'}"
 							>{haunt.label}</span

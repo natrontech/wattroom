@@ -2,17 +2,27 @@
 	/**
 	 * The Map view (the ride HUD, 2026-11): the road from above as the ground
 	 * between the rail and the Skyline, no panel. The road ahead takes the
-	 * Skyline's grade ramp and is wider the steeper it is. The road ridden is
-	 * a thin muted line, you are a ring, and each classed climb names its
-	 * class at its top. No north, no names, no coordinates: the shape a crew is sent
-	 * (ADR-0063).
+	 * Skyline's grade ramp and is wider the steeper it is, on a bed so the
+	 * ramp's pale steps read on the land under it (#4536). The road ridden is
+	 * a thin muted line, you are a ring, the riders around you are ink dots
+	 * with their names, each classed climb names its class at its top, and the
+	 * road's end says how far there is to go. No north, no names of places, no
+	 * coordinates: the shape a crew is sent (ADR-0063).
 	 */
+	import Flag from '@lucide/svelte/icons/flag';
 	import { heightAt } from '#lib/road/at-metre.ts';
 	import { planPoints, walk } from '#lib/road/draw.ts';
 	import { GRADE_STROKE, gradeStep } from '#lib/road/skyline.ts';
 	import { bestTurn, shapeOf, type MapView } from '#lib/ride/map-view.ts';
 
-	let { view }: { view: MapView } = $props();
+	let {
+		view,
+		mates = [],
+	}: {
+		view: MapView;
+		/** The riders around you on this road (#4536): metres along the road as you ride it, and names. */
+		mates?: { m: number; label: string }[];
+	} = $props();
 
 	// ponytail: the road in 160 even pieces, each its grade; finer if a short
 	// steep ramp ever disappears in a long piece.
@@ -47,6 +57,16 @@
 			? view.climbs.map((c) => ({ cls: c.cls, p: line.point(c.topM / length) }))
 			: [],
 	);
+	const around = $derived(
+		line
+			? mates.map((mate) => ({
+					label: mate.label,
+					p: line.point(Math.min(1, Math.max(0, mate.m / length))),
+				}))
+			: [],
+	);
+	const end = $derived(line ? line.point(1) : null);
+	const toGo = $derived(Math.max(0, (length - view.m) / 1000));
 	const ROUND = {
 		'stroke-linejoin': 'round',
 		'stroke-linecap': 'round',
@@ -66,8 +86,26 @@
 			height="100%"
 			class="block forced-color-adjust-none"
 			role="img"
-			aria-label="the road from above, and where you are on it"
+			aria-label="the road from above, and where you are on it: {toGo.toFixed(
+				1,
+			)} km to go"
 		>
+			<!-- The road's bed, its whole length and edged as a map's road is:
+			     the road on the land. -->
+			<path
+				d={line.between(0, 1)}
+				fill="none"
+				class="stroke-muted-dim/60 forced-colors:stroke-[CanvasText]"
+				stroke-width="16"
+				{...ROUND}
+			/>
+			<path
+				d={line.between(0, 1)}
+				fill="none"
+				class="stroke-paper forced-colors:stroke-[Canvas]"
+				stroke-width="12"
+				{...ROUND}
+			/>
 			<!-- Ridden: a thin muted line. -->
 			{#if at > 0}
 				<path
@@ -91,6 +129,17 @@
 						stroke-linejoin="round"
 					/>
 				{/if}
+			{/each}
+			<!-- The riders around you: ink, smaller than you, never watt. -->
+			{#each around as mate, i (i)}
+				<circle
+					data-testid="map-mate"
+					cx={mate.p[0]}
+					cy={mate.p[1]}
+					r="8"
+					class="fill-ink stroke-surface forced-colors:fill-[CanvasText]"
+					stroke-width="3"
+				/>
 			{/each}
 			<!-- You: a ring round a dot, ink as on the climb's profile (G2). -->
 			<circle
@@ -116,5 +165,25 @@
 				style:top="{top.p[1]}px">{top.cls}</span
 			>
 		{/each}
+		{#each around as mate, i (i)}
+			<span
+				data-testid="map-mate-label"
+				class="bg-surface/85 text-ink absolute translate-x-3 -translate-y-1/2 rounded px-1.5 text-[max(15px,2vh)] leading-snug font-semibold whitespace-nowrap"
+				style:left="{mate.p[0]}px"
+				style:top="{mate.p[1]}px">{mate.label}</span
+			>
+		{/each}
+		{#if end}
+			<!-- The road's end, and how far there is to go to it. -->
+			<span
+				data-testid="map-to-go"
+				class="border-frame bg-surface text-ink absolute flex -translate-x-1/2 translate-y-3 items-center gap-1 rounded border px-[0.4em] text-[max(16px,2.4vh)] leading-snug font-bold whitespace-nowrap"
+				style:left="{end[0]}px"
+				style:top="{end[1]}px"
+				><Flag aria-hidden="true" class="size-[0.9em]" /><span class="num"
+					>{toGo.toFixed(1)} km</span
+				></span
+			>
+		{/if}
 	{/if}
 </div>
