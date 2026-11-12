@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+	ambientWatch,
 	CALM,
 	createLoop,
 	createPacer,
@@ -99,6 +100,50 @@ describe('the pacer', () => {
 		expect(pacer.stats().missed).toBe(0);
 	});
 
+	it.each([
+		[60, 4],
+		[120, 8],
+		[144, 10],
+	])(
+		'renders at half rate while the ride stands and something moves by itself: every %i Hz frame by %i',
+		(hz, k) => {
+			const pacer = createPacer();
+			let out = '';
+			for (let i = 0; i < 4 * k; i++)
+				out += pacer.tick((i * 1000) / hz, i > 0 ? 'ambient' : 'moving')
+					? '1'
+					: '0';
+			// The first frame, then dozing from 30 to 15 fps: it just drew.
+			expect(out).toBe('1' + '0'.repeat(k) + every(k, 3 * k - 1));
+			expect(pacer.stats().missed).toBe(0);
+		},
+	);
+
+	it('wakes from still to ambient at once, and settles from ambient to still', () => {
+		const pacer = createPacer();
+		let drawn = 0;
+		for (let i = 0; i < 120; i++)
+			if (pacer.tick((i * 1000) / 60, i > 0 ? 'still' : 'moving')) drawn++;
+		expect(drawn).toBe(1 + 1); // the first frame and one a second
+		expect(pacer.tick((120 * 1000) / 60, 'ambient')).toBe(true);
+		drawn = 0;
+		for (let i = 121; i < 181; i++)
+			if (pacer.tick((i * 1000) / 60, 'ambient')) drawn++;
+		expect(drawn).toBe(15);
+		expect(pacer.tick((181 * 1000) / 60, 'still')).toBe(false);
+		expect(pacer.stats().missed).toBe(0);
+	});
+
+	it('counts a stall while standing as no miss, but as late standing frames', () => {
+		const pacer = createPacer();
+		let now = 0;
+		for (let i = 0; i < 30; i++) pacer.tick((now = (i * 1000) / 60), 'ambient');
+		expect(pacer.tick(now + 20 * (1000 / 60), 'ambient')).toBe(true);
+		expect(pacer.stats().missed).toBe(0);
+		// Twenty vsyncs are five 15 fps intervals: four went without a frame.
+		expect(pacer.stats().ambient.missed).toBe(4);
+	});
+
 	it('does not count a hold as missed frames', () => {
 		const pacer = createPacer();
 		for (let i = 0; i < 10; i++) pacer.tick((i * 1000) / 60);
@@ -150,6 +195,59 @@ function watched(hz: number, cost: (second: number) => number, s: number) {
 	return null;
 }
 
+/** A standing world at `hz` whose renders take `cost` vsyncs: the second the ambient watch gave up on 15 fps, or null. */
+function standing(hz: number, cost: number, s: number) {
+	const pacer = createPacer();
+	const watch = ambientWatch();
+	let now = 0;
+	for (let second = 1; second <= s; second++) {
+		while (now < second * 1000)
+			now += (pacer.tick(now, 'ambient') ? cost : 1) * (1000 / hz);
+		if (watch(pacer.stats())) return second;
+	}
+	return null;
+}
+
+describe('the standing watch (#4533)', () => {
+	it('keeps 15 fps standing on a screen that makes it', () => {
+		expect(standing(60, 2, 30)).toBeNull();
+		expect(standing(144, 6, 30)).toBeNull();
+	});
+
+	it('gives up after three slow seconds on one that does not: the software rig’s 7 fps', () => {
+		expect(standing(60, 7, 30)).toBe(4);
+	});
+
+	it('forgives one stall', () => {
+		const watch = ambientWatch();
+		const at = (rendered: number, missed: number) => ({
+			rendered: 0,
+			missed: 0,
+			hz: 60,
+			ambient: { rendered, missed },
+		});
+		watch(at(0, 0));
+		expect(watch(at(15, 0))).toBe(false);
+		expect(watch(at(20, 10))).toBe(false);
+		for (let k = 1; k < 10; k++) expect(watch(at(20 + 15 * k, 10))).toBe(false);
+	});
+
+	it('takes the seconds the ride moved as no evidence: they neither count nor break the run', () => {
+		const watch = ambientWatch();
+		const at = (missed: number) => ({
+			rendered: 0,
+			missed: 0,
+			hz: 60,
+			ambient: { rendered: 10, missed },
+		});
+		watch(at(0));
+		watch(at(10));
+		watch(at(20));
+		for (let k = 0; k < 10; k++) expect(watch(at(20))).toBe(false);
+		expect(watch(at(30))).toBe(true);
+	});
+});
+
 describe('the fallback watch (#3080)', () => {
 	it('falls back after ten seconds of a steady 20 fps: a third missed', () => {
 		expect(watched(60, () => 3, 30)).toBe(FALLBACK.seconds + 1);
@@ -182,7 +280,12 @@ describe('the fallback watch (#3080)', () => {
 
 	it('needs ten seconds of drawing: the seconds a gate held the world fill nothing', () => {
 		const watch = missWatch();
-		const at = (k: number) => ({ rendered: 20 * k, missed: 10 * k, hz: 60 });
+		const at = (k: number) => ({
+			rendered: 20 * k,
+			missed: 10 * k,
+			hz: 60,
+			ambient: { rendered: 0, missed: 0 },
+		});
 		watch(at(0));
 		for (let i = 0; i < 30; i++) expect(watch(at(0))).toBe(false);
 		for (let k = 1; k < FALLBACK.seconds; k++) expect(watch(at(k))).toBe(false);

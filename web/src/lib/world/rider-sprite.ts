@@ -178,6 +178,13 @@ export function drawSheets(ms = 3) {
 	}
 }
 
+/**
+ * Sheets are still being drawn. The world draws at its full rate until they
+ * are done (compose.ts `idle`): at a standing world's frame a second, 3 ms a
+ * frame took 40 s, each turn popping in a second apart (#4533).
+ */
+export const sheetsPending = () => jobs.length > 0;
+
 export type RiderSheet = {
 	texture: THREE.CanvasTexture;
 	/** Turns up on the GPU, seated and standing: a sprite shows the nearest of them. */

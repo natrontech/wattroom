@@ -43,39 +43,50 @@ export function watchClimbCues(
 	let topped: number | null = null;
 	let called: GhostCall | null = null;
 
-	$effect(() => {
-		const id = setInterval(() => {
-			for (const e of queue.tick()) {
-				const on = e.stage === 'enter';
-				if (e.kind === 'climb') {
-					climbStage.slide = on;
-					if (on) play('climb');
-				} else if (e.kind === 'flamme') climbStage.flammeStamp = on;
-				else if (e.kind === 'summit') {
-					climbStage.summit =
-						e.stage === 'exit'
-							? null
-							: { cls: e.payloads[0] as ClimbClass, confetti: e.confetti };
-					if (on) play('summit');
-				} else if (e.kind === 'split' || e.kind === 'pr') {
-					climbStage.call =
-						e.stage === 'exit' ? null : (e.payloads.at(-1) as GhostCall);
-					if (on) play(e.kind === 'pr' ? 'fanfare' : 'split');
-				}
+	// The queue's clock runs only while it holds a moment. It used to tick 20
+	// times a second all ride long, through a voice channel's ride that had
+	// not started, for a climb card that shows a few times an hour (#4533).
+	let clock: ReturnType<typeof setInterval> | undefined;
+	function step() {
+		for (const e of queue.tick()) {
+			const on = e.stage === 'enter';
+			if (e.kind === 'climb') {
+				climbStage.slide = on;
+				if (on) play('climb');
+			} else if (e.kind === 'flamme') climbStage.flammeStamp = on;
+			else if (e.kind === 'summit') {
+				climbStage.summit =
+					e.stage === 'exit'
+						? null
+						: { cls: e.payloads[0] as ClimbClass, confetti: e.confetti };
+				if (on) play('summit');
+			} else if (e.kind === 'split' || e.kind === 'pr') {
+				climbStage.call =
+					e.stage === 'exit' ? null : (e.payloads.at(-1) as GhostCall);
+				if (on) play(e.kind === 'pr' ? 'fanfare' : 'split');
 			}
-		}, 50);
-		return () => {
-			clearInterval(id);
-			climbStage.slide = climbStage.flammeStamp = false;
-			climbStage.summit = climbStage.call = null;
-		};
+		}
+		if (queue.busy()) return;
+		clearInterval(clock);
+		clock = undefined;
+	}
+	const stage = (moment: Parameters<typeof queue.stage>[0]) => {
+		queue.stage(moment);
+		clock ??= setInterval(step, 50);
+	};
+
+	$effect(() => () => {
+		clearInterval(clock);
+		clock = undefined;
+		climbStage.slide = climbStage.flammeStamp = false;
+		climbStage.summit = climbStage.call = null;
 	});
 
 	$effect(() => {
 		const call = ghostCall();
 		if (!call || call === called) return;
 		called = call;
-		queue.stage({ kind: call.kind, payload: call });
+		stage({ kind: call.kind, payload: call });
 	});
 
 	$effect(() => {
@@ -85,15 +96,15 @@ export function watchClimbCues(
 		const cls = v.climb.cls;
 		if (climb !== opened) {
 			opened = climb;
-			queue.stage({ kind: 'climb', payload: cls });
+			stage({ kind: 'climb', payload: cls });
 		}
 		if (v.card.flammeRouge && climb !== flagged) {
 			flagged = climb;
-			queue.stage({ kind: 'flamme', payload: cls });
+			stage({ kind: 'flamme', payload: cls });
 		}
 		if (v.card.summited && climb !== topped) {
 			topped = climb;
-			queue.stage({ kind: 'summit', category: CATEGORY[cls], payload: cls });
+			stage({ kind: 'summit', category: CATEGORY[cls], payload: cls });
 		}
 	});
 }

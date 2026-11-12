@@ -17,7 +17,7 @@ A box in the bottom-right corner, above the now bar, takes no clicks and shows t
 |---|---|
 | **page** | Animation frames a second and the interval between them, p50 / p95 / max. Below the display's rate, something held the main thread or the frame's commit |
 | **long tasks** | Tasks over 50 ms (`PerformanceObserver('longtask')`): how many, their total and the longest |
-| **world** | The world's own frames a second (30 riding, 1 standing still: loop.ts), the share of its 30 fps intervals missed, the quality rung and pixel ratio |
+| **world** | The world's own frames a second (30 riding; standing, 15 while rain falls or someone waves in sight, else 1: loop.ts), the share of its 30 fps intervals missed, the quality rung and pixel ratio |
 | **draws · tris · tex · geo · prog** | three.js's `renderer.info` for the last frame: draw calls, triangles, textures, geometries, shader programs |
 | **video** | Videos with a picture, their decoded and dropped frames a second, the largest in MP: camera tiles and the stage |
 | **`wattroom:` table** | Each named span: runs a second, ms a run p50 / p95, and ms a second, busiest first |
@@ -171,7 +171,7 @@ Pixel 3D, measured before it gave way to Diorama 3D on 2026-11-07 (`pixels=d` dr
 
 ## A camera switch on a still world
 
-A world whose rider stands still draws one frame a second (loop.ts), each moving the ride on a tenth of a second (scene.ts's `MAX_DT`). That is a voice channel's free ride before the first pedal stroke. The camera eased into each new shot on its follow's half-life, so a switch crawled at that rate (a rider, 2026-11-11: "really laggy"). Now a switch is a cut, as docs/spec/motion.md has it, drawn on the next animation frame. The world then draws on for at most 2 s while the ground and the dressing round the new eye come in.
+A world whose rider stands still draws one frame a second when nothing in it moves (loop.ts; "A standing world" below), each moving the ride on a tenth of a second (scene.ts's `MAX_DT`). That is a voice channel's free ride before the first pedal stroke. The camera eased into each new shot on its follow's half-life, so a switch crawled at that rate (a rider, 2026-11-11: "really laggy"). Now a switch is a cut, as docs/spec/motion.md has it, drawn on the next animation frame. The world then draws on for at most 2 s while the ground and the dressing round the new eye come in.
 
 Measured in a headless SwiftShader Chromium at 1440 × 900, 2026-11-11, with the camera button in a voice channel's free ride on the Pass loop before pedalling. Times are from the click until the world shows the new shot, and until the picture stops changing:
 
@@ -211,10 +211,39 @@ On the GPU, both rides: no long tasks, page frames at 60 a second, 18–19 draws
 - **Riding, the voice channel costs the world nothing measurable on a GPU.** Same frames, same misses, render JS within the run-to-run spread. Voice itself is about 9 % of a core more in the renderer (the call, its noise filter and the mic meter, off the main thread); `channel-message` is about 1 ms a second.
 - **No video tile draws under the ride's 3D view.** With two cameras in the call, the lounge shows a 320 × 180 tile; the ride's 3D view has no video element at all.
 - **The lounge is not drawn behind the world.** Switched to the Lounge view, `world-frame` stops and `lounge-frame` runs at 14 a second, 0.7 ms each.
-- **With no trainer the world draws one frame a second.** Nothing moves, so loop.ts's idle clock holds it at `IDLE_MS`, as designed (#4528). `/ride` cannot start without a trainer or the simulated one, so there the world is always moving: the rider was comparing a still world against a moving one. Standing, each frame draws 27 draws against riding's 19, and its JS stays at 6–10 ms for the first ~40 s: the rider sprite sheets are drawn 3 ms a frame (rider-sprite.ts `drawSheets`), at one frame a second.
+- **With no trainer the world draws one frame a second.** Nothing moves, so loop.ts's idle clock holds it at `IDLE_MS`, as designed (#4528). `/ride` cannot start without a trainer or the simulated one, so there the world is always moving: the rider was comparing a still world against a moving one. Standing, each frame draws 27 draws against riding's 19, and its JS stays at 6–10 ms for the first ~40 s: the rider sprite sheets are drawn 3 ms a frame (rider-sprite.ts `drawSheets`), at one frame a second. What came of it: the next section.
 - **On the software rig voice costs about 4–8 % of the frame rate,** reproduced in three runs (4.7 → 4.4, 4.7 → 4.3, 4.5 → 4.4 fps). SwiftShader rasterises on 8–10 cores of the GPU process, so the renderer's extra 8 % of a core competes with it. On a machine without a usable GPU, voice and the world share the CPU.
 
 The throttle slows only the page's own thread. SwiftShader draws in the GPU process, at the speed of the machine's CPU, so its frame times are a software rig's and say nothing about a GPU. The results are in docs/spec/world.md, "The slow rig".
+
+## A standing world
+
+At a frame a second, a standing world was still only where nothing in it moved. The pass's rain and snow run on the wall clock, and so does a roadside person's wave: both jumped a second at a time, and the rider sprite's turns popped in a second apart as their sheets trickled up. That was the "buggy and slow" world (#4533). The rule now (loop.ts `Pace`, scene.ts `pace`):
+
+- **Moving: 30 fps,** as before. A rider sheet still being drawn counts as moving, so the sheets finish in the first second or two instead of the first forty.
+- **Standing, something moving by itself: 15 fps,** the lounge's own rate, which its rain and snow are drawn at. That is rain or snow in the pass, or someone who waves within sight, near enough that an art pixel is at least 0.45 screen pixels (about 85 m at 720 px high): farther, the sprite is its quarter copy and the arm no pixel of its own (roadside.ts `wavesInSight`).
+- **Standing, nothing moving: a frame a second.** It cannot be seen. The lowest rung, which draws no weather, always stands here, and so does a world that missed more than a fifth of its 15 fps intervals three seconds in a row (loop.ts `ambientWatch`), for the rest of the ride.
+- Rejected: 30 fps standing (12 % of a core in the GPU process against 15 fps's 7 %, for a picture that shows nothing more), freezing the rain and the waves while standing (frozen streaks over the road read as a broken picture, not a still one), and the cheapest rung while standing (the picture would sharpen with the first pedal stroke).
+
+`make voice-bench`, M5 Pro, November 2026, headless at 1280 × 720, Diorama 3D, 30 s after 15 s, `main` and this change in one session on a machine shared with other jobs. Its JS is about twice the morning's run above, riding included: compare inside the table.
+
+| Scene, GPU (Metal) | before: world fps, render JS p50 / p95, draws, renderer / GPU-process CPU, `world-frame` ms a second | after |
+|---|---|---|
+| `/ride`, simulated trainer | 30.2, 4.3 / 5.1 ms, 18, 24 % / 14 %, 120 | 30.2, 4.0 / 4.8 ms, 18, 22 % / 14 %, 114 |
+| voice channel, simulated trainer | 30.1, 3.8 / 5.2 ms, 18, 35 % / 11 %, 114 | 30.1, 3.8 / 5.1 ms, 18, 35 % / 11 %, 112 |
+| voice channel, no trainer, at the START arch with a waver in sight | **1.0**, 8.6 / 11.3 ms, 27, 26 % / 2 %, 7.6 | **15.1**, 4.2 / 4.9 ms, 23, 32 % / 7 %, 60 |
+| the same, nothing in sight moving (pace held at still) | | 1.0, 4.5 / 5.3 ms, 23, 26 % / 2 %, 4.3 |
+
+| Scene, software (SwiftShader) | before: world fps, renderer / GPU-process CPU | after |
+|---|---|---|
+| voice channel, simulated trainer | 4.7, 12 % / 1023 % | 4.8, 12 % / 1022 % |
+| voice channel, no trainer | 1.0, 19 % / 131 % | 1.0, 18 % / 136 %: 7.0 fps and 865 % until `ambientWatch` stood it down |
+
+- **Standing with something moving costs half of riding.** On the GPU, 15 fps is +5 % of a core in the GPU process and about +6 % in the renderer (the renderer moves a few points run to run); riding is +9 % and +9 %. A frame a second still holds whenever nothing on screen moves.
+- **The sheets are done in the first two seconds.** Before, standing frames took 6–10 ms for the first ~40 s; after, the world draws at 30 fps while the sheets are drawn (19.5 frames a second over the first 2 s, the turn to 15 included), then 3.7–3.9 ms frames.
+- **27 draws standing against 19 riding was the START arch.** A standing rider waits under it; a moving one has left it behind. Its banner was a box with a material a face, six draws; it is now two, its chrome and its painted faces (furniture.ts). The finish arch, a game's arch and a sprint banner are the same arch.
+- **The always-on 50 ms clock was the climb card's, not the dock-in's.** `RidingSurface`'s dock-in clock runs only while a count-in does, and a voice channel's free ride has none. The climb card's moments queue (climb-cues.svelte.ts) ticked 20 times a second all ride: 403 ticks in 20 s standing. It now runs only while a moment is on: 53 ticks for the Pass loop's opening climb card, then none.
+- **The page still sees 60 animation frames a second while the world stands,** the loop asking each vsync whether to draw (and `?perf`'s own counter). Waking on a timer instead is the next thing to measure, with the overlay off.
 
 ## Adding a case
 

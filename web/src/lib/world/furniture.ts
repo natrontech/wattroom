@@ -114,12 +114,21 @@ export function arch(route: Route, a: Arch, style: Style): THREE.Group {
 	);
 	const face = new THREE.MeshLambertMaterial({ map: tex });
 	const box = ([at, size]: Box, m: THREE.Material | THREE.Material[]) => {
-		const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), m);
+		const geometry = new THREE.BoxGeometry(...size);
+		if (Array.isArray(m)) {
+			// A box is six groups, a draw each: its four chrome sides as one,
+			// its two painted faces as another (#4533; a voice channel's ride
+			// stands under the START arch, 27 draws against 19 riding).
+			geometry.clearGroups();
+			geometry.addGroup(0, 24, 0);
+			geometry.addGroup(24, 12, 1);
+		}
+		const mesh = new THREE.Mesh(geometry, m);
 		mesh.position.set(...at);
 		g.add(mesh);
 	};
 	for (const p of ARCH_POSTS) box(p, chrome);
-	box(ARCH_BANNER, [chrome, chrome, chrome, chrome, face, face]);
+	box(ARCH_BANNER, [chrome, face]);
 	g.position.set(a.x, yOf(route, a.y) + 0.1, a.z);
 	g.rotation.y = Math.atan2(a.turn[1], a.turn[0]) + Math.PI;
 	return g;

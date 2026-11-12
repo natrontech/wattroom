@@ -196,6 +196,11 @@ export function createMoments<P = unknown>(deps: MomentsDeps) {
 				.map(({ who, verb, count }) => ({ who, verb, count }));
 		},
 
+		/** Something is on the stage, waiting for it or in the ticker: until it is not, `tick()` has work. */
+		busy(): boolean {
+			return showing !== null || waiting.length > 0 || ticker.length > 0;
+		},
+
 		/** Move the stage to `now` and hand back what changed since the last tick. */
 		tick(): MomentEvent<P>[] {
 			const now = deps.now();

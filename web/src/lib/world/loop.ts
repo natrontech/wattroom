@@ -1,15 +1,32 @@
 /**
  * The world's frame clock (#3078, docs/SPEC.md "The world"): 30 fps on the
  * display's own vsync divisor — every 2nd frame at 60 Hz, 4th at 120, 5th at
- * 144, 6th at 165 — one frame a second while nothing moves, and none while
+ * 144, 6th at 165 — 15 fps while the ride stands but something on screen
+ * moves by itself, one frame a second while nothing moves, and none while
  * any gate is shut. The divisor intervals that pass without a frame are
  * counted: that, not the JS time of render(), is what rideView() falls back
  * to the Skyline on (ADR-0066, #3080).
  */
 
 export const FPS = 30;
+/**
+ * The ride stands, but rain falls or someone waves in sight (#4533): the
+ * lounge's own rate, which its rain and snow are drawn at. At a frame a
+ * second they jumped a second at a time, and the world read as broken.
+ */
+export const AMBIENT_FPS = 15;
 /** A frame a second while nothing moves. */
 export const IDLE_MS = 1000;
+
+/**
+ * How fast the world draws: `moving` at FPS, `ambient` at AMBIENT_FPS,
+ * `still` a frame a second. Only `moving` counts missed intervals. `true`
+ * is `still` and `false` `moving`, for a caller that knows only idle or not.
+ */
+export type Pace = 'moving' | 'ambient' | 'still';
+const paceOf = (p: Pace | boolean): Pace =>
+	p === true ? 'still' : p === false ? 'moving' : p;
+const RANK: Record<Pace, number> = { still: 0, ambient: 1, moving: 2 };
 
 /**
  * How many display frames make one of ours: never above 30 fps, so 144 Hz
@@ -24,6 +41,8 @@ export type LoopStats = {
 	/** Divisor intervals that passed without a frame, idle and shut gates excepted. */
 	missed: number;
 	hz: number;
+	/** Frames drawn at AMBIENT_FPS, and its intervals that passed without one: never part of `missed`. */
+	ambient: { rendered: number; missed: number };
 };
 
 /**
@@ -47,8 +66,9 @@ export function createPacer() {
 	let slot = 0; // the grid interval that last rendered
 	let rendered = 0;
 	let missed = 0;
-	let wasIdle = false;
+	let was: Pace = 'moving';
 	let drew = false;
+	const ambient = { rendered: 0, missed: 0 };
 	function begin(render: boolean) {
 		phase = 0;
 		slot = 0;
@@ -57,7 +77,8 @@ export function createPacer() {
 	}
 	return {
 		/** `now`: the animation frame's timestamp, ms. */
-		tick(now: number, idle = false): boolean {
+		tick(now: number, at: Pace | boolean = 'moving'): boolean {
+			const pace = paceOf(at);
 			const delta = now - last;
 			const first = last < 0;
 			last = now;
@@ -70,19 +91,28 @@ export function createPacer() {
 				if (deltas.length > 60) deltas.shift();
 				period = periodOf(deltas);
 			}
-			if (idle !== wasIdle) {
-				wasIdle = idle;
-				return begin(!idle); // waking draws at once; dozing off just drew
+			if (pace !== was) {
+				const faster = RANK[pace] > RANK[was];
+				was = pace;
+				return begin(faster); // waking draws at once; dozing off just drew
 			}
 			phase += Math.max(1, Math.round(delta / period));
-			const every = idle
-				? Math.round(IDLE_MS / period)
-				: divisorFor(1000 / period);
-			const at = Math.floor(phase / every);
-			if (at === slot) return (drew = false);
+			const divisor = divisorFor(1000 / period);
+			const every =
+				pace === 'still'
+					? Math.round(IDLE_MS / period)
+					: pace === 'ambient'
+						? divisor * Math.round(FPS / AMBIENT_FPS)
+						: divisor;
+			const n = Math.floor(phase / every);
+			if (n === slot) return (drew = false);
 			// Every interval the grid passed without a frame is a miss.
-			if (!idle) missed += at - slot - 1;
-			slot = at;
+			if (pace === 'moving') missed += n - slot - 1;
+			if (pace === 'ambient') {
+				ambient.rendered++;
+				ambient.missed += n - slot - 1;
+			}
+			slot = n;
 			rendered++;
 			return (drew = true);
 		},
@@ -91,8 +121,30 @@ export function createPacer() {
 			last = -1;
 		},
 		stats(): LoopStats {
-			return { rendered, missed, hz: 1000 / period };
+			return { rendered, missed, hz: 1000 / period, ambient: { ...ambient } };
 		},
+	};
+}
+
+/**
+ * Judges the pacer's stats, handed one a second: true once the world has
+ * missed more than a fifth of its AMBIENT_FPS intervals in `seconds` seconds
+ * of standing in a row. A machine that cannot draw the standing world at
+ * 15 fps would spend all it has trying (the software rig: 7 fps on 8–9
+ * cores, against 1.3 at a frame a second), so it stands still instead.
+ */
+export function ambientWatch(seconds = 3) {
+	let last: LoopStats['ambient'] | null = null;
+	let slow = 0;
+	return (stats: LoopStats): boolean => {
+		const before = last;
+		last = stats.ambient;
+		if (!before) return false;
+		const rendered = stats.ambient.rendered - before.rendered;
+		const missed = stats.ambient.missed - before.missed;
+		if (rendered + missed === 0) return false; // not standing: no evidence
+		slow = missed / (rendered + missed) > FALLBACK.share ? slow + 1 : 0;
+		return slow >= seconds;
 	};
 }
 
@@ -224,11 +276,11 @@ const browserFrames: Frames = {
 
 /**
  * The loop: `draw(seconds)` on the frames the pacer picks, from start() and
- * while every gate is open. `idle()` is asked each frame whether anything moves.
+ * while every gate is open. `pace()` is asked each frame how much moves.
  */
 export function createLoop(
 	draw: (seconds: number) => void,
-	idle: () => boolean,
+	pace: () => Pace | boolean,
 	frames: Frames = browserFrames,
 ) {
 	const pacer = createPacer();
@@ -239,7 +291,7 @@ export function createLoop(
 	let since = -1;
 	function frame(now: number) {
 		id = frames.request(frame);
-		if (!pacer.tick(now, idle())) return;
+		if (!pacer.tick(now, pace())) return;
 		const seconds = since < 0 ? 0 : (now - since) / 1000;
 		since = now;
 		draw(seconds);
