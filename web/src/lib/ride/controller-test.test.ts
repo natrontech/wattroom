@@ -52,5 +52,7 @@ describe('the Controllers page’s pad (#4236)', () => {
 		expect(pressOfController('harder')).toBe('Harder');
 		expect(pressOfController('page-prev')).toBe('Computer page');
 		expect(pressOfController('map')).toBe('Map page, and back');
+		expect(pressOfController('details')).toBe('Ride details');
+		expect(pressOfController('back')).toBe('Back to RIDE');
 	});
 });

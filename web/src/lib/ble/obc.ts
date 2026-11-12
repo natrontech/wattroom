@@ -27,13 +27,23 @@ export type ObcAction =
 	| 'map'
 	| 'snap'
 	| 'page-prev'
-	| 'page-next';
+	| 'page-next'
+	| 'details'
+	| 'back';
 
 /**
  * The buttons WattRoom answers, and exactly the list App Information sends
  * (#3335). Gear Set (0x03) is not among them: a gear moves to its table
  * neighbour only, and with no real ratio known it has no index to set
  * (ADR-0084).
+ *
+ * The navigation IDs are what BikeControl's Zwift Click V2 sends by default
+ * (#4532): its left pad's arrows are Up, Down, Steer Left and Steer Right,
+ * A is Select and B is Back. The road holds the rider's line, so steering
+ * turns the computer's pages as ← → do; Select is the tap on the ride rail
+ * and Back brings it home. Menu (the Click V2's Y), Lap, Home and the
+ * emotes have nothing to run here and stay out: BikeControl then says so
+ * instead of WattRoom doing nothing.
  */
 export const OBC_BUTTONS: Readonly<Record<number, ObcAction>> = {
 	0x01: 'harder', // Shift Up
@@ -47,7 +57,21 @@ export const OBC_BUTTONS: Readonly<Record<number, ObcAction>> = {
 	0x45: 'map', // Map Toggle
 	0x12: 'page-prev', // Left
 	0x13: 'page-next', // Right
+	0x10: 'page-prev', // Up
+	0x11: 'page-next', // Down
+	0x18: 'page-prev', // Steer Left
+	0x19: 'page-next', // Steer Right
+	0x14: 'details', // Select/Confirm
+	0x15: 'back', // Back/Cancel
 };
+
+/** The actions a navigation ID runs: a button's fallback where it also shifts. */
+const NAVIGATION = new Set<ObcAction>([
+	'page-prev',
+	'page-next',
+	'details',
+	'back',
+]);
 
 export interface ObcButton {
 	id: number;
@@ -167,6 +191,11 @@ export type ObcEdge = 'down' | 'up' | 'drop';
  * at once (Shift Up and Increase Difficulty, PROTOCOL.md "Multiple Actions
  * Per Button"), so an action goes down with the first of its IDs and up with
  * the last: one press, never two shifts.
+ *
+ * The spec's own example sends Select with Shift Up, for an app that cannot
+ * shift. WattRoom shifts, so a navigation ID pressed in the same message as
+ * a shift is that fallback and runs nothing (#4532): a shift never turns a
+ * page or opens the rail.
  */
 export function createObcButtons(
 	onEdge: (action: ObcAction, edge: ObcEdge) => void,
@@ -176,9 +205,15 @@ export function createObcButtons(
 		/** One decoded message; device status and unknown buttons change nothing. */
 		take(message: ObcMessage | null) {
 			if (message?.type !== 'buttons') return;
+			const shifts = message.buttons.some(
+				({ id, state }) =>
+					state !== 0x00 &&
+					(OBC_BUTTONS[id] === 'harder' || OBC_BUTTONS[id] === 'easier'),
+			);
 			for (const { id, state } of message.buttons) {
 				const action = OBC_BUTTONS[id];
 				if (!action) continue;
+				if (shifts && state !== 0x00 && NAVIGATION.has(action)) continue;
 				const ids = pressed.get(action) ?? new Set<number>();
 				const was = ids.size > 0;
 				if (state === 0x00) ids.delete(id);

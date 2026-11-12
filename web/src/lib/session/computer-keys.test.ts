@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest';
 import { edgeDivider } from '#lib/divider.ts';
-import { claimPageTurn } from './computer-pages';
+import { computerShown } from './computer-shown.svelte';
+import { PAGE_ASK, claimPageTurn, railPress } from './computer-pages';
 
 /**
  * ← and → turn the bike computer's page, and nothing else does (ADR-0071):
@@ -92,5 +93,42 @@ describe('the page keys', () => {
 		press({ key: 'ArrowRight' });
 		window.removeEventListener('keydown', tv);
 		expect(heard).toEqual([1, 1]);
+	});
+});
+
+describe('the rail’s tap, and a controller’s Select and Back (#4532)', () => {
+	let asked: string[] = [];
+	const ask = (event: Event) => {
+		asked.push((event as CustomEvent<string>).detail);
+		event.preventDefault();
+	};
+	afterEach(() => {
+		window.removeEventListener(PAGE_ASK, ask);
+		asked = [];
+		computerShown.details = false;
+	});
+
+	it('Select opens the second row and shuts it again, as the tap does', () => {
+		window.addEventListener(PAGE_ASK, ask);
+		railPress('details', { open: false, map: false });
+		expect(computerShown.details).toBe(true);
+		railPress('details', { open: true, map: false });
+		expect(computerShown.details).toBe(false);
+		expect(asked).toEqual([]);
+	});
+
+	it('Select from MAP brings RIDE back with the row', () => {
+		window.addEventListener(PAGE_ASK, ask);
+		railPress('details', { open: false, map: true });
+		expect(asked).toEqual(['ride']);
+		expect(computerShown.details).toBe(true);
+	});
+
+	it('Back shuts the row and brings the computer home to RIDE', () => {
+		window.addEventListener(PAGE_ASK, ask);
+		computerShown.details = true;
+		railPress('back', { open: true, map: false });
+		expect(computerShown.details).toBe(false);
+		expect(asked).toEqual(['ride']);
 	});
 });
