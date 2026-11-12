@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	flipped,
+	press,
 	REASONS,
 	rideView,
 	viewSwitch,
@@ -155,6 +156,24 @@ describe('viewSwitch', () => {
 		for (const [reason, { short }] of Object.entries(REASONS))
 			if (reason === 'chosen') expect(short).toBeNull();
 			else expect(short, reason).toBeTruthy();
+	});
+});
+
+describe('press (#4535)', () => {
+	it('leaves MAP for every other segment, so Lounge from Map is one press', () => {
+		expect(press('room', true)).toEqual({ room: true, page: 'ride' });
+		expect(press('3d', true)).toEqual({ room: false, page: 'ride' });
+		expect(press('flat', true)).toEqual({ room: false, page: 'ride' });
+	});
+
+	it('leaves the room for every other segment', () => {
+		expect(press('map', false)).toEqual({ room: false, page: 'map' });
+		expect(press('3d', false)).toEqual({ room: false, page: null });
+		expect(press('flat', false)).toEqual({ room: false, page: null });
+	});
+
+	it('turns no page off MAP', () => {
+		expect(press('room', false)).toEqual({ room: true, page: null });
 	});
 });
 
