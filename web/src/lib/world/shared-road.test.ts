@@ -5,6 +5,8 @@ import { at } from '#lib/road/along.ts';
 import {
 	alpineLoop,
 	hairpinClimb,
+	HOME_STREET,
+	homeStreet,
 	OUT_AND_BACK_APART,
 	OUT_AND_BACK_STREET,
 	outAndBack,
@@ -15,7 +17,7 @@ import { toRoute, type Route } from '#lib/road/route.ts';
 import { road } from './geometry';
 import { roadPieces } from './ground-stream';
 import { routeOfRoad } from './road-route';
-import { BLEND_M } from './shared-road';
+import { BLEND_M, WIDE_M } from './shared-road';
 import { SHOULDER } from './terrain/road-profile';
 
 /**
@@ -133,6 +135,90 @@ describe('a street ridden out and back', () => {
 			const piece = road(street, { shoulder: SHOULDER, rows: r });
 			expect(rows(piece, 0, r[1] - r[0])).toEqual(rows(whole, r[0], r[1]));
 		}
+	});
+});
+
+describe('a loop home along a street two GPS traces lie apart on', () => {
+	// The way home lies 4 m off by the door, 15 m off for 330 m past a jog, round a block 120 m off, then 5–13 m: as a rider's own street measured.
+	const was = recorded(toRoute(homeStreet()).road);
+	const home = walked(toRoute(homeStreet()).road);
+	/** The way home's metre beside metre `m` of the street, counted from the door: its recorded point nearest across. */
+	const out = Array.from({ length: HOME_STREET + 1 }, (_, m) => at(was, m));
+	const across: [d: number, m: number][] = [];
+	for (let d = was.length - HOME_STREET - 400; d <= was.length; d += 5) {
+		const p = at(was, d);
+		let m = 0;
+		for (let k = 1; k < out.length; k++)
+			if (
+				Math.hypot(out[k].x - p.x, out[k].z - p.z) <
+				Math.hypot(out[m].x - p.x, out[m].z - p.z)
+			)
+				m = k;
+		across.push([d, m]);
+	}
+	const homeAt = (m: number) =>
+		across.reduce((a, b) =>
+			Math.abs(b[1] - m) < Math.abs(a[1] - m) ? b : a,
+		)[0];
+	const near = (r: Route, d: number) => {
+		const p = at(r, d);
+		let best = Infinity;
+		for (let m = 0; m < HOME_STREET; m += 0.5) {
+			const q = at(r, m);
+			best = Math.min(best, Math.hypot(p.x - q.x, p.z - q.z));
+		}
+		return best;
+	};
+
+	it('draws the way home on the way out, both the near and the wide stretches', () => {
+		for (const m of [100, 300, 450, 550, 1200, 1500, 1700, 1900]) {
+			expect(near(was, homeAt(m)), `${m} m as recorded`).toBeGreaterThan(2.5);
+			expect(near(home, homeAt(m)), `${m} m`).toBeLessThan(0.3);
+		}
+		// Where it was 15 m off, there was grass between two roads; now one road.
+		expect(near(was, homeAt(550))).toBeGreaterThan(2 * SHOULDER + 6.4);
+		const after = road(home, { shoulder: SHOULDER });
+		for (const m of [300, 550, 1500]) {
+			const p = at(home, m);
+			expect(layers(after, p.x, p.z), `${m} m out`).toBe(1);
+		}
+	});
+
+	it('keeps the detour round the block its own road', () => {
+		const d = homeAt(865);
+		expect(near(was, d)).toBeGreaterThan(100);
+		expect(xz(at(home, d))).toEqual(xz(at(was, d)));
+		expect(home.shared![Math.round(d / home.step)]).toBe(0);
+	});
+
+	it('eases on and off along the street with no kink', () => {
+		const turn = (r: Route, d: number) => {
+			let a = at(r, d + 10).heading - at(r, d).heading;
+			while (a > Math.PI) a -= 2 * Math.PI;
+			while (a < -Math.PI) a += 2 * Math.PI;
+			return Math.abs((a * 180) / Math.PI);
+		};
+		// Easing on and off, a jog across 11 m included, never bends the way home more than 6° per 10 m beyond its own bends, a bend of 100 m radius: a road joining another.
+		for (let d = homeAt(HOME_STREET); d < home.length - 30; d += 5)
+			expect(
+				turn(home, d),
+				`${Math.round(home.length - d)} m from the door`,
+			).toBeLessThan(turn(was, d) + 6);
+	});
+
+	it('keeps the ride as recorded', () => {
+		expect(home.length).toBe(was.length);
+		expect(Array.from(home.grade)).toEqual(Array.from(was.grade));
+	});
+
+	it('keeps a road beside it, three road widths off and more, its own', () => {
+		const off = WIDE_M + 6;
+		const beside = toRoute(
+			homeStreet((m) => (m < 40 ? (off * m) / 40 : off)),
+		).road;
+		const route = walked(beside);
+		expect(route.shared).toBeUndefined();
+		expect(route).toEqual(recorded(beside));
 	});
 });
 

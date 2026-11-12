@@ -115,11 +115,12 @@ export function road(
 		const p = centre[r - first];
 		const d = rows.metre(r);
 		const k = bends[r - first]; // curvature, +left
-		const bank = bankOf(k);
-		const lx = Math.cos(p.heading); // left of travel
-		const lz = -Math.sin(p.heading);
 		// A later pass easing onto an earlier one sinks under it, and is not drawn where it is on it (#4531).
 		const w = sharedAt(route, d);
+		// Its bend onto the earlier one is no road's bend: unbanked as it lands, so it never tilts up through the earlier one.
+		const bank = bankOf(k) * (1 - w);
+		const lx = Math.cos(p.heading); // left of travel
+		const lz = -Math.sin(p.heading);
 		hidden.push(w >= 1);
 		const y = yOf(route, p.ele) + lift - SHARED_SINK * w;
 		const tx = Math.sin(p.heading);
