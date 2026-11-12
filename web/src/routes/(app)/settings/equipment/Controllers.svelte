@@ -7,6 +7,8 @@
 	import { isTyping } from '#lib/keys.ts';
 	import { KEY_TABLE } from '#lib/ride/keys.ts';
 	import { pressOfController, pressOfKey } from '#lib/ride/controller-test.ts';
+	import { obcLegend } from '#lib/ble/obc-legend.ts';
+	import type { ObcAction } from '#lib/ble/obc.ts';
 
 	/** A two-controller set bridged as keys: the left one's arrows, the right one's letters. */
 	const ZWIFT_MAP: [button: string, key: string, does: string][] = [
@@ -21,14 +23,27 @@
 		['Z', '3', 'Side camera'],
 	];
 
+	/** What each OpenBikeControl action runs here (#4547), from OBC_BUTTONS. */
+	const LEGEND = obcLegend();
+
 	let lit = $state<string | null>(null);
 	let from = $state('');
+	/** The controller action that lit the pad: its legend row lights too. */
+	let litAction = $state<ObcAction | null>(null);
 	let timer: ReturnType<typeof setTimeout> | undefined;
-	function light(does: string, source: string) {
+	function light(
+		does: string,
+		source: string,
+		action: ObcAction | null = null,
+	) {
 		lit = does;
 		from = source;
+		litAction = action;
 		clearTimeout(timer);
-		timer = setTimeout(() => (lit = null), 1200);
+		timer = setTimeout(() => {
+			lit = null;
+			litAction = null;
+		}, 1200);
 	}
 	$effect(() => {
 		const down = (event: KeyboardEvent) => {
@@ -38,7 +53,7 @@
 		};
 		window.addEventListener('keydown', down);
 		const off = shifterSlot.onAction((action, edge) => {
-			if (edge === 'down') light(pressOfController(action), action);
+			if (edge === 'down') light(pressOfController(action), action, action);
 		});
 		return () => {
 			window.removeEventListener('keydown', down);
@@ -132,3 +147,49 @@
 		The road holds your line: the arrows turn the computer's pages.
 	</p>
 </section>
+
+{#if gearsEnabled('obc') || gearsEnabled('obc-net')}
+	<!-- #4547: what each OpenBikeControl action runs here, so a rider can
+	     tell a wired button from one WattRoom ignores. -->
+	<section class="panel panel-xl mt-8">
+		<h2 class="font-display font-bold">Controller buttons</h2>
+		<p class="text-muted mt-1 text-sm">
+			What a Shifter or Network shifter runs for each action it sends. Click V2
+			is the button BikeControl puts it on for a Zwift Click V2.
+		</p>
+		<table class="mt-4 w-full text-left" data-testid="controller-legend">
+			<thead class="text-muted text-sm">
+				<tr>
+					<th class="pr-4 pb-1 font-normal">Runs</th>
+					<th class="pr-4 pb-1 font-normal">Click V2</th>
+					<th class="pb-1 font-normal">Action</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each LEGEND as row (row.action)}
+					{@const on = litAction === row.action}
+					<tr
+						class="border-ink/10 border-t {on ? 'text-ink font-semibold' : ''}"
+					>
+						<td class="py-1.5 pr-4">{row.does}</td>
+						<td class="py-1.5 pr-4 whitespace-nowrap">
+							{#each row.click as button (button)}
+								<kbd
+									class="num mr-1 inline-block min-w-7 rounded border px-1.5 text-center {on
+										? 'border-neon'
+										: 'border-ink/15'}">{button}</kbd
+								>
+							{:else}
+								<span class="text-muted">–</span>
+							{/each}
+						</td>
+						<td class="text-muted py-1.5 text-sm">{row.sends.join(', ')}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+		<p class="text-muted mt-3 text-sm">
+			To put an action on a different button, change it in BikeControl.
+		</p>
+	</section>
+{/if}
