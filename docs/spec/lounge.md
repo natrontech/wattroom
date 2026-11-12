@@ -13,16 +13,27 @@ A voice channel between sessions is its room (`WATTROOM.md`), until the rider pi
 | Plant sizes                             | at **1, 5, 20, 50** sessions ridden together                        |
 | High scores                             | a crew's best **5** per game, a rider once each, all time and today |
 
+## Its size
+
+The whole room shows, letterboxed by more wall and floor, never cut.
+
+| What                         | Number                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| The room's pixel             | the biggest, in whole screen pixels, that shows the front row and the names under it above the room's bar; **6** at most |
+| Across                       | **296** of the stage's **320** columns, everything clickable                                                             |
+| A phone                      | **2** where its height allows, panning sideways                                                                          |
+| Too short for the whole room | the stage alone, as under a picture on the wall                                                                          |
+
 ## Riders in it
 
-| What                        | Number                                                                                 |
-| --------------------------- | -------------------------------------------------------------------------------------- |
-| Places                      | the sofa's **4**, then desk, stove, two beanbags, two stools, arcade, workshop: **12** |
-| Places only a tall room has | the last **6**                                                                         |
-| One idle thing              | **50 s**, nothing at all about 3 times in 10                                           |
-| An emote shows for          | **6 s**                                                                                |
-| A towel after a ride        | **10 min**                                                                             |
-| Bulbs a rider lights        | every 3rd, every 2nd at two riders, all at three                                       |
+| What                    | Number                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------- |
+| Places                  | the sofa's **4**, then desk, stove, two beanbags, two stools, arcade, workshop: **12** |
+| Places in the front row | the last **6**, gone while a picture hangs on the wall                                 |
+| One idle thing          | **50 s**, nothing at all about 3 times in 10                                           |
+| An emote shows for      | **6 s**                                                                                |
+| A towel after a ride    | **10 min**                                                                             |
+| Bulbs a rider lights    | every 3rd, every 2nd at two riders, all at three                                       |
 
 ## Your numbers
 
@@ -79,7 +90,7 @@ A member pays from their own Batzen, and it goes up for the whole crew. What the
 
 ## The arcade
 
-The cabinet stands in a tall room's front row, and the room's bar opens it in any room. It holds three games, each on one button and a **160 × 90** screen. The device remembers the last one picked.
+The cabinet stands in the room's front row, and the room's bar opens it in any room. It holds three games, each on one button and a **160 × 90** screen. The device remembers the last one picked.
 
 | What          | Number                                                                                                                                      |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
