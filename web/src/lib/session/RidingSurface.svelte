@@ -18,7 +18,8 @@
 	import SummitStrip from '#lib/ride/SummitStrip.svelte';
 	import { prefersReducedMotion } from '#lib/motion/index.ts';
 	import { COLUMN_SEAT, offerSeat } from '#lib/channel/stage-slot.svelte.ts';
-	import { askPage } from '#lib/session/computer-pages.ts';
+	import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+	import { railPress } from '#lib/session/computer-pages.ts';
 	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
 	import {
 		CORRIDOR,
@@ -173,9 +174,19 @@
 	// the view switch).
 	const details = $derived(!clean && computerShown.details);
 	function toggleDetails() {
-		if (mapShown) askPage('ride');
-		computerShown.details = !details;
+		railPress('details', { open: details, map: mapShown });
 	}
+	// A controller's Select is the same tap, and its Back shuts the row and
+	// brings the computer home to RIDE (#4532): BikeControl's Click V2 sends
+	// them from A and B.
+	$effect(() =>
+		shifterSlot.onAction((action, edge) => {
+			if (edge !== 'down') return;
+			if (action === 'back')
+				railPress('back', { open: details, map: mapShown });
+			else if (action === 'details' && rail && !clean) toggleDetails();
+		}),
+	);
 	$effect(() => {
 		if (!rail) return;
 		return () => (computerShown.details = false);

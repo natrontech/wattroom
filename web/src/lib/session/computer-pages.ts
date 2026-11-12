@@ -40,6 +40,19 @@ export function toggleMap(): boolean {
 	return askPage(computerShown.page === 'map' ? 'ride' : 'map');
 }
 
+/**
+ * The tap on the ride rail, and a controller's Select and Back (#4532).
+ * `details` is the tap: the rail's second row opens or shuts, and MAP gives
+ * way to RIDE. `back` shuts the row and brings every computer home to RIDE.
+ */
+export function railPress(
+	press: 'details' | 'back',
+	rail: { open: boolean; map: boolean },
+): void {
+	if (press === 'back' || rail.map) askPage('ride');
+	computerShown.details = press === 'details' && !rail.open;
+}
+
 /** ride-label at three metres: SPEC's 3vh, where ride-label's 24 px is under the TV's 2.9vh floor. */
 export const TV_LABEL =
 	'text-muted text-[3vh] leading-none font-semibold tracking-[0.08em] uppercase';
