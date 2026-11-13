@@ -135,6 +135,8 @@ export type Designed = {
 	};
 	/** The map's other loops, by id: their roads are drawn where they leave this one. */
 	others?: readonly string[];
+	/** Its roundabouts: each a ring road round a node, which every road through the node rides and joins. */
+	rings?: readonly { at: Spot; r: number; ele: number }[];
 	/** Roads no loop rides: a lane off to a farm, a road across the plateau, each from its first corner to its last. Drawn as the other loops' roads are. */
 	spurs?: readonly (readonly Corner[])[];
 	/** Galleries: each from one spot on the road to another. */
@@ -653,6 +655,40 @@ function spur(corners: readonly Corner[], like: Route): Route {
 		loop: false,
 		climbs: [],
 	};
+}
+
+/** A design's roundabouts, each as a road that goes round: a closed line, a point every 3 m or so. Never ridden as a road of its own. */
+export function ringsOf(id: string | undefined): Route[] {
+	const d = DESIGNS.find((k) => k.id === id);
+	if (!d?.rings) return [];
+	const like = build(d).line;
+	return d.rings.map((ring) => {
+		const n = Math.round((2 * Math.PI * ring.r) / 3);
+		const step = 2 * ring.r * Math.sin(Math.PI / n);
+		const x = new Float64Array(n + 1);
+		const z = new Float64Array(n + 1);
+		for (let k = 0; k <= n; k++) {
+			const a = ((k % n) / n) * 2 * Math.PI;
+			x[k] = ring.at[0] + Math.cos(a) * ring.r;
+			z[k] = -(ring.at[1] + Math.sin(a) * ring.r);
+		}
+		return {
+			...like,
+			name: 'ring',
+			step,
+			length: n * step,
+			x,
+			z,
+			ele: new Float64Array(n + 1).fill(ring.ele),
+			grade: new Float64Array(n + 1),
+			gain: 0,
+			loop: true,
+			level: true,
+			climbs: [],
+			shared: undefined,
+			meets: undefined,
+		};
+	});
 }
 
 /** The map's other roads as a design's road meets them, each on its own line: its other loops, and its spurs. */

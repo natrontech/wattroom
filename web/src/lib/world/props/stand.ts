@@ -27,8 +27,8 @@ export function standTiles(
 	props: { tile(ti: number, tj: number): Candidate<Prop>[] },
 	set: Pick<SetPieces, 'tile' | 'boards'>,
 	origin: Origin = [0, 0],
-	/** Where nothing stands: a designed scene's water (designed.ts). */
-	wet?: (x: number, z: number) => boolean,
+	/** Where nothing stands that reaches `reach` metres round its middle: a designed scene's water (designed.ts), a gallery. */
+	wet?: (x: number, z: number, reach: number) => boolean,
 ) {
 	const candidates = new Map<string, Candidate<Thing>[]>();
 	const stood = new Map<string, Stood>();
@@ -56,7 +56,13 @@ export function standTiles(
 		const ok = wet
 			? settled.filter((c) => {
 					const at = isStanding(c.is) ? c.is.piece : c.is;
-					return !wet(at.x, at.z);
+					// Its reach is its footprint's, a tree's crown and all (kit.ts).
+					const reach = Math.max(
+						...c.p.footprint.map(([fx, fz]) =>
+							Math.hypot(fx - at.x, fz - at.z),
+						),
+					);
+					return !wet(at.x, at.z, reach);
 				})
 			: settled;
 		const standing = ok.flatMap((c) => (isStanding(c.is) ? [c.is] : []));

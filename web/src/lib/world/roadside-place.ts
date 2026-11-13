@@ -323,8 +323,8 @@ export function roadsidePlacer(route: Route, world: World) {
 			)
 				return false;
 			if (!world.clearOf(c.x, c.z, FORMATION + reach(c.art))) return false;
-			// Nothing grows under a gallery's roof.
-			if (world.roofedAt?.(c.x, c.z)) return false;
+			// Nothing grows under a gallery's roof, nor near enough to reach through its wall or in between its pillars.
+			if (world.roofedAt?.(c.x, c.z, reach(c.art))) return false;
 			const foot = FOOT[name];
 			return blocks.every(
 				(o) => Math.hypot(o.x - c.x, o.z - c.z) >= o.r + foot,

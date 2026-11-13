@@ -55,6 +55,10 @@ const SHIFTS = [0, 15, -15, 30, -30, 45, -45, 60, -60];
 /** A stretch this steep over STEEP_M gets the danger sign (#4240): Swiss roads sign steep grades from about 8 %. */
 const STEEP = 0.08;
 const STEEP_M = 200;
+/** Metres from the road's centre to each of a KOM arch's posts (furniture.ts ARCH_POSTS). */
+const ARCH_POST_M = 4.4;
+/** Where a sign is tried along the road from where it was planned, nearest first, sooner for its own traffic first. */
+const SIGN_SHIFTS = [0, 10, -10, 20, -20, 30, -30];
 /** Where a danger sign or a mirror stands: just past the edge line, inside furniture's clearance. */
 const SIGN_OFF = 4.6;
 /** Road furniture is planned in stretches this long, each worked out as one. */
@@ -126,11 +130,13 @@ export type Plan = {
 	signs: { sign: Omit<Sign, 'y'>; line: number; pass: Passing }[];
 	arches: Omit<Arch, 'y'>[];
 	named: (names: Names) => void;
+	/** Whether stroke k may stand something reaching `reach` metres at (x, z): clear of every other road (setpieces.ts offOthers). */
+	free: (x: number, z: number, k: number, reach?: number) => boolean;
 };
 
 /** Plans stroke `k`'s set pieces into `plan`. */
 export function planStroke(line: Line, k: number, plan: Plan) {
-	const { c, key, tileNames, groups, signs, arches } = plan;
+	const { c, key, tileNames, groups, signs, arches, free } = plan;
 	const { ground, heightAt, biomeAt, placer } = c;
 	const origin = c.origin ?? [0, 0];
 	const stroke = hashOf(line.key);
@@ -219,7 +225,12 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			for (const hand of keyed ? [side] : [side, -side]) {
 				const x = p.x + p.lx * off * hand;
 				const z = p.z + p.lz * off * hand;
-				if (!ground.clearOf(x, z, need) || biomeAt(x, z) === null) continue;
+				if (
+					!ground.clearOf(x, z, need) ||
+					!free(x, z, k) ||
+					biomeAt(x, z) === null
+				)
+					continue;
 				const turn =
 					extra.turn ?? facing(at, hand, Math.round((u(slot, 90) - 0.5) * 14));
 				const placed = placer.candidate(kind, cls, x, z, turn);
@@ -264,6 +275,14 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 	) {
 		// The profile's length is rounded to the centimetre: a foot at the stroke's end may read past it by that much.
 		if (s < 0 || s > r.length + 0.01) return;
+		// Where another road would have it on its asphalt, a little earlier for its own traffic, or later, or not at all.
+		const along = SIGN_SHIFTS.map((by) => s - by * dir).find((m) => {
+			if (m < 0 || m > r.length + 0.01) return false;
+			const q = w.at(m);
+			return free(q.x - q.lx * off * dir, q.z - q.lz * off * dir, k);
+		});
+		if (along === undefined) return;
+		s = along;
 		const p = w.at(s);
 		const x = p.x - p.lx * off * dir;
 		const z = p.z - p.lz * off * dir;
@@ -566,11 +585,24 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 				const b = w.at(Math.min(r.length, m + 10)).along;
 				return Math.abs(a[0] * b[1] - a[1] * b[0]);
 			};
+			// Where its posts stand clear of any other road.
+			const posts = (m: number) => {
+				const q = w.at(m);
+				return [-1, 1].every((hand) =>
+					free(
+						q.x + q.lx * ARCH_POST_M * hand,
+						q.z + q.lz * ARCH_POST_M * hand,
+						k,
+					),
+				);
+			};
 			// At the top, or well clear of it: the metres round a summit are where a ride's picture is taken, and an arch 13 m from the lens stood across its sky.
 			const gate =
 				[0, 70, 90, 110, -70, -90, -110]
 					.map((by) => s + by)
-					.find((m) => m > 10 && m < r.length - 10 && bend(m) < 0.03) ?? s;
+					.find(
+						(m) => m > 10 && m < r.length - 10 && bend(m) < 0.03 && posts(m),
+					) ?? s;
 			const q = w.at(gate);
 			plan.named(here);
 			const top = `${Math.round(p.h)} m`;
@@ -607,12 +639,13 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 				});
 			sign(s - 30, 1, 5.2, 'pass', [here.pass, top], 2.6, 1.1);
 			sign(s + 30, -1, 5.2, 'pass', [here.pass, top], 2.6, 1.1);
-			arches.push({
-				x: q.x,
-				z: q.z,
-				turn: q.along,
-				label: `KOM · ${here.pass.toUpperCase()}`,
-			});
+			if (posts(gate))
+				arches.push({
+					x: q.x,
+					z: q.z,
+					turn: q.along,
+					label: `KOM · ${here.pass.toUpperCase()}`,
+				});
 		}
 	}
 
@@ -644,6 +677,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 				const p = w.at(s);
 				const x = p.x - p.lx * SIGN_OFF;
 				const z = p.z - p.lz * SIGN_OFF;
+				if (!free(x, z, k)) continue;
 				const turn = facing(s, -1);
 				const placed = placer.candidate('lamp', 'furniture', x, z, turn);
 				if (placed)
@@ -689,6 +723,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 					if (s % 50 !== 0 && !dropsAway(p, side)) continue;
 					const x = p.x + p.lx * 3.7 * side;
 					const z = p.z + p.lz * 3.7 * side;
+					if (!free(x, z, k)) continue;
 					const placed = placer.candidate(
 						'delineator',
 						'furniture',

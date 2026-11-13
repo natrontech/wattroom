@@ -226,8 +226,7 @@ export function buildStage(
 	// The road ridden, and the map's other roads where they leave it (side-roads.ts): a hair lower, so where one meets the ridden road it lies under its asphalt.
 	const ribbons = [
 		{
-			// The road ridden, with the side roads that join it (Route.meets).
-			of: world.meets.length > 0 ? { ...route, meets: world.meets } : route,
+			of: world.ridden,
 			lift: undefined as number | undefined,
 			caps: undefined as readonly [boolean, boolean] | undefined,
 		},
@@ -346,12 +345,14 @@ export function buildStage(
 						world.sides.map((s) => ({
 							length: s.route.length,
 							surface: surfaceOf(s.route, ROAD_LIFT - SIDE_SINK),
-							mouths: s.mouths.map(
-								(m) =>
-									m && {
-										...m,
-										off: (x: number, z: number) => world.offJunction(m, x, z),
-									},
+							mouths: s.mouths.map((m) =>
+								// Onto a roundabout nobody stops: no line, no STOP, no sign.
+								!m || (m.met > 0 && world.sides[m.met - 1].route.level)
+									? null
+									: {
+											...m,
+											off: (x: number, z: number) => world.offJunction(m, x, z),
+										},
 							),
 						})),
 						{ line: style.road.line, sign: c.warning, post: c.pole },

@@ -53,9 +53,12 @@ function wind(
 }
 
 /** The two nodes every loop is built between: the village south of the lake, and the head of the lake. */
-// A loop sweeps through a node on a road's own radius: the other roads find it wherever it runs and join it there (side-roads.ts). Turned tight round the node's very point, its ribbon folded on the inside of the bend.
-const HUB: Corner = { x: 200, y: 300, ele: 1446, r: 30 };
-const HEAD: Corner = { x: 150, y: 4250, ele: 1441, r: 45 };
+// Each is a roundabout (through, below): its centre here.
+const HUB: Corner = { x: 200, y: 300, ele: 1446, r: 0 };
+const HEAD: Corner = { x: 150, y: 4250, ele: 1441, r: 0 };
+
+/** A roundabout: the radius of its ring's centre line, how far out each arm runs straight at it, and the tightest an arm curves onto the ring or off it. */
+const RING = { r: 18, stub: 70, arm: 12 };
 
 /** A stretch between two nodes, wound, without the nodes themselves. */
 const stretch = (
@@ -101,7 +104,7 @@ const TERRACE = stretch(
 		{ x: -1500, y: 2100, ele: 1580, r: 60 },
 		{ x: -900, y: 1500, ele: 1548, r: 80 },
 		{ x: -1400, y: 850, ele: 1560, r: 70 },
-		{ x: -750, y: 350, ele: 1497, r: 60 },
+		{ x: -750, y: 500, ele: 1497, r: 60 },
 	],
 	HUB,
 	4341,
@@ -171,7 +174,7 @@ function colDeBerne(): Corner[] {
 	return stretch(
 		HUB,
 		[
-			{ x: 1250, y: -350, ele: 1462, r: 120 },
+			{ x: 1250, y: -200, ele: 1462, r: 120 },
 			{ x: 2000, y: -1100, ele: 1485, r: 120 },
 			{ x: 2700, y: -1700, ele: 1505, r: 100 },
 			{ x: 3500, y: -1750, ele: 1522, r: 80 },
@@ -407,6 +410,19 @@ const LAND: Feature[] = [
 	{ kind: 'land', cover: 'dry', at: [2300, -1500], radius: 1000 },
 ];
 
+/**
+ * The map's name, and the rectangle a picture of it shows, in the map's own
+ * metres (east, north): every spur and the river run off its edge, none
+ * stops short inside it.
+ */
+export const MAP_NAME = 'Wattalp';
+export const MAP_BOUNDS = {
+	west: -3400,
+	east: 4500,
+	south: -4100,
+	north: 5800,
+};
+
 /** What every loop on the map shares: its land, its weather and its names. */
 const MAP = {
 	features: LAND,
@@ -468,6 +484,7 @@ const MAP = {
 			{ x: -1500, y: -2300, ele: 1456, r: 0 },
 			{ x: -1150, y: -3060, ele: 1456, r: 0 },
 			{ x: -900, y: -3900, ele: 1470, r: 0 },
+			{ x: -750, y: -4500, ele: 1480, r: 0 },
 		],
 		// Off the valley road under the climb, square to it, then out through the dry valley: a road leaving another at a shallow angle runs beside it and reads as a mistake.
 		[
@@ -476,23 +493,31 @@ const MAP = {
 			{ x: 1900, y: -2000, ele: 1476, r: 0 },
 			{ x: 2700, y: -2600, ele: 1488, r: 0 },
 			{ x: 3700, y: -2700, ele: 1505, r: 0 },
+			{ x: 4900, y: -2500, ele: 1530, r: 0 },
 		],
 		// North from the head of the lake, up the side valley.
 		[
-			{ x: 150, y: 4250, ele: 1441, r: 0 },
+			// From the roundabout's ring: its lead (designed.ts) brings it the 25 m back onto it.
+			{ x: 129.4, y: 4287.8, ele: 1441, r: 0 },
 			{ x: -150, y: 4800, ele: 1462, r: 0 },
 			{ x: -100, y: 5400, ele: 1500, r: 0 },
+			{ x: -250, y: 6100, ele: 1540, r: 0 },
 		],
 		// A farm lane north off the valley road, square to it: a road leaving another at a shallow angle runs beside it for a kilometre.
 		[
-			{ x: 1250, y: -350, ele: 1462, r: 0 },
+			{ x: 1250, y: -200, ele: 1462, r: 0 },
 			{ x: 1500, y: 250, ele: 1480, r: 0 },
 			{ x: 2000, y: 600, ele: 1515, r: 0 },
 		],
 	],
+	rings: [HUB, HEAD].map((node) => ({
+		at: [node.x, node.y] as const,
+		r: RING.r,
+		ele: node.ele,
+	})),
 } satisfies Pick<
 	Designed,
-	'features' | 'climate' | 'names' | 'galleries' | 'spurs'
+	'features' | 'climate' | 'names' | 'galleries' | 'spurs' | 'rings'
 >;
 
 const loop = (
@@ -611,30 +636,72 @@ const VALLEY_LAND: Feature[] = [
 	{ kind: 'land', cover: 'moor', at: [600, 2350], radius: 420 },
 ];
 
-/** The loops, each from the hub and back: by the time they take, about 30, 40, 60 and 90 minutes. */
+/**
+ * A road's way through a node's roundabout, from the corner it comes from
+ * to the corner it leaves for: straight in on its arm, right onto the ring,
+ * anticlockwise round it as traffic on the right goes, and right again off
+ * it. The ring is the circle inscribed in the corners laid here, each
+ * rounded on the ring's own radius, so every road through a node rides the
+ * same circle: the ring, which is drawn as a road of its own (designed.ts
+ * ringsOf) with each road's arms joining it.
+ */
+function through(node: Corner, from: Corner, to: Corner): Corner[] {
+	const a = Math.atan2(from.y - node.y, from.x - node.x);
+	const b = Math.atan2(to.y - node.y, to.x - node.x);
+	const turn =
+		(((b - a) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) || 2 * Math.PI;
+	const sides = Math.ceil(turn / ((70 * Math.PI) / 180));
+	const each = turn / sides;
+	const out = RING.r / Math.cos(each / 2);
+	// An arm's own curve fits in half of the first side: the ring's rounding has the other half.
+	const arm = Math.min(
+		RING.arm,
+		(0.97 * RING.r * Math.tan(each / 2)) / Math.tan(Math.PI / 4 - each / 4),
+	);
+	const at = (angle: number, radius: number, r: number): Corner => ({
+		x: node.x + Math.cos(angle) * radius,
+		y: node.y + Math.sin(angle) * radius,
+		ele: node.ele,
+		r,
+	});
+	const corners = [at(a, RING.stub, 40)];
+	for (let k = 0; k <= sides; k++)
+		corners.push(at(a + k * each, out, k === 0 || k === sides ? arm : RING.r));
+	corners.push(at(b, RING.stub, 40));
+	return corners;
+}
+
+/** A loop's corners from its stretches and the roundabouts between them, starting on the first stretch: the last roundabout closes it. */
+function round(...parts: (Corner[] | Corner)[]): Corner[] {
+	const stretches = parts.filter((p): p is Corner[] => Array.isArray(p));
+	const nodes = parts.filter((p): p is Corner => !Array.isArray(p));
+	const n = stretches.length;
+	const out: Corner[] = [];
+	let first: Corner[] = [];
+	stretches.forEach((s, i) => {
+		const next = stretches[(i + 1) % n];
+		const ring = through(nodes[i], s[s.length - 1], next[0]);
+		if (i === n - 1) first = ring;
+		out.push(...s, ...(i === n - 1 ? ring.slice(0, -1) : ring));
+	});
+	// It starts on its way out of the last roundabout, on the first stretch's arm.
+	return [first[first.length - 1], ...out];
+}
+
+/** The loops, each from the village and back: by the time they take, about 30, 40, 60 and 90 minutes. Each stretch is followed by the node it runs to. */
 export const DESIGNS: readonly Designed[] = [
-	loop(
-		'urnsee',
-		10680.32,
-		4340,
-		[HUB, ...SHORE, HEAD, ...TERRACE],
-		['aare', 'berne'],
-	),
-	loop('aare', 11962.78, 4404, [HUB, ...GORGE], ['urnsee', 'berne']),
-	loop(
-		'lac',
-		22681.67,
-		4406,
-		[HUB, ...SHORE, HEAD, ...TERRACE, HUB, ...GORGE],
-		['berne'],
-	),
-	loop(
+	loop('urnsee', 10693.33, 4340, round(SHORE, HEAD, TERRACE, HUB), [
+		'aare',
 		'berne',
-		30763.28,
-		2101,
-		[HUB, ...COL, HEAD, ...TERRACE],
-		['urnsee', 'aare'],
-	),
+	]),
+	loop('aare', 11976.86, 4404, round(GORGE, HUB), ['urnsee', 'berne']),
+	loop('lac', 22670.32, 4406, round(SHORE, HEAD, TERRACE, HUB, GORGE, HUB), [
+		'berne',
+	]),
+	loop('berne', 30734.24, 2101, round(COL, HEAD, TERRACE, HUB), [
+		'urnsee',
+		'aare',
+	]),
 	{
 		id: 'valley',
 		lengthM: 16036.55,

@@ -198,7 +198,7 @@ export function road(
 		// A later pass easing onto an earlier one sinks under it, and is not drawn where it is on it (#4531).
 		const w = sharedAt(route, d);
 		// Its bend onto the earlier one is no road's bend: unbanked as it lands, so it never tilts up through the earlier one.
-		const bank = banks[r - first] * (1 - w);
+		const bank = route.level ? 0 : banks[r - first] * (1 - w);
 		const lx = Math.cos(p.heading); // left of travel
 		const lz = -Math.sin(p.heading);
 		sides.push(new THREE.Vector3(lx, -Math.tan(bank), lz)); // across the asphalt, leftward
@@ -506,6 +506,8 @@ export function roadMaterial(
 				float joined = step(0.5, -vBare.y);
 				// A pass joining an earlier one is not drawn inside its asphalt, but for a hand's width at its edge: o is read off a line of 10 m chords, and where each ribbon stopped exactly at the other the ground showed between them.
 				if (joins > 0.5 && o < ${(ROAD_W / 2 - 0.1).toFixed(2)}) discard;
+				// Nor is its shoulder or verge drawn on the earlier one's formation: where it comes in along that road, a roundabout's arm, its shoulder lay across that road's far edge.
+				if (joins > 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${FORMATION.toFixed(2)}) discard;
 				// And the pass joined draws no shoulder under the joining one's asphalt: two surfaces there, each lit by its own slope, drew as streaks.
 				if (joined > 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${(ROAD_W / 2 - 0.15).toFixed(2)}) discard;
 				float theirs = 1.0 - smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fo, o);

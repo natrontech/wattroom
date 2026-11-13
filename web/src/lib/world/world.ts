@@ -38,8 +38,14 @@ import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
 import { drawnRows, FORMATION } from './terrain/road-profile';
-import { othersOf, sceneOf, type Water } from './designed';
-import { offRoad, sideRoads, type Mouth, type SideRoad } from './side-roads';
+import { othersOf, ringsOf, sceneOf, type Water } from './designed';
+import {
+	END_M,
+	offRoad,
+	sideRoads,
+	type Mouth,
+	type SideRoad,
+} from './side-roads';
 import { JOINED, JOINS } from './crossings';
 
 export type World = {
@@ -72,12 +78,12 @@ export type World = {
 	bridges: [from: number, to: number][];
 	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges: drawn, never ridden. */
 	sides: (SideRoad & { bridges: [from: number, to: number][] })[];
-	/** Where the road ridden is joined by a side road: what its ribbon's paint reads (Route.meets). */
-	meets: NonNullable<Route['meets']>;
+	/** The road ridden as its ribbon is drawn: with the roads that join it (Route.meets), and hidden where it runs on a roundabout's ring. */
+	ridden: Route;
 	/** Metres from (x, z) to the nearest of the roads a mouth's junction is made of (Mouth.near). */
 	offJunction: (m: Mouth, x: number, z: number) => number;
-	/** Whether (x, z) lies under a gallery's roof: nothing grows or stands there. */
-	roofedAt: (x: number, z: number) => boolean;
+	/** Whether something reaching `reach` metres round (x, z) would stand under a gallery's roof or through its wall: nothing grows or stands there. */
+	roofedAt: (x: number, z: number, reach?: number) => boolean;
 	/** Where the road runs under a gallery's roof, in metres along it. */
 	galleries: [from: number, to: number][];
 	/** The ground at (x, z) as the place has it, earthworks and all, without drawing it: what the road's rails are read off (scenery.ts). */
@@ -143,11 +149,12 @@ export function generate(
 	// A designed road's scene shapes the land (designed.ts), and where it drops away under the road, the road is carried over it.
 	const layout = sceneOf(route.scene);
 	// The map's other roads, where they leave this one (side-roads.ts): the ground is shaped by them as by the road ridden.
-	const beside = sideRoads(route, othersOf(route.scene));
+	const rings = ringsOf(route.scene);
+	const beside = sideRoads(route, othersOf(route.scene), rings);
 	const sideRows = beside.map((side) => drawnRows(side.route));
 	sideRows.forEach((r, j) =>
 		roads.push({
-			key: `side:${j}`,
+			key: j < rings.length ? `ring:${j}` : `side:${j}`,
 			x: r.map((p) => p.x),
 			z: r.map((p) => p.z),
 			h: r.map((p) => p.ele),
@@ -232,6 +239,77 @@ export function generate(
 			}
 		}),
 	);
+	// A roundabout: the road ridden runs on its ring, and is not drawn there. Its ribbon is hidden inside the ring's asphalt, its arms join the ring as any road joins another, and the ring is drawn whole.
+	let hidden: Float64Array | null = null;
+	rings.forEach((_, j) => {
+		const ring = beside[j].route;
+		const n = ring.x.length - 1;
+		let [cx, cz] = [0, 0];
+		for (let k = 0; k < n; k++) {
+			cx += ring.x[k] / n;
+			cz += ring.z[k] / n;
+		}
+		const cut = Math.hypot(ring.x[0] - cx, ring.z[0] - cz) + END_M;
+		const off = (i: number) => Math.hypot(route.x[i] - cx, route.z[i] - cz);
+		const last = route.x.length - 1;
+		for (let i = 0; i <= last; i++) {
+			if (off(i) >= cut + RING_REACH_M) continue;
+			// One pass through the roundabout: its samples from here on that lie within reach of it.
+			let end = i;
+			while (end < last && off(end + 1) < cut + RING_REACH_M) end++;
+			meets.push({
+				from: i * route.step,
+				to: end * route.step,
+				x: ring.x,
+				z: ring.z,
+				role: JOINS,
+			});
+			// Its arms, in and out: each to where it enters the ring's asphalt.
+			let arm: [number[], number[]] = [[], []];
+			const close = () => {
+				if (arm[0].length > 1)
+					(ring.meets ??= []).push({
+						from: 0,
+						to: ring.length,
+						x: arm[0],
+						z: arm[1],
+						role: JOINED,
+					});
+				arm = [[], []];
+			};
+			const edge = (a: number, b: number) => {
+				const t = (cut - off(a)) / (off(b) - off(a) || 1);
+				arm[0].push(route.x[a] + (route.x[b] - route.x[a]) * t);
+				arm[1].push(route.z[a] + (route.z[b] - route.z[a]) * t);
+			};
+			for (let k = i; k <= end; k++) {
+				if (off(k) < cut) {
+					(hidden ??= new Float64Array(route.x.length))[k] = 1;
+					if (k > i && off(k - 1) >= cut) edge(k - 1, k);
+					close();
+				} else {
+					if (k > i && off(k - 1) < cut) edge(k - 1, k);
+					arm[0].push(route.x[k]);
+					arm[1].push(route.z[k]);
+				}
+			}
+			close();
+			i = end;
+		}
+	});
+	const shown = hidden as Float64Array | null;
+	const ridden: Route =
+		meets.length > 0 || shown
+			? {
+					...route,
+					meets,
+					...(shown && {
+						shared: route.shared
+							? route.shared.map((w, i) => Math.max(w, shown[i]))
+							: shown,
+					}),
+				}
+			: route;
 	const ground = makeGround(roads, { salt, scene: layout });
 	// The scene as the ground laid it: its streams run where that ground falls.
 	const scene = ground.scene;
@@ -271,7 +349,8 @@ export function generate(
 		set,
 		undefined,
 		// Nor under a gallery's roof.
-		scene && ((x, z) => scene.waterAt(x, z) !== null || roofedAt(x, z)),
+		scene &&
+			((x, z, reach) => scene.waterAt(x, z) !== null || roofedAt(x, z, reach)),
 	);
 	let all: Stood | null = null;
 	/** Every tile within reach of a road: a tree stands within 700 m of one, and its tile's centre within half a diagonal more. */
@@ -312,12 +391,40 @@ export function generate(
 		const span = [from.i * route.step, to.i * route.step].sort((p, q) => p - q);
 		return [[span[0], span[1]] as [number, number]];
 	});
-	const roofedAt = (x: number, z: number) => {
-		if (galleries.length === 0) return false;
+	// Each gallery's back wall stands against the mountain, on the side the ground stands higher (scenery.ts roadworks): +1 left of travel, as a hit's side.
+	const roofs = galleries.map(([a, b]) => {
+		const i = Math.min(
+			route.x.length - 2,
+			Math.round((a + b) / 2 / route.step),
+		);
+		const sx = route.x[i + 1] - route.x[i];
+		const sz = route.z[i + 1] - route.z[i];
+		const len = Math.hypot(sx, sz) || 1;
+		const out = FORMATION + 60;
+		const over = (side: number) =>
+			ground.heightAt(
+				route.x[i] + (sz / len) * out * side,
+				route.z[i] - (sx / len) * out * side,
+			);
+		return { a, b, back: over(1) >= over(-1) ? 1 : -1 };
+	});
+	const roofedAt = (x: number, z: number, reach = 0) => {
+		if (roofs.length === 0) return false;
 		const hit = nearest(x, z);
-		if (!hit || hit.d > FORMATION + 2) return false;
-		const d = hit.i * route.step;
-		return galleries.some(([a, b]) => d >= a - 4 && d <= b + 4);
+		if (!hit || hit.d > GALLERY_EDGE + GALLERY_WALL + reach + GALLERY_CLEAR)
+			return false;
+		const d = (hit.i + hit.t) * route.step;
+		return roofs.some(
+			({ a, b, back }) =>
+				d >= a - 4 - reach &&
+				d <= b + 4 + reach &&
+				// Behind the wall a thing keeps its own reach off it; on the open side off the pillars, so nothing pokes in under the roof.
+				hit.d <
+					GALLERY_EDGE +
+						(hit.side === back ? GALLERY_WALL : 0) +
+						reach +
+						GALLERY_CLEAR,
+		);
 	};
 	let whole: { mesh: TerrainMesh; rim: number[] } | null = null;
 	const diorama = () =>
@@ -345,7 +452,7 @@ export function generate(
 		waterAt: (x, z) => scene?.waterAt(x, z) ?? null,
 		bridges,
 		sides,
-		meets,
+		ridden,
 		offJunction: (m, x, z) =>
 			Math.min(
 				...(m.near ?? [{ road: m.met, at: m.at }]).map((n) =>
@@ -394,10 +501,17 @@ export function generate(
 	};
 }
 
+/** A gallery's roof reaches this far from the road's centre, where its back wall and pillars stand (scenery.ts GALLERY.out). */
+const GALLERY_EDGE = FORMATION + 0.9;
+/** Half its back wall's thickness, and what a thing keeps clear of the wall or the pillars past its own reach. */
+const GALLERY_WALL = 0.3;
+const GALLERY_CLEAR = 1;
 /** Metres of each road, either side of a junction, whose paint reads the other road's line. */
 const JUNCTION_M = 30;
 /** A road passing within this of a mouth is part of its junction. */
 const NODE_M = 20;
+/** Metres out from a roundabout's edge within which the road ridden's paint reads the ring. */
+const RING_REACH_M = 35;
 /** Metres between the ground's rows of the road (drawnRows). */
 const ROW_M = 2;
 /** A road this far over the designed ground is carried, not banked up: an embankment that high is 12 m wide at its foot each side. */

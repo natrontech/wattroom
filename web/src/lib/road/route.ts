@@ -83,6 +83,8 @@ export type Route = {
 	 * distance to that road's line (x, z) and gives way as `role` says
 	 * (world/crossings.ts JOINS, JOINED).
 	 */
+	/** The world's road only: drawn level across, not banked into its bend. A roundabout's ring (world/designed.ts). */
+	level?: boolean;
 	meets?: {
 		from: number;
 		to: number;

@@ -70,7 +70,8 @@ function centreline(corners: Corner[]) {
 		const a = { x: v.x - d1.x * t, y: v.y - d1.y * t };
 		const b = { x: v.x + d2.x * t, y: v.y + d2.y * t };
 		const centre = { x: a.x - d1.y * v.r * turn, y: a.y + d1.x * v.r * turn };
-		return { a, b, centre, phi, turn, r: v.r };
+		// A corner on the straight line between its neighbours is no corner: its arc has no side to turn to, and was drawn its radius off to the east.
+		return { a, b, centre, phi, turn, r: turn === 0 ? 0 : v.r };
 	});
 	const out: Pt[] = [];
 	const knots: number[] = []; // distance of each corner's arc midpoint

@@ -376,10 +376,22 @@
 			setCamera,
 			crossings: () => crossings,
 			length: () => route?.length ?? 0,
-			// Where a side road meets the road ridden, in metres along it: what a check of every junction stands at.
+			// Where a side road meets a road within 60 m of the road ridden, as metres along the ridden one: what a check of every junction and roundabout stands at.
 			junctions: () =>
 				(land?.sides ?? []).flatMap((s) =>
-					s.mouths.flatMap((m) => (m && m.met === 0 ? [Math.round(m.at)] : [])),
+					s.mouths.flatMap((m) => {
+						if (!m || !route) return [];
+						let best = 60;
+						let at = -1;
+						for (let i = 0; i < route.x.length; i++) {
+							const d = Math.hypot(route.x[i] - m.x, route.z[i] - m.z);
+							if (d < best) {
+								best = d;
+								at = Math.round(i * route.step);
+							}
+						}
+						return at < 0 ? [] : [at];
+					}),
 				),
 		},
 	});
@@ -405,13 +417,15 @@
 				></canvas>
 			{/key}
 			{#if view === 'flat'}
-				<div class="bg-surface absolute inset-0 grid place-items-center p-6">
-					<div class="h-1/2 w-full">
-						<Skyline road={route.road} {m} mps={playing ? kmh / 3.6 : 0} />
-					</div>
+				<!-- As a ride's Flat view stands (RidingSurface.svelte): the Skyline
+				     as a place, the world's dusk over its ridges and a meadow. The
+				     lab paints that place in the 3D world's own colours, unmixed with
+				     the theme's surface, as the Map's picture is (map-render.ts). -->
+				<div class="flat-ground world-flat bg-surface absolute inset-0">
+					<Skyline road={route.road} {m} mps={playing ? kmh / 3.6 : 0} />
 				</div>
 			{:else if view === 'map' && land}
-				<div class="bg-surface absolute inset-0">
+				<div class="bg-surface absolute inset-0 p-3">
 					<MapOverview {route} world={land} {m} />
 				</div>
 			{/if}
@@ -630,3 +644,33 @@
 		{/if}
 	</aside>
 </div>
+
+<style>
+	/* The Flat view in the 3D world's own colours (Diorama's sky, ridges,
+	   meadow and forest), unmixed with the theme's surface: the colours the
+	   Map's picture is painted in. The ride's Flat view keeps its tint. */
+	.world-flat {
+		--color-sky-1: var(--world-dio-sky-zenith);
+		--color-sky-2: color-mix(
+			in oklab,
+			var(--world-dio-sky-zenith),
+			var(--world-dio-sky-horizon)
+		);
+		--color-sky-3: var(--world-dio-sky-horizon);
+	}
+	.world-flat :global(.fill-ridge-far) {
+		fill: var(--world-px-ridge);
+	}
+	.world-flat :global(.fill-ridge-near) {
+		fill: var(--world-px-ridge-rock);
+	}
+	.world-flat :global(.fill-land) {
+		fill: var(--world-px-biome-meadow);
+	}
+	.world-flat :global(.fill-land-deep) {
+		fill: var(--world-px-biome-forest);
+	}
+	.world-flat :global(.bg-land-deep) {
+		background-color: var(--world-px-biome-forest);
+	}
+</style>

@@ -84,7 +84,12 @@ export function offRoad(
 	return best;
 }
 
-export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
+export function sideRoads(
+	route: Route,
+	others: readonly Route[],
+	/** Roads kept whole, before the others: a roundabout's ring, which the road ridden runs on and is hidden under (world.ts). */
+	whole: readonly Route[] = [],
+): SideRoad[] {
 	const kept = new Map<string, number[]>();
 	const keep = (x: number, z: number, h: number, owner: number, m: number) => {
 		const k = `${Math.floor(x / CELL_M)}:${Math.floor(z / CELL_M)}`;
@@ -148,7 +153,44 @@ export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
 	};
 	keepAll(route, 0);
 	const out: SideRoad[] = [];
-	for (const other of others) {
+	for (const w of whole) {
+		out.push({
+			route: {
+				...w,
+				minEle: route.minEle,
+				maxEle: route.maxEle,
+				scene: route.scene,
+			},
+			mouths: [null, null],
+		});
+		keepAll(w, out.length);
+	}
+	for (const given of others) {
+		// A road that goes round starts wherever it was drawn from: turned to start on a road kept already, so no stretch of it is cut in two at its own start.
+		let other = given;
+		let on = -1;
+		if (given.loop) {
+			// Where it lies nearest one: on it, if it runs along one anywhere.
+			let best = CLEAR_M;
+			for (let i = 0; i < given.x.length - 1; i++) {
+				const hit = nearest(given.x[i], given.z[i]);
+				if (hit && hit.d < best) {
+					best = hit.d;
+					on = i;
+				}
+			}
+		}
+		if (on > 0) {
+			const turn = <T extends Float64Array>(v: T) =>
+				Float64Array.from([...v.slice(on, -1), ...v.slice(0, on + 1)]);
+			other = {
+				...given,
+				x: turn(given.x),
+				z: turn(given.z),
+				ele: turn(given.ele),
+				grade: turn(given.grade),
+			};
+		}
 		const n = other.x.length;
 		const end = (n - 1) * other.step;
 		const runs: [number, number][] = [];

@@ -139,13 +139,12 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 					Math.hypot(sx, sz)
 				);
 			};
+			// Left, right, left within three samples: a bend into a roundabout and round it turns once each way, a zigzag keeps turning back.
 			let wobbles = 0;
-			for (let i = 1; i + 2 < line.x.length; i++)
-				if (
-					bow(i) * bow(i + 1) < 0 &&
-					Math.min(Math.abs(bow(i)), Math.abs(bow(i + 1))) > 0.05
-				)
-					wobbles++;
+			const off = (i: number) =>
+				Math.abs(bow(i)) > 0.05 ? Math.sign(bow(i)) : 0;
+			for (let i = 1; i + 3 < line.x.length; i++)
+				if (off(i) * off(i + 1) < 0 && off(i + 1) * off(i + 2) < 0) wobbles++;
 			expect(wobbles).toBe(0);
 		});
 
@@ -345,7 +344,7 @@ describe('the map', () => {
 							side.route.meets?.some((o) => o.role === JOINS),
 							where,
 						).toBe(true);
-						const theirs = m.met === 0 ? world.meets : met.meets;
+						const theirs = m.met === 0 ? world.ridden.meets : met.meets;
 						expect(
 							theirs?.some(
 								(o) => o.role === JOINED && o.from < m.at && o.to > m.at,
@@ -353,6 +352,8 @@ describe('the map', () => {
 							where,
 						).toBe(true);
 						const surface = surfaceOf(side.route);
+						// Onto a roundabout's ring nobody stops: nothing is painted there.
+						if (met.level) return;
 						const mouth = {
 							...m,
 							off: (x: number, z: number) => world.offJunction(m, x, z),
@@ -550,5 +551,120 @@ describe('Col de Berne', () => {
 			expect(snow).toBeGreaterThan(5);
 		},
 		BUILD_MS,
+	);
+});
+
+describe('what stands along the map’s roads', () => {
+	/** The map's loops, each with the other loops' roads where they meet it. */
+	const LOOPS = DESIGNS.filter((d) => d.others);
+	it.each(LOOPS.map((d) => [d.id] as const))(
+		'%s stands nothing on another road, in a junction’s mouth, or through a gallery',
+		async (id) => {
+			const { indexLines } = await import('./terrain/lines');
+			const { FORMATION } = await import('./terrain/road-profile');
+			const { kitSpec } = await import('./props/kit');
+			const { ART, reach, roadsidePlacer, BLOCK_M } =
+				await import('./roadside-place');
+			const route = routeOfRoad(await roadOf(id));
+			const world = generate(route);
+			// The ground's own order of its lines (terrain/lines.ts canonical), which a piece's `line` counts in.
+			const lines = [...world.roads].sort((a, b) =>
+				a.key < b.key ? -1 : a.key > b.key ? 1 : 0,
+			);
+			const index = indexLines(lines);
+			// A mouth counts roads as the world lists them: the road ridden, then each side road.
+			const lineOf = (road: number) =>
+				lines.findIndex((l) => l.key === world.roads[road].key);
+			const where = (x: number, z: number) =>
+				`${id} at ${Math.round(x)}, ${Math.round(z)}`;
+			/** Metres from (x, z) to the nearest road but `skip`. */
+			const off = (x: number, z: number, skip = -1) =>
+				index.nearest(x, z, 2, skip)?.d ?? Infinity;
+			const MARGIN = 0.5;
+			const bad: string[] = [];
+
+			const stood = world.everything;
+			for (const { piece, line } of stood.standing)
+				if (off(piece.x, piece.z, line) < FORMATION + MARGIN)
+					bad.push(
+						`${piece.kind} of ${lines[line].key} ${where(piece.x, piece.z)}`,
+					);
+			// A sign stands past its own road's formation as well as every other's: a pass's 5.2 m from its road's centre.
+			for (const s of stood.signs)
+				if (off(s.x, s.z) < FORMATION + 0.3)
+					bad.push(`${s.look} sign ${where(s.x, s.z)}`);
+			for (const a of stood.arches) {
+				const own = index.lineOf[index.nearest(a.x, a.z, 1)!.i];
+				const [ax, az] = a.turn;
+				for (const hand of [-1, 1]) {
+					const x = a.x + az * 4.4 * hand;
+					const z = a.z - ax * 4.4 * hand;
+					if (off(x, z, own) < FORMATION + MARGIN)
+						bad.push(`arch post ${where(x, z)}`);
+				}
+			}
+			for (const p of stood.props)
+				if (off(p.x, p.z) < FORMATION + MARGIN)
+					bad.push(`${p.kind} ${where(p.x, p.z)}`);
+
+			// The road met keeps its own things out of a side road's mouth: within 12 m of it, on its side.
+			for (const side of world.sides)
+				for (const m of side.mouths) {
+					if (!m) continue;
+					const met = lineOf(m.met);
+					for (const { piece, line } of stood.standing) {
+						if (line !== met) continue;
+						const dx = piece.x - m.x;
+						const dz = piece.z - m.z;
+						if (Math.hypot(dx, dz) < 12 && dx * m.tx + dz * m.tz < m.d)
+							bad.push(`${piece.kind} in a mouth ${where(piece.x, piece.z)}`);
+					}
+				}
+
+			// Nothing reaches through a gallery's wall or roof, or in between its pillars.
+			const placer = roadsidePlacer(route, world);
+			const spots = Array.from(
+				{ length: Math.ceil(route.length / BLOCK_M) },
+				(_, b) => placer.spots(b),
+			).flat();
+			const things = [
+				...spots.map((s) => ({
+					x: s.x,
+					z: s.z,
+					r: reach(s.art),
+					what: ART[s.art].name,
+				})),
+				...stood.props.map((p) => {
+					const k = kitSpec(p.kind);
+					return {
+						x: p.x,
+						z: p.z,
+						r: (Math.hypot(k.hw, k.hd) + Math.hypot(k.cx, k.cz)) * p.scale,
+						what: p.kind,
+					};
+				}),
+			];
+			for (const [from, to] of world.galleries) {
+				const along: [number, number][] = [];
+				for (let d = from; d <= to; d += 1) {
+					const p = at(route, d);
+					along.push([p.x, p.z]);
+				}
+				for (const t of things) {
+					const d = Math.min(
+						...along.map(([x, z]) => Math.hypot(t.x - x, t.z - z)),
+					);
+					if (d < FORMATION + 0.9 + t.r)
+						bad.push(
+							`${t.what} ${d.toFixed(1)} m from a gallery's road ${where(t.x, t.z)}`,
+						);
+				}
+			}
+			for (const s of spots)
+				if (off(s.x, s.z) < FORMATION)
+					bad.push(`${ART[s.art].name} on a road ${where(s.x, s.z)}`);
+			expect(bad).toEqual([]);
+		},
+		6 * BUILD_MS,
 	);
 });
