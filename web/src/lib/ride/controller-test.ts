@@ -1,5 +1,5 @@
 import type { ObcAction } from '#lib/ble/obc.ts';
-import { rideKeyOf, shiftOf, type RideKey } from '#lib/ride/keys.ts';
+import { navKeyOf, rideKeyOf, shiftOf, type RideKey } from '#lib/ride/keys.ts';
 
 /**
  * The Controllers page's test pad (#4236): which line of the key table a
@@ -26,6 +26,8 @@ export function pressOfKey(
 	if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
 		return 'Computer page';
 	if (event.key.toLowerCase() === 's' && !event.shiftKey) return 'Say the ride';
+	const nav = navKeyOf(event);
+	if (nav) return OBC[nav];
 	const ride = rideKeyOf(event);
 	return ride ? RIDE_KEY[ride.kind] : null;
 }

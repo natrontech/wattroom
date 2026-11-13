@@ -196,10 +196,53 @@ export const KEY_TABLE: readonly (readonly [keys: string, does: string])[] = [
 	['H', 'Clean view'],
 	['M', 'Map page, and back'],
 	['V', '3D or Flat'],
+	['N', 'Next view'],
+	['D', 'Ride details'],
+	['B', 'Back to RIDE'],
 	['O', 'Snapshot'],
 	['S', 'Say the ride'],
 	['?', 'The keys'],
 ];
+
+/**
+ * The keys that press a controller's navigation (#4563): Select, Back and
+ * Menu, the Click V2's A, B and Y. Lower case, as `key` arrives.
+ */
+export const NAV_KEYS: Readonly<
+	Record<string, 'details' | 'back' | 'next-view'>
+> = {
+	d: 'details',
+	b: 'back',
+	n: 'next-view',
+};
+
+/** The navigation a press asks for, or null. Never with a modifier. */
+export function navKeyOf(
+	event: Pick<
+		KeyboardEvent,
+		'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'
+	>,
+): (typeof NAV_KEYS)[string] | null {
+	if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
+		return null;
+	return NAV_KEYS[event.key.toLowerCase()] ?? null;
+}
+
+/**
+ * D, B and N on a riding surface, run as the controller's press (#4563).
+ * A soundboard pad bound to one keeps it.
+ */
+export function bindNavKeys(padBound: (key: string) => boolean): () => void {
+	const down = (event: KeyboardEvent) => {
+		if (event.defaultPrevented || event.repeat || isTyping(event)) return;
+		const action = navKeyOf(event);
+		if (!action || padBound(event.key)) return;
+		event.preventDefault();
+		shifterSlot.run(action);
+	};
+	window.addEventListener('keydown', down);
+	return () => window.removeEventListener('keydown', down);
+}
 
 /**
  * The ride key a press asks for, by `key` so a layout that types ? with Shift

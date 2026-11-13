@@ -20,6 +20,8 @@
 	import { prefersReducedMotion } from '#lib/motion/index.ts';
 	import { COLUMN_SEAT, offerSeat } from '#lib/channel/stage-slot.svelte.ts';
 	import { shifterSlot } from '#lib/ble/controller-slot.svelte.ts';
+	import { bindNavKeys } from '#lib/ride/keys.ts';
+	import { board } from '#lib/board/clips.svelte.ts';
 	import { railPress } from '#lib/session/computer-pages.ts';
 	import { computerShown } from '#lib/session/computer-shown.svelte.ts';
 	import {
@@ -192,6 +194,8 @@
 		if (!rail) return;
 		return () => (computerShown.details = false);
 	});
+	// D, B and N run the same presses from the keys (#4563).
+	$effect(() => bindNavKeys((k) => !!board.onKey(k)));
 	// Flat, the ground starts under the rail, so it hides none of the graph.
 	let railH = $state(0);
 	const groundTop = $derived(

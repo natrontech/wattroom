@@ -91,6 +91,16 @@ export const shifterSlot = {
 		return () => actionCbs.delete(cb);
 	},
 
+	/**
+	 * A key that runs a controller's navigation (#4563): D, B and N press
+	 * Select, Back and Menu through the same listeners, so a Click V2 in
+	 * keystroke mode does what it does over network mode.
+	 */
+	run(action: ObcAction): void {
+		for (const cb of actionCbs) cb(action, 'down');
+		for (const cb of actionCbs) cb(action, 'up');
+	},
+
 	/** A gear moved or met an end: the controller's own vibration. */
 	feel(feel: ObcFeel): void {
 		held?.controller.feel(feel);
