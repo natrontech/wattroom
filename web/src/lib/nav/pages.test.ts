@@ -106,7 +106,7 @@ describe('a crew in the sidebar (#2447)', () => {
 		const labels = (admin: boolean, narrow: boolean) =>
 			crewPlaces('c1', admin, narrow).map((p) => p.label);
 		const everyone = ['Home', 'Schedule', 'Members'];
-		expect(labels(true, false)).toEqual([...everyone, 'Settings']);
+		expect(labels(true, false)).toEqual([...everyone, 'Crew settings']);
 		expect(labels(false, false)).toEqual(everyone);
 		// The 95% rule: nobody renames a crew from a bike.
 		expect(labels(true, true)).toEqual(everyone);

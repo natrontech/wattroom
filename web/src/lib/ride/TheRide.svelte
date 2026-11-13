@@ -13,6 +13,7 @@
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	import { createProfileStore } from '#lib/profile.svelte.ts';
+	import { cardLabel } from '#lib/ride/card.ts';
 	import RideCardChooser from '#lib/ride/RideCardChooser.svelte';
 	import RampRiding from '#lib/ride/RampRiding.svelte';
 	import RideFlags from '#lib/ride/RideFlags.svelte';
@@ -304,12 +305,12 @@
 					<button
 						onclick={() => (choosingCard = true)}
 						data-testid="download-card"
-						class="btn btn-secondary">Ride card</button
+						class="btn btn-secondary">{cardLabel({})}</button
 					>
 					{#if choosingCard}
 						<RideCardChooser
 							rideId={theRide.savedId}
-							label="Download the ride card"
+							label={cardLabel({})}
 							onclose={() => (choosingCard = false)}
 						/>
 					{/if}

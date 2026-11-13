@@ -6,6 +6,7 @@
 	 * Strava's API takes the activity and never a photo, so these are what a
 	 * rider adds by hand.
 	 */
+	import { cardLabel } from '#lib/ride/card.ts';
 	import RideCardChooser from '#lib/ride/RideCardChooser.svelte';
 	import WorldPicture from '#lib/ride/WorldPicture.svelte';
 
@@ -18,12 +19,12 @@
 	<button
 		onclick={() => (choosing = true)}
 		data-testid="download-card"
-		class="btn btn-secondary">Ride card</button
+		class="btn btn-secondary">{cardLabel({})}</button
 	>
 	{#if choosing}
 		<RideCardChooser
 			{rideId}
-			label="Download the ride card"
+			label={cardLabel({})}
 			onclose={() => (choosing = false)}
 		/>
 	{/if}

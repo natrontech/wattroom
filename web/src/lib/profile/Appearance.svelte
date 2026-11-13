@@ -100,11 +100,13 @@
 					{option.label}
 				</button>
 			{/each}
-			<p class="{HINT} col-span-2 sm:col-span-1">
+			<ul class="{HINT} col-span-2 space-y-0.5 lg:basis-full">
 				{#each WORLD_MODES as option (option.mode)}
-					{#if option.mode === mode}{option.label} — {option.line}{/if}
+					<li class={option.mode === mode ? 'text-ink' : ''}>
+						{option.label} — {option.line}
+					</li>
 				{/each}
-			</p>
+			</ul>
 		</div>
 		{#if !chosen && prefersReducedMotion.current}
 			<button

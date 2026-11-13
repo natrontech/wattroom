@@ -90,7 +90,7 @@ export function crewPlaces(
 		{ href: `${base}/schedule`, label: 'Schedule', icon: CalendarClock },
 		{ href: `${base}/members`, label: 'Members', icon: Users },
 		...(admin && !narrow
-			? [{ href: `${base}/settings`, label: 'Settings', icon: Settings }]
+			? [{ href: `${base}/settings`, label: 'Crew settings', icon: Settings }]
 			: []),
 	];
 }
