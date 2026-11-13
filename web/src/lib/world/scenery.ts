@@ -188,3 +188,153 @@ export function bridges(
 	g.computeBoundingSphere();
 	return g;
 }
+
+/** Metres between a rail's posts, and between the samples the ground is read at. */
+const RAIL_STEP_M = 4;
+/** A rail stands where the ground this far past the formation lies this far under the road, for at least this long a run. */
+const RAIL = { out: 7, drop: 2.5, runM: 24, at: FORMATION + 0.35 };
+/** A gallery: its roof's clear height and thickness, how far past the formation it reaches, and metres between its pillars. */
+const GALLERY = { clear: 5, thick: 0.6, out: 0.9, pillars: 8 };
+
+/**
+ * What is built along a designed road (designed.ts): a guard rail on posts
+ * wherever the land falls away beside it, a lake below or a hillside, seen
+ * through; and its galleries, a roof against the mountain on a back wall,
+ * open to the valley between pillars.
+ */
+export function roadworks(
+	route: Route,
+	groundAt: (x: number, z: number) => number,
+	skip: readonly (readonly [number, number])[],
+	galleries: readonly (readonly [number, number])[],
+	colors: { rail: string; post: string; stone: string },
+): THREE.BufferGeometry {
+	const pos: number[] = [];
+	const col: number[] = [];
+	const quad = (
+		a: THREE.Vector3,
+		b: THREE.Vector3,
+		c: THREE.Vector3,
+		d: THREE.Vector3,
+		tint: THREE.Color,
+	) => {
+		for (const p of [a, b, c, a, c, d]) {
+			pos.push(p.x, p.y, p.z);
+			col.push(tint.r, tint.g, tint.b);
+		}
+	};
+	const skin = (a: THREE.Vector3[], b: THREE.Vector3[], tint: THREE.Color) => {
+		for (let i = 0; i < a.length; i++) {
+			const j = (i + 1) % a.length;
+			quad(a[i], a[j], b[j], b[i], tint);
+		}
+	};
+	const rail = new THREE.Color(colors.rail);
+	const post = new THREE.Color(colors.post);
+	const stone = new THREE.Color(colors.stone);
+	const frame = (d: number) => {
+		const p = at(route, d);
+		const lx = Math.cos(p.heading);
+		const lz = -Math.sin(p.heading);
+		const y = yOf(route, p.ele);
+		return {
+			pt: (u: number, dy: number) =>
+				new THREE.Vector3(p.x + lx * u, y + dy, p.z + lz * u),
+			/** How far the ground `out` metres past the formation on `side` lies over the road. */
+			over: (side: number, out: number) =>
+				groundAt(
+					p.x + lx * side * (FORMATION + out),
+					p.z + lz * side * (FORMATION + out),
+				) - p.ele,
+		};
+	};
+	type Frame = ReturnType<typeof frame>;
+	/** A box section round (u, dy), `w` wide and `h` high. */
+	const ring = (f: Frame, u: number, dy: number, w: number, h: number) => [
+		f.pt(u - w / 2, dy),
+		f.pt(u - w / 2, dy + h),
+		f.pt(u + w / 2, dy + h),
+		f.pt(u + w / 2, dy),
+	];
+	const count = Math.floor(route.length / RAIL_STEP_M);
+	const within = (d: number, spans: readonly (readonly [number, number])[]) =>
+		spans.some(([a, b]) => d >= a && d <= b);
+	for (const side of [1, -1]) {
+		// Where the land falls away on this side; a bridge has its parapets.
+		const falls: boolean[] = [];
+		for (let i = 0; i <= count; i++) {
+			const d = i * RAIL_STEP_M;
+			falls.push(
+				!within(d, skip) && frame(d).over(side, RAIL.out) < -RAIL.drop,
+			);
+		}
+		for (let i = 0; i <= count;) {
+			if (!falls[i]) {
+				i++;
+				continue;
+			}
+			let j = i;
+			while (j + 1 <= count && falls[j + 1]) j++;
+			if ((j - i) * RAIL_STEP_M >= RAIL.runM) {
+				let prev: THREE.Vector3[] | null = null;
+				for (let k = i; k <= j; k++) {
+					const f = frame(k * RAIL_STEP_M);
+					const u = side * RAIL.at;
+					// The post, down into the verge, and the rail from the last one.
+					quad(
+						f.pt(u - 0.07, -0.6),
+						f.pt(u + 0.07, -0.6),
+						f.pt(u + 0.07, 0.72),
+						f.pt(u - 0.07, 0.72),
+						post,
+					);
+					const band = ring(f, u, 0.42, 0.08, 0.3);
+					if (prev) skin(prev, band, rail);
+					prev = band;
+				}
+			}
+			i = j + 1;
+		}
+	}
+	for (const [from, to] of galleries) {
+		const n = Math.max(1, Math.round((to - from) / RAIL_STEP_M));
+		const mid = frame((from + to) / 2);
+		// Its back wall stands against the mountain: the side the ground stands higher on.
+		const back = mid.over(1, 60) >= mid.over(-1, 60) ? 1 : -1;
+		const edge = FORMATION + GALLERY.out;
+		const top = GALLERY.clear + GALLERY.thick;
+		let roof: THREE.Vector3[] | null = null;
+		let wall: THREE.Vector3[] | null = null;
+		for (let k = 0; k <= n; k++) {
+			const d = from + ((to - from) * k) / n;
+			const f = frame(d);
+			const slab = [
+				f.pt(edge, GALLERY.clear),
+				f.pt(edge, top),
+				f.pt(-edge, top),
+				f.pt(-edge, GALLERY.clear),
+			];
+			const rear = ring(f, back * edge, -1, 0.6, GALLERY.clear + 1);
+			if (roof && wall) {
+				skin(roof, slab, stone);
+				skin(wall, rear, stone);
+			}
+			if (k === 0 || k === n) quad(slab[0], slab[1], slab[2], slab[3], stone);
+			roof = slab;
+			wall = rear;
+			// A pillar on the open side, every other section.
+			if (k % Math.round(GALLERY.pillars / RAIL_STEP_M) === 0)
+				skin(
+					ring(f, -back * edge, -1, 0.9, GALLERY.clear + 1),
+					ring(frame(d + 0.9), -back * edge, -1, 0.9, GALLERY.clear + 1),
+					stone,
+				);
+		}
+	}
+	const g = new THREE.BufferGeometry();
+	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+	g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+	g.computeVertexNormals();
+	g.computeBoundingSphere();
+	return g;
+}

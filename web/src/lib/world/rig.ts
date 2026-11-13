@@ -28,6 +28,8 @@ export const HELI = { back: 16, up: 8, fov: 45 };
 /** Diorama 3D's chase: higher and further back, the riders small on the road and the land round them, like a model railway seen from its edge. */
 const DIO = { back: 9.5, up: 4.4, ahead: 34, fov: 44 };
 
+/** The cosine of the widest the road ahead may lie off the line from the eye to you: 24°, well inside the narrowest camera's half frame. */
+const OFF_AXIS = Math.cos((24 * Math.PI) / 180);
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
 /** Past the heli's distances, the widest a camera change moves the goal. */
 const CUT_M = 500;
@@ -143,11 +145,20 @@ export function makeRig(route: Route, world: World) {
 				b.z + sz,
 			);
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
-			const a = along(
-				route,
-				rider.d + way * (dio ? DIO.ahead : chase ? 18 : 10),
-				lap,
-			);
+			// Looks down the road ahead, but never so far round a bend that you leave the frame: in a hairpin the road 34 m on lies beside you, and the eye turned to it lost you off the edge. The reach halves until the road there lies within OFF_AXIS of you.
+			let reach = dio ? DIO.ahead : chase ? 18 : 10;
+			let a = along(route, rider.d + way * reach, lap);
+			for (let tries = 0; tries < 3; tries++) {
+				const ux = you.x - want.x;
+				const uz = you.z - want.z;
+				const ax = a.x + sx - want.x;
+				const az = a.z + sz - want.z;
+				const cos =
+					(ux * ax + uz * az) / (Math.hypot(ux, uz) * Math.hypot(ax, az) || 1);
+				if (cos >= OFF_AXIS) break;
+				reach /= 2;
+				a = along(route, rider.d + way * reach, lap);
+			}
 			look
 				.set(a.x + sx, yOf(route, a.ele) + 1.0, a.z + sz)
 				.lerp(you, dio ? 0.3 : chase ? 0.45 : 0.8);

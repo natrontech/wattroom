@@ -78,7 +78,10 @@ export function paintArch(
 	x.fillRect(0, 0, W, 10);
 	x.fillRect(0, H - 10, W, 10);
 	x.fillStyle = style.arch.text;
-	x.font = `bold 96px "Chakra Petch", ${FONT}`;
+	// As large as the banner holds: a long pass's name is set smaller, never cut.
+	let size = 96;
+	do x.font = `bold ${size}px "Chakra Petch", ${FONT}`;
+	while (x.measureText(text).width > W - 80 && (size -= 6) > 40);
 	x.textAlign = 'center';
 	x.textBaseline = 'middle';
 	x.fillText(text, W / 2, 84);

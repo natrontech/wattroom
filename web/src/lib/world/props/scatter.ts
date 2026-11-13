@@ -143,6 +143,14 @@ export function villageSites(place: Place): Village[] {
 			s: site.slot * SITE_M,
 		});
 	}
+	// A designed road's villages take its own names, in the order the road meets them (designed.ts).
+	const own = ground.scene?.names.villages;
+	if (own)
+		[...out]
+			.sort((a, b) => a.line - b.line || a.s - b.s)
+			.forEach((v, i) => {
+				if (i < own.length) v.name = own[i];
+			});
 	return out;
 }
 

@@ -16,7 +16,8 @@ import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
-import { bridges, waterSheets } from './scenery';
+import { sceneOf } from './designed';
+import { bridges, roadworks, waterSheets } from './scenery';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { lightsMaterial, lightsUniforms, OFF } from './lights';
@@ -199,7 +200,17 @@ export function buildStage(
 			ground.add(id, terrain(route, meshOf([{ ci, cj, grid }]), style.palette)),
 		drop: (id) => ground.drop(id),
 	});
-	const ribbon = piecePool(roadMaterial(style.road, lights), ROAD_ROOM);
+	const snowline = sceneOf(route.scene)?.climate.snowline;
+	const ribbon = piecePool(
+		roadMaterial(
+			style.road,
+			lights,
+			snowline === undefined
+				? undefined
+				: { y: yOf(route, snowline), color: style.palette[Biome.Snow] },
+		),
+		ROAD_ROOM,
+	);
 	group.add(tag('road', ribbon.mesh));
 	const pieces = roadPieces(route);
 	let here: string | null = null;
@@ -267,7 +278,29 @@ export function buildStage(
 				),
 			);
 	}
-	const treeMat = flat(sight, { wind: true, fade: true });
+	// And what is built along it: rails where the land falls away, and its galleries.
+	if (world.scene !== undefined) {
+		const both = flat(sight);
+		both.side = THREE.DoubleSide;
+		group.add(
+			tag(
+				'road',
+				new THREE.Mesh(
+					roadworks(route, world.groundAt, world.bridges, world.galleries, {
+						rail: c.snowpole,
+						post: c.stone,
+						stone: c.stone,
+					}),
+					both,
+				),
+			),
+		);
+	}
+	const treeMat = flat(sight, {
+		wind: true,
+		fade: true,
+		snow: { lo: c.spruce, hi: c.spruceTip },
+	});
 	const houseMat = flat(sight, { fade: true });
 	const plain = flat(sight);
 	const props = batchProps(route, c, {

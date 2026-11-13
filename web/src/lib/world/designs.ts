@@ -444,17 +444,47 @@ export const DESIGNS: readonly Designed[] = [
 		features: BERNE_LAND,
 		// Snow from 2,050 m, eight hairpins under the col, and the forest up into it: the last trees stand white.
 		climate: { snowline: 2050, treeline: 2230 },
+		names: {
+			passes: ['Col de Berne', 'Pas de la Rampe'],
+			villages: ['Praz-Pédale', 'Les Rampes', 'Combe-Kurbel', 'Vex-le-Watt'],
+		},
+		// An avalanche gallery on a leg high in the snow.
+		galleries: [
+			[
+				[740, 3382],
+				[480, 3455],
+			],
+		],
 	},
 	{
 		id: 'aare',
 		lengthM: 18591.45,
 		shape: { corners: AARENBOGEN, seed: 4404, drawn: true },
 		features: AARENBOGEN_LAND,
+		names: {
+			passes: ['Bantigeregg', 'Längenhubel', 'Gurtenstutz'],
+			villages: ['Aarwatt', 'Muribrügg', 'Wohlensprint', 'Kirchtritt'],
+		},
 	},
 	{
 		id: 'urnsee',
 		lengthM: 20814.46,
 		shape: { corners: URNSEE, seed: 4340, drawn: true },
 		features: URNSEE_LAND,
+		names: {
+			passes: ['Axenegg', 'Seelisgrat', 'Morschachli'],
+			villages: ['Flüetritt', 'Sisiwatt', 'Bauenkurbel', 'Brunnach'],
+		},
+		// Two galleries under the east wall's cliffs, the lake seen between their pillars.
+		galleries: [
+			[
+				[1330, -3000],
+				[1390, -2700],
+			],
+			[
+				[1380, -1700],
+				[1300, -1350],
+			],
+		],
 	},
 ];

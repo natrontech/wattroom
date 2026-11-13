@@ -68,6 +68,10 @@ export type World = {
 	waterAt: (x: number, z: number) => number | null;
 	/** Where the road is carried over the ground, in metres along it: its bridges. */
 	bridges: [from: number, to: number][];
+	/** Where the road runs under a gallery's roof, in metres along it. */
+	galleries: [from: number, to: number][];
+	/** The ground at (x, z) as the place has it, earthworks and all, without drawing it: what the road's rails are read off (scenery.ts). */
+	groundAt: (x: number, z: number) => number;
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
 	/** What grows at (x, z); null where no ground is drawn. What the ride hears beside the road (#3186). */
 	biomeAt: (x: number, z: number) => Biome | null;
@@ -237,6 +241,16 @@ export function generate(
 		waters: scene?.waters ?? [],
 		waterAt: (x, z) => scene?.waterAt(x, z) ?? null,
 		bridges,
+		galleries: (scene?.galleries ?? []).flatMap(([a, b]) => {
+			const from = nearest(a[0], a[1]);
+			const to = nearest(b[0], b[1]);
+			if (!from || !to) return [];
+			const span = [from.i * route.step, to.i * route.step].sort(
+				(p, q) => p - q,
+			);
+			return [[span[0], span[1]] as [number, number]];
+		}),
+		groundAt: ground.heightAt,
 		tile: tiles.tile,
 		settled: tiles.has,
 		forget(x, z, r) {

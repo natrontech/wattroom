@@ -9,6 +9,8 @@ import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
 import type { World } from './world';
 import { meetingAt } from './crossings';
+import { sceneOf } from './designed';
+import { smoothstep } from './rand';
 import { sharedAt } from './shared-road';
 import { BANK_SPAN_M, banksOf, bendsOf } from './terrain/road-frame';
 import { ribbonRows, ROAD_W, SHOULDER_DROP } from './terrain/road-profile';
@@ -16,6 +18,10 @@ import { ribbonRows, ROAD_W, SHOULDER_DROP } from './terrain/road-profile';
 export const EXAG = 1.2; // vertical exaggeration; the Alps read flat from a chase cam otherwise
 export { ROAD_W } from './terrain/road-profile';
 export const ROAD_LIFT = 0.12;
+
+/** A ploughed bank's height over the asphalt at the formation's edge, and the metres of height either side of the snowline over which the snow comes in. */
+const SNOW_BANK_M = 0.9;
+const SNOW_EASE_M = 12;
 
 export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
 
@@ -101,6 +107,7 @@ export function road(
 	const drops =
 		shoulder > 0 ? [-SHOULDER_DROP, 0, 0, 0, -SHOULDER_DROP] : [0, 0, 0];
 	const cols = offs.length;
+	const snowline = sceneOf(route.scene)?.climate.snowline;
 	const [from, to] = opts.rows ?? [0, Infinity];
 	// A road that goes round is one strip round (#4534): rows before its first and past its last wrap, so its start line is lit, banked and walked as any other row.
 	const rows = ribbonRows(route, step);
@@ -139,13 +146,19 @@ export function road(
 		const y = yOf(route, p.ele) + lift - SHARED_SINK * w;
 		const tx = Math.sin(p.heading);
 		const tz = Math.cos(p.heading);
+		// In a designed road's snow the plough has thrown a bank up along both edges.
+		const banked =
+			snowline === undefined
+				? 0
+				: SNOW_BANK_M *
+					smoothstep(snowline - SNOW_EASE_M, snowline + SNOW_EASE_M, p.ele);
 		for (let c = 0; c < cols; c++) {
 			let u = offs[c];
 			if (Math.sign(u) === Math.sign(k) && Math.abs(k) > 1e-4)
 				u = Math.sign(u) * Math.min(Math.abs(u), 0.85 / Math.abs(k));
 			const v = new THREE.Vector3(
 				p.x + lx * u,
-				y + drops[c] - u * Math.tan(bank),
+				y + drops[c] + (drops[c] < 0 ? banked : 0) - u * Math.tan(bank),
 				p.z + lz * u,
 			);
 			// walk the column: never step backwards along the road (a degenerate triangle, not a bow-tie)
@@ -369,10 +382,14 @@ const MOUTH_WITHIN_M = ROAD_W / 2 - 0.6;
 export function roadMaterial(
 	c: Style['road'],
 	lights: Lights = lightsUniforms(),
+	/** Where a designed road's snow lies from (designed.ts), as a height in the scene: above it the shoulder and the verge are snow, a bank ploughed up beside the asphalt. */
+	snow?: { y: number; color: string },
 ): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial();
 	m.onBeforeCompile = (s) => {
 		Object.assign(s.uniforms, lights);
+		s.uniforms.uSnowY = { value: snow?.y ?? 1e9 };
+		s.uniforms.uSnow = { value: new THREE.Color(snow?.color ?? '#fff') };
 		s.uniforms.uAsphalt = { value: new THREE.Color(c.asphalt) };
 		s.uniforms.uLine = { value: new THREE.Color(c.line) };
 		s.uniforms.uVerge = { value: new THREE.Color(c.verge) };
@@ -402,6 +419,7 @@ export function roadMaterial(
 				varying vec3 vLampAt;
 				${POOL}
 				uniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge; uniform vec3 uShoulder;
+				uniform float uSnowY; uniform vec3 uSnow;
 				// A stripe of half width h at distance d, one pixel fw wide at least, at the share of it the stripe covers.
 				float paint(float d, float h, float fw) {
 					float w = max(h, 0.5 * fw);
@@ -441,6 +459,7 @@ export function roadMaterial(
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
 				col = mix(col, uLine, line * (1.0 - shoulder));
 				col = mix(col, uVerge, verge * (1.0 - theirEdge));
+				col = mix(col, uSnow, shoulder * smoothstep(uSnowY - ${SNOW_EASE_M.toFixed(1)}, uSnowY + ${SNOW_EASE_M.toFixed(1)}, vLampAt.y));
 				col = mix(col, uAsphalt, theirs * mix(1.0, shoulder, joined));
 				vec4 diffuseColor = vec4(col, opacity);`,
 			)
@@ -459,7 +478,7 @@ export function roadMaterial(
 			);
 	};
 	m.customProgramCacheKey = () =>
-		`road-${c.asphalt}-${c.line}-${c.verge}-${c.shoulder}`;
+		`road-${c.asphalt}-${c.line}-${c.verge}-${c.shoulder}-${snow?.y}-${snow?.color}`;
 	return m;
 }
 

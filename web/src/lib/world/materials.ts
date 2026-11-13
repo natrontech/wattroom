@@ -99,8 +99,10 @@ const UNDERSIDE = /* glsl */ `
 		normal = length( level ) > 1e-3 ? normalize( level ) : normalize( cross( upView, vec3( 0.0, 0.0, 1.0 ) ) );
 	}`;
 
-/** A vertex colour brighter than this is no colour but a mark: snow on it (props/batch.ts multiplies a snowed tree's by 256). */
-export const SNOWED_OVER = 4;
+/** What a tree's colours are multiplied by where it stands in snow (props/batch.ts): far past any colour, so the material reads it as a mark, and divides it out again. */
+export const SNOWED_BY = 256;
+/** A vertex colour brighter than this is that mark. */
+const SNOWED_OVER = 4;
 
 /**
  * The dressing's material (ADR-0092): its models' colours, flat per face,
@@ -109,7 +111,12 @@ export const SNOWED_OVER = 4;
  */
 export function flat(
 	sight: Sight,
-	opts: { wind?: boolean; fade?: boolean } = {},
+	opts: {
+		wind?: boolean;
+		fade?: boolean;
+		/** A tree's darkest and lightest green, foot to tip: where it stands in snow, its tip is white and its skirts keep their green under a dusting. None: snowed all over. */
+		snow?: { lo: string; hi: string };
+	} = {},
 ): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial({
 		vertexColors: true,
@@ -122,19 +129,36 @@ export function flat(
 		);
 		// A tree in snow (props/batch.ts): its colours come multiplied far past any colour, and are drawn snow.
 		// Half of it keeps its white in the shade, where a face turned from the sun would be drawn as dark as a green tree's.
+		const greens = opts.snow && [
+			new THREE.Color(opts.snow.lo).g,
+			new THREE.Color(opts.snow.hi).g,
+		];
+		s.uniforms.uSnowGreen = {
+			value: new THREE.Vector2(greens?.[0] ?? 0, greens?.[1] ?? 1e-4),
+		};
 		s.fragmentShader = s.fragmentShader
+			.replace(
+				'#include <common>',
+				'#include <common>\nuniform vec2 uSnowGreen;',
+			)
 			.replace(
 				'#include <color_fragment>',
 				`#include <color_fragment>
 				bool snowed = false;
+				float snowOn = 0.0;
 				#ifdef USE_COLOR
 					snowed = max(vColor.r, max(vColor.g, vColor.b)) > ${SNOWED_OVER.toFixed(1)};
-					if (snowed) diffuseColor.rgb = vec3(0.84, 0.88, 1.0);
+					if (snowed) {
+						vec3 own = vColor.rgb / ${SNOWED_BY.toFixed(1)};
+						float up = clamp((own.g - uSnowGreen.x) / max(uSnowGreen.y - uSnowGreen.x, 1e-4), 0.0, 1.0);
+						snowOn = mix(0.28, 1.0, smoothstep(0.3, 0.72, up));
+						diffuseColor.rgb = mix(own, vec3(0.84, 0.88, 1.0), snowOn);
+					}
 				#endif`,
 			)
 			.replace(
 				'#include <opaque_fragment>',
-				`if (snowed) outgoingLight = mix(outgoingLight, vec3(0.8, 0.83, 0.96), 0.5);
+				`if (snowed) outgoingLight = mix(outgoingLight, vec3(0.8, 0.83, 0.96), 0.5 * snowOn);
 				#include <opaque_fragment>`,
 			);
 		if (!opts.wind && !opts.fade) return;
@@ -172,6 +196,6 @@ export function flat(
 				);
 	};
 	m.customProgramCacheKey = () =>
-		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}`;
+		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}${opts.snow ? `${opts.snow.lo}${opts.snow.hi}` : ''}`;
 	return m;
 }

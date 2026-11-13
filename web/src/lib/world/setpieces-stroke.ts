@@ -545,11 +545,36 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		// A pass: where this way's climb tops out and the other way's does too.
 		if (dir < 0) continue;
 		const back = climbsOf(turnedRound(road)).map((cl) => road.length - cl.topM);
-		for (const cl of climbs) {
-			if (!back.some((t) => Math.abs(t - cl.topM) < 200)) continue;
+		// Each pass has a name of its own: a designed road's (designed.ts), its highest first, or its tile's, and where two passes share a tile the later one's from a tile further on.
+		const taken: string[] = [];
+		const own = c.ground.scene?.names.passes ?? [];
+		const tops = climbs.filter((cl) =>
+			back.some((t) => Math.abs(t - cl.topM) < 200),
+		);
+		const byHeight = [...tops].sort(
+			(a, b) => w.at(b.topM).h - w.at(a.topM).h || a.topM - b.topM,
+		);
+		for (const cl of tops) {
 			const s = cl.topM;
 			const p = w.at(s);
-			const here = tileNames(p.x, p.z);
+			let here = tileNames(p.x, p.z);
+			for (let far = 1; far < 8 && taken.includes(here.pass); far++)
+				here = tileNames(p.x + far * 7 * 5000, p.z);
+			const rank = byHeight.indexOf(cl);
+			if (rank < own.length) here = { ...here, pass: own[rank] };
+			taken.push(here.pass);
+			// The arch stands across a straight, where its posts clear the road: the nearest within 120 m of the top.
+			const bend = (m: number) => {
+				const a = w.at(Math.max(0, m - 10)).along;
+				const b = w.at(Math.min(r.length, m + 10)).along;
+				return Math.abs(a[0] * b[1] - a[1] * b[0]);
+			};
+			// At the top, or well clear of it: the metres round a summit are where a ride's picture is taken, and an arch 13 m from the lens stood across its sky.
+			const gate =
+				[0, 70, 90, 110, -70, -90, -110]
+					.map((by) => s + by)
+					.find((m) => m > 10 && m < r.length - 10 && bend(m) < 0.03) ?? s;
+			const q = w.at(gate);
 			plan.named(here);
 			const top = `${Math.round(p.h)} m`;
 			const g = filed(s);
@@ -586,9 +611,9 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			sign(s - 30, 1, 5.2, 'pass', [here.pass, top], 2.6, 1.1);
 			sign(s + 30, -1, 5.2, 'pass', [here.pass, top], 2.6, 1.1);
 			arches.push({
-				x: p.x,
-				z: p.z,
-				turn: p.along,
+				x: q.x,
+				z: q.z,
+				turn: q.along,
 				label: `KOM · ${here.pass.toUpperCase()}`,
 			});
 		}

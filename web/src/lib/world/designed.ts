@@ -35,6 +35,12 @@ export type Cover = 'moor' | 'dry';
 /** Where a scene's snow lies from and its trees stand to, metres above sea: the generator's own where not given. */
 export type Climate = { snowline?: number; treeline?: number };
 
+/** A designed road's own names, in the order the road meets them: no two of WattRoom's roads share a pass or a village. Past the last, the generator's. */
+export type PlaceNames = {
+	passes?: readonly string[];
+	villages?: readonly string[];
+};
+
 export type Scene = {
 	/** The designed ground at (x, z), from the generator's `h` there; `d` is metres to the nearest road. */
 	shape(x: number, z: number, h: number, d: number): number;
@@ -43,6 +49,9 @@ export type Scene = {
 	/** What the scene lays over (x, z), or null where the land's own cover grows. */
 	coverAt(x: number, z: number): Cover | null;
 	climate: Climate;
+	names: PlaceNames;
+	/** Its galleries, each from one spot on the road to another, in the world's frame: the road roofed over against the mountain, open to the valley between pillars. */
+	galleries: [from: [number, number], to: [number, number]][];
 	waters: Water[];
 };
 
@@ -113,6 +122,9 @@ export type Designed = {
 	shape: Shape;
 	features: readonly Feature[];
 	climate?: Climate;
+	names?: PlaceNames;
+	/** Galleries: each from one spot on the road to another. */
+	galleries?: readonly (readonly [Spot, Spot])[];
 };
 
 /** Rounds a line's corners off: each cut twice, a quarter in from either end (Chaikin). */
@@ -433,6 +445,8 @@ function sceneFrom(
 	parts: readonly Part[],
 	covers: Scene['coverAt'],
 	climate: Climate,
+	names: PlaceNames,
+	galleries: Scene['galleries'],
 ): Scene {
 	const wet = parts.filter((p) => p.waterAt);
 	return {
@@ -450,6 +464,8 @@ function sceneFrom(
 		},
 		coverAt: covers,
 		climate,
+		names,
+		galleries,
 		waters: parts.flatMap((p) => (p.water ? [p.water] : [])),
 	};
 }
@@ -492,7 +508,10 @@ function build(d: Designed): Built {
 		return null;
 	};
 	const climate = d.climate ?? {};
-	const dry = sceneFrom(parts, covers, climate);
+	const galleries = (d.galleries ?? []).map(
+		([a, b]): Scene['galleries'][number] => [world(a), world(b)],
+	);
+	const dry = sceneFrom(parts, covers, climate, d.names ?? {}, galleries);
 	const streams = d.features.filter((f) => f.kind === 'stream');
 	const laid = new Map<string, Scene>();
 	b = {
@@ -507,7 +526,13 @@ function build(d: Designed): Built {
 					(f) => stream(f, world, ground, dry.waterAt) ?? [],
 				);
 				// The streams are cut into the ground they were laid on, and the standing water they run into is asked first.
-				const whole = sceneFrom([...parts, ...run], covers, climate);
+				const whole = sceneFrom(
+					[...parts, ...run],
+					covers,
+					climate,
+					d.names ?? {},
+					galleries,
+				);
 				scene = {
 					...whole,
 					shape(x, z, h, dist) {
