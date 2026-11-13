@@ -18,9 +18,16 @@ import { routeOfRoad } from './road-route';
 import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
 import { JOINED, JOINS, meetingAt } from './crossings';
-import { ROAD_LIFT, surfaceOf } from './geometry';
+import { GRAVEL_W, ribbonOf, ROAD_LIFT, surfaceOf } from './geometry';
 import { liftOf } from './road-surface';
-import { giveWays, SQUARE_COS, STOP_LANE, STOP_LINE, stops } from './scenery';
+import {
+	giveWays,
+	SQUARE_COS,
+	STOP_LANE,
+	STOP_LINE,
+	stopped,
+	stops,
+} from './scenery';
 import { sharedAt } from './shared-road';
 import { FORMATION, ROAD_W } from './terrain/road-profile';
 import { BUILD_MS } from './world.test-helper';
@@ -90,8 +97,11 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 					expect(onBridge(d), `${d} m is over water`).toBe(true);
 					expect(p.ele - wet, `${d} m over the water`).toBeGreaterThan(4);
 				}
-				// Off a bridge the ground is the road's own shelf: no mountain over it, no hole under it.
-				if (!onBridge(d))
+				// Off a bridge the ground is the road's own shelf: no mountain over it, no hole under it; but in a tunnel, where the hill stands whole over it.
+				const bored = world.tunnels.some(
+					([a, b]) => d >= a - 12 && d <= b + 12,
+				);
+				if (!onBridge(d) && !bored)
 					expect(
 						Math.abs(world.heightAt(p.x, p.z) - p.ele),
 						`${d} m`,
@@ -178,7 +188,8 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 				expect(wet.map((p) => p.kind)).toEqual([]);
 				// The whole map's things, every side road's too.
 			},
-			BUILD_MS,
+			// Every tile of the whole map's roads.
+			3 * BUILD_MS,
 		);
 	},
 );
@@ -212,22 +223,27 @@ describe('Tour de l’Aaren', () => {
 
 describe('Urnsee-Rundfahrt', () => {
 	it(
-		'runs along its lake, through a gallery, over an inlet and the outlet, and looks down on it from its terrace',
+		'runs along its lake round the bays, through the Nase, under a gallery, over the inlet and the outlet, and looks down on it from its terrace',
 		async () => {
 			const route = routeOfRoad(await roadOf('urnsee'));
 			const world = generate(route);
 			const lake = sceneOf('urnsee')!;
+			const level = world.waters[0].level;
 			let near = 0;
 			let all = 0;
-			// The east shore: from its first kilometre to the head of the lake.
-			for (let d = 700; d < 3700; d += 100) {
+			const over: number[] = [];
+			// The east shore: from the village's beach to the head of the lake, the tunnel aside.
+			for (let d = 300; d < 4300; d += 100) {
+				if (world.tunnels.some(([a, b]) => d >= a - 20 && d <= b + 20))
+					continue;
 				const p = at(route, d);
 				all++;
+				over.push(p.ele - level);
 				for (let a = 0; a < 16; a++)
 					if (
 						lake.waterAt(
-							p.x + 90 * Math.cos((a * Math.PI) / 8),
-							p.z + 90 * Math.sin((a * Math.PI) / 8),
+							p.x + 150 * Math.cos((a * Math.PI) / 8),
+							p.z + 150 * Math.sin((a * Math.PI) / 8),
 						) !== null
 					) {
 						near++;
@@ -235,15 +251,67 @@ describe('Urnsee-Rundfahrt', () => {
 					}
 			}
 			expect(near / all).toBeGreaterThan(0.8);
+			// Now a few metres over the water, now high under the cliffs.
+			expect(Math.min(...over)).toBeLessThan(5);
+			expect(Math.max(...over)).toBeGreaterThan(20);
+			expect(world.tunnels).toHaveLength(1);
+			// The inlet's mouth, and the outlet under the terrace.
 			expect(world.bridges).toHaveLength(2);
 			expect(world.galleries).toHaveLength(1);
 			expect(world.galleries[0][1] - world.galleries[0][0]).toBeGreaterThan(
 				300,
 			);
 			const top = Math.max(...route.ele);
-			expect(top - world.waters[0].level).toBeGreaterThan(100);
+			expect(top - level).toBeGreaterThan(100);
 		},
 		BUILD_MS,
+	);
+});
+
+describe('Kettental-Runde', () => {
+	it(
+		'climbs to the alp past its lake, rides the ridge, and runs down the Kettental through its fields, over its river twice',
+		async () => {
+			const route = routeOfRoad(await roadOf('kette'));
+			const world = generate(route);
+			expect(route.length).toBeGreaterThan(48_000);
+			expect(Math.max(...route.ele)).toBeGreaterThan(1900);
+			// The alp's lake beside the road.
+			const alp = world.waters.find((w) => !w.run && w.level > 1800)!;
+			let byLake = 0;
+			let fields = 0;
+			for (let d = 0; d < route.length; d += 50) {
+				const p = at(route, d);
+				for (let a = 0; a < 16; a++)
+					if (
+						world.waterAt(
+							p.x + 150 * Math.cos((a * Math.PI) / 8),
+							p.z + 150 * Math.sin((a * Math.PI) / 8),
+						) === alp.level
+					) {
+						byLake++;
+						break;
+					}
+				for (const side of [-40, 40])
+					if (
+						world.biomeAt(
+							p.x + Math.cos(p.heading) * side,
+							p.z - Math.sin(p.heading) * side,
+						) === Biome.Dry
+					)
+						fields++;
+			}
+			expect(byLake).toBeGreaterThan(3);
+			// Ripe grain beside the valley road.
+			expect(fields).toBeGreaterThan(30);
+			// The valley's river, twice, each time on a bridge over it.
+			const kette = world.bridges.filter(([a, b]) => {
+				const mid = at(route, (a + b) / 2);
+				return mid.x < -6000 && world.waterAt(mid.x, mid.z) !== null;
+			});
+			expect(kette).toHaveLength(2);
+		},
+		2 * BUILD_MS,
 	);
 });
 
@@ -365,8 +433,8 @@ describe('the map', () => {
 							where,
 						).toBe(true);
 						const surface = surfaceOf(side.route);
-						// Onto a roundabout's ring nobody stops: nothing is painted there.
-						if (met.level) return;
+						// Onto a roundabout's ring nobody stops, nor out of a gravel lane: nothing is painted there.
+						if (stopped(side, world.sides)[end] === null) return;
 						const mouth = {
 							...m,
 							off: (x: number, z: number) => world.offJunction(m, x, z),
@@ -452,11 +520,16 @@ describe('the map', () => {
 				const route = routeOfRoad(await roadOf(d.id));
 				const world = generate(route);
 				const roads = [
-					{ name: 'ridden', r: route, spans: world.bridges },
+					// A tunnel's road runs through its hill.
+					{
+						name: 'ridden',
+						r: route,
+						spans: [...world.bridges, ...world.tunnels],
+					},
 					...world.sides.map((side, k) => ({
 						name: `side road ${k}`,
 						r: side.route,
-						spans: side.bridges,
+						spans: [...side.bridges, ...side.tunnels],
 					})),
 				];
 				for (const { name, r, spans } of roads)
@@ -493,7 +566,8 @@ describe('the map', () => {
 			for (const [id, labels] of names)
 				expect(new Set(labels).size, id).toBe(labels.length);
 		},
-		3 * BUILD_MS,
+		// Every loop's every tile: the map is five loops' land.
+		8 * BUILD_MS,
 	);
 });
 
@@ -550,6 +624,113 @@ describe('the land a scene lays out', () => {
 			}
 		},
 		BUILD_MS,
+	);
+});
+
+describe('the map’s land', () => {
+	const LOOPS = DESIGNS.filter((d) => d.others);
+	const MAP = LOOPS[0];
+	/** Metres from a spot on the map to a loop's line, and the metre along it. */
+	const onLine = (line: Route, [x, y]: readonly [number, number]) => {
+		let best = { d: Infinity, m: 0 };
+		for (let i = 0; i < line.x.length; i++) {
+			const d = Math.hypot(line.x[i] - x, -line.z[i] - y);
+			if (d < best.d) best = { d, m: i * line.step };
+		}
+		return best;
+	};
+
+	it('has a lake with an island standing out of it, and shallows by the village', () => {
+		const lake = MAP.features.find((f) => f.kind === 'lake')!;
+		if (lake.kind !== 'lake') throw new Error('no lake');
+		const scene = sceneOf(MAP.id)!;
+		for (const isle of lake.islands ?? []) {
+			const x = isle.reduce((s, p) => s + p[0], 0) / isle.length;
+			const y = isle.reduce((s, p) => s + p[1], 0) / isle.length;
+			expect(scene.waterAt(x, -y)).toBeNull();
+			expect(scene.shape(x, -y, lake.level, 300)).toBeGreaterThan(
+				lake.level + 2,
+			);
+		}
+		expect(lake.islands?.length).toBeGreaterThan(0);
+		// The bed off the beach lies shallower than as far off any other shore.
+		const [bx, by] = lake.shallows![0].at;
+		const beach = scene.shape(bx, -(by + 120), lake.level, 300);
+		expect(lake.level - beach).toBeLessThan(8);
+	});
+
+	it.each(MAP.tunnels!.map((t, k) => [k, t] as const))(
+		'bores tunnel %i through a hill on a loop’s road: the ground stands whole over it',
+		async (_, [a, b]) => {
+			const loop = LOOPS.find((d) => {
+				const line = designedLine(d);
+				return onLine(line, a).d < 6 && onLine(line, b).d < 6;
+			});
+			expect(loop).toBeDefined();
+			const route = routeOfRoad(await roadOf(loop!.id));
+			const world = generate(route);
+			expect(world.tunnels).toHaveLength(1);
+			const [from, to] = world.tunnels[0];
+			expect(to - from).toBeCloseTo(Math.hypot(b[0] - a[0], b[1] - a[1]), -1);
+			// The hill over its middle, well over the road: no cutting through it.
+			const mid = at(route, (from + to) / 2);
+			expect(world.heightAt(mid.x, mid.z) - mid.ele).toBeGreaterThan(15);
+			// And at each portal the road is on its shelf, the hill rising from it.
+			for (const d of [from - 12, to + 12]) {
+				const p = at(route, d);
+				expect(Math.abs(world.heightAt(p.x, p.z) - p.ele)).toBeLessThan(1.5);
+			}
+			for (const d of [from + 30, to - 30]) {
+				const p = at(route, d);
+				expect(world.heightAt(p.x, p.z) - p.ele).toBeGreaterThan(4);
+			}
+		},
+		BUILD_MS,
+	);
+
+	it(
+		'lays gravel lanes on the land: narrow, with no stop or sign, never beside a road',
+		async () => {
+			const route = routeOfRoad(await roadOf('urnsee'));
+			const world = generate(route);
+			const lanes = world.sides.filter((s) => s.route.gravel);
+			expect(lanes.length).toBeGreaterThan(15);
+			const roads = [
+				route,
+				...world.sides.filter((s) => !s.route.gravel).map((s) => s.route),
+			];
+			for (const lane of lanes) {
+				const r = lane.route;
+				expect(ribbonOf(r).width).toBe(GRAVEL_W);
+				expect(stopped(lane, world.sides)).toEqual([null, null]);
+				for (let m = 0; m <= r.length; m += 20) {
+					const p = at(r, m);
+					// On its land, off its bridges: the field or the hillside 15 m either side lies about as high, no cutting or bank of its own.
+					if (!lane.bridges.some(([f, t]) => m >= f - 30 && m <= t + 30))
+						for (const side of [-15, 15])
+							expect(
+								Math.abs(
+									world.heightAt(
+										p.x + Math.cos(p.heading) * side,
+										p.z - Math.sin(p.heading) * side,
+									) - p.ele,
+								),
+								`${Math.round(p.x)}, ${Math.round(p.z)}`,
+							).toBeLessThan(10);
+					// Away from where it meets one, never running beside a road.
+					if (m < 80 || m > r.length - 80) continue;
+					let near = Infinity;
+					for (const o of roads)
+						for (let i = 0; i < o.x.length; i += 2)
+							near = Math.min(near, Math.hypot(o.x[i] - p.x, o.z[i] - p.z));
+					expect(
+						near,
+						`${Math.round(p.x)}, ${Math.round(p.z)}`,
+					).toBeGreaterThan(20);
+				}
+			}
+		},
+		3 * BUILD_MS,
 	);
 });
 
@@ -881,9 +1062,10 @@ describe('a roundabout', () => {
 			const r = Math.hypot(x - ring.x, z - ring.z) - ring.r;
 			expect(r).toBeGreaterThan(ROAD_W / 2);
 			expect(r).toBeLessThan(FORMATION);
-			const arm = ring.arms.find(
-				(k) => (x - ring.x) * k.v[0] + (z - ring.z) * k.v[1] > ring.r,
-			)!;
+			// The arm it lies across: the one it lies most nearly along, out from the centre.
+			const along = (k: (typeof ring.arms)[number]) =>
+				(x - ring.x) * k.v[0] + (z - ring.z) * k.v[1];
+			const arm = ring.arms.reduce((a, b) => (along(b) > along(a) ? b : a));
 			// Left of the arm's way out: a rider coming in has it on the right, short of the edge line.
 			const u = (x - ring.x) * arm.v[1] - (z - ring.z) * arm.v[0];
 			const m = (x - ring.x) * arm.v[0] + (z - ring.z) * arm.v[1] - ring.r;
