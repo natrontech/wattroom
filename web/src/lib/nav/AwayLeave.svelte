@@ -57,17 +57,16 @@
 				}}
 				aria-label="Choose a state"
 				aria-haspopup="menu"
-				class="btn btn-secondary min-h-11 rounded-l-none px-2 {!docked &&
-				rideBar.on
-					? 'max-sm:hidden'
-					: ''}"><ChevronDown size={14} /></button
+				class="btn btn-secondary min-h-11 min-w-11 rounded-l-none px-2 {docked
+					? ''
+					: 'max-sm:hidden'}"><ChevronDown size={14} /></button
 			>
 		{/if}
 	</div>{/if}
 <!-- The way out of the channel (#2447). Quiet: leaving is re-doable. -->
 {#if place}<button
 		onclick={leaveChannel}
-		class="btn btn-secondary min-h-11 px-2"
+		class="btn btn-secondary min-h-11 min-w-11 px-2"
 		title="leave {place.address.name}"
 		><LogOut size={14} />
 		<span class={label}>Leave</span></button

@@ -344,7 +344,7 @@
 				<button
 					onclick={() => pickView(option.tiles)}
 					aria-pressed={tilesPicked === option.tiles}
-					class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {tilesPicked ===
+					class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word max-sm:min-h-11 max-sm:min-w-11 {tilesPicked ===
 					option.tiles
 						? 'bg-surface-raised text-ink'
 						: 'text-muted hover:text-ink'}"
@@ -370,7 +370,7 @@
 					aria-pressed={layout === option.id}
 					title="{option.label} — {option.hint}"
 					aria-label="{option.label} layout"
-					class="icon-btn icon-btn-sm ride-stage:icon-btn-lg {layout ===
+					class="icon-btn icon-btn-sm ride-stage:icon-btn-lg max-sm:icon-btn-lg {layout ===
 					option.id
 						? 'bg-surface-raised text-ink'
 						: 'text-muted hover:text-ink'}"><option.icon size={13} /></button
@@ -380,7 +380,7 @@
 	{/if}
 	<button
 		onclick={() => channel.openTv()}
-		class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word {roomOffered ||
+		class="btn btn-ghost btn-xs ride-stage:min-h-11 ride-stage:ride-word max-sm:min-h-11 max-sm:min-w-11 {roomOffered ||
 		channel.stageSources.length
 			? ''
 			: 'ml-auto'}"><MonitorUp size={13} /> TV</button
