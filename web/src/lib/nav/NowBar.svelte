@@ -28,7 +28,6 @@
 	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	import { joinSessionPath } from '#lib/channel/address.ts';
-	import { startRideTogether } from '#lib/session/crew-session.ts';
 	import { device } from '#lib/device.svelte.ts';
 	import Bike from '@lucide/svelte/icons/bike';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -87,17 +86,6 @@
 			onSelect: () => {
 				nowPanel.ask = 'session';
 				if (!onPlace && conn) void goto(conn.address.home);
-			},
-		},
-		{
-			label: 'Ride together',
-			icon: Bike,
-			onSelect: () => {
-				if (!conn) return;
-				const crew = conn.address.crew;
-				void startRideTogether(crew).then((res) => {
-					if (res.ok) void goto(joinSessionPath(crew, res.data.id));
-				});
 			},
 		},
 		...running.map((session) => ({

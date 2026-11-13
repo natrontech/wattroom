@@ -45,7 +45,7 @@ Open rides already work the way this plan wants. Each one is a hub object of its
 - **A voice channel is a call.** Its room holds the call, the jukebox, the lounge, cheers, the board and away. It carries no metrics. It knows which of its people ride, and on which session, and shows that.
 - **A ride is the rider's** (as ADR-0093 decided). It joins at most one session at a time. Joining hands the trainer's targets to the session's timeline. Leaving the session, or its end, hands them back and the ride runs on as a free ride.
 - **A free ride is private.** Nobody sees its numbers. The rider's call shows a badge: riding.
-- **Ride together** is a session with no workout. Everyone rides their own free ride (watts, grade or a road) and sees each other's numbers. It has a coach, an End and a recap like any session.
+- **Ride together** is a session with no workout. Everyone rides their own free ride (watts, grade or a road) and sees each other's numbers. It has a coach, an End and a recap like any session. It is started from the Start a session picker, its first choice (#4564).
 
 ## Presence in a voice channel
 
@@ -77,7 +77,7 @@ Navigation never ends a session or a call. Opening another voice channel moves t
 
 - The bar shows when there is a call, a session or a ride.
 - Voice, Away and Leave are the call's. On a desk they sit under your name in the sidebar's foot. Riding or on a phone the sidebar is out of reach, so they sit in the bar.
-- **Ride** opens the device's free ride. Its arrow lists, for the crew you are looking at: **Start a session**, **Ride together**, then one row per live session ("Join Tempo · 3 riding").
+- **Ride** opens the device's free ride. Its arrow lists, for the crew you are looking at: **Start a session**, then one row per live session ("Join Tempo · 3 riding"). There is one door to a session everywhere (#4564): **Ride together** is the first and biggest choice in the Start a session picker, above the workouts and roads, never a second button beside it.
 - On a session: the ride's controls from the ride HUD (#4386), plus **Leave session**. The coach also gets Pause and End.
 - The ride's row never scrolls: End ride and Leave stay on screen at every width, and what does not fit is under **More** (docs/spec/riding.md, #4567).
 - Off any crew page, Start a session uses the crew of your call, else the last crew you opened.

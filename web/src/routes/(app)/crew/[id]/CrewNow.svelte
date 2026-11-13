@@ -146,7 +146,10 @@
 	}
 
 	async function rideTogether() {
+		starting = true;
 		const res = await startRideTogether(crew.id);
+		starting = false;
+		if (res.ok) picking = false;
 		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
 		else void goto(joinSessionPath(crew.id, res.data.id));
 	}
@@ -199,9 +202,6 @@
 			class="btn btn-secondary btn-xs ml-auto"
 			><Radio size={13} /> Start a session</button
 		>
-		<button onclick={() => void rideTogether()} class="btn btn-secondary btn-xs"
-			><Radio size={13} /> Ride together</button
-		>
 	{/if}
 </div>
 {#if sessions.length > 0}
@@ -235,6 +235,7 @@
 		busy={starting}
 		channelName={crew.name}
 		onStart={(workout, route) => void startSession(workout, route)}
+		onTogether={() => void rideTogether()}
 		onPlan={async (workoutName, workoutJson, startsAt) => {
 			const res = await planCrewSession(crew.id, {
 				workoutName,
