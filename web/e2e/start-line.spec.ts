@@ -1,4 +1,5 @@
 import { expect, test, voicePath } from './crew';
+import { pressInBar } from './bar';
 
 /**
  * A road session waits on its start line (#3228) for the coach's Start the
@@ -68,7 +69,7 @@ test('a road session started in a call opens on its start line, and the coach st
 
 		// The coach picks the road from the call: it rides together, and opens
 		// on the crew's own session page.
-		await a.getByRole('button', { name: 'Start a session' }).click();
+		await pressInBar(a, 'Start a session');
 		const picker = a.getByRole('dialog', { name: 'Start a session' });
 		await picker.getByRole('button', { name: 'Roads', exact: true }).click();
 		await picker

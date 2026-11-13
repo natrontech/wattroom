@@ -45,6 +45,8 @@
 	{disabled}
 	aria-label={meta.label}
 	aria-pressed={pressed}
+	data-ride-control={control}
+	data-hint={disabled ? hint : undefined}
 	class="btn btn-secondary {box} shrink-0 p-0 {extra}"
 	{@attach tooltip(meta.label, disabled ? hint : undefined)}
 	><meta.icon size={20} /></button

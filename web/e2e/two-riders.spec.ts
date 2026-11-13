@@ -1,4 +1,5 @@
 import { expect, test, voicePath } from './crew';
+import { pressInBar } from './bar';
 
 /**
  * Two riders in one session (#418; a voice channel's since ADR-0058), which
@@ -85,7 +86,7 @@ test('two riders share a session: crew strip, execution bars, sprint scoreboard'
 
 	// Any member starts a session and is its coach (ADR-0058): A picks the
 	// workout and starts it.
-	await a.getByRole('button', { name: 'Start a session' }).click();
+	await pressInBar(a, 'Start a session');
 	await a
 		.getByRole('textbox', { name: 'find a workout' })
 		.fill('Recovery Spin');

@@ -289,28 +289,26 @@
 					onclick={() => askCamera()}
 					disabled={!inWorld}
 					hint={NEEDS_3D}
-					class="max-md:hidden"
 				/>
 				<RideControlButton
 					control="photo"
 					onclick={() => askPhoto()}
 					disabled={!inWorld || !worldPicture.canTake}
 					hint={inWorld ? PHOTOS_FULL : NEEDS_3D}
-					class="max-md:hidden"
 				/>
 			{/if}
-			<!-- A phone's bar keeps Leave and the coach's controls in view. -->
+			<!-- What the bar has no room for goes under its More (bar-fit.ts). -->
 			<RideControlButton
 				control="tv"
 				onclick={() => channel.openTv()}
 				offer="tv"
-				class="max-md:hidden"
 			/>
-			<span class="contents max-md:hidden"><SessionFlag /></span>
+			<SessionFlag />
 			{#if channel.you.inSession}
 				<!-- One short word, so the eyebrow keeps the row (slot 1's 860 px). -->
 				<button
 					onclick={leaveRide}
+					data-ride-control="end"
 					class="btn btn-secondary btn-ride"
 					aria-label="Leave the ride"
 					title="Leave the ride">Leave</button
@@ -318,6 +316,7 @@
 			{:else if mayJoin}
 				<button
 					onclick={joinRide}
+					data-ride-control="end"
 					class="btn btn-accent btn-ride"
 					aria-label="Join the ride"
 					title="Join the ride">Join</button

@@ -134,6 +134,7 @@
 			onclick={() => channel.openPicker()}
 			aria-label="Start a session"
 			title={compact ? 'Start a session' : undefined}
+			data-ride-control="session"
 			class="btn btn-accent {compact
 				? 'btn-ride'
 				: 'btn-lg ride-stage:ride-word'}"
@@ -146,13 +147,17 @@
 	{:else if phase === 'countdown'}
 		<button
 			onclick={() => channel.control('end')}
+			data-ride-control="cancel"
 			class="btn btn-danger {compact
 				? 'btn-ride'
 				: 'btn-lg ride-stage:ride-word'}"
 			><Square size={13} /> Stop the countdown</button
 		>
 	{:else}
-		<div class="border-muted/20 flex gap-1 rounded border p-0.5">
+		<div
+			data-ride-control="end"
+			class="border-muted/20 flex gap-1 rounded border p-0.5"
+		>
 			{#if running && !channel.game}
 				<!-- Not in a game (#2597): it keeps its own clock and runs its
 				     own sprints, and the hub refuses both.

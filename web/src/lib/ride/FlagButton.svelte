@@ -31,6 +31,7 @@
 <button
 	onclick={press}
 	{disabled}
+	data-ride-control="flag"
 	{@attach tooltip(label, FLAG_ASKS[sends])}
 	class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 shrink-0 place-items-center rounded border disabled:opacity-40 max-md:w-auto max-md:flex-1"
 	aria-label={label}><Icon size={18} /></button

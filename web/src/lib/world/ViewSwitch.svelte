@@ -142,6 +142,7 @@
 		role="group"
 		aria-label="view"
 		data-testid="view-switch"
+		data-ride-control="view"
 	>
 		{#if road}
 			<button

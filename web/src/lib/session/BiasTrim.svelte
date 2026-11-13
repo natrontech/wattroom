@@ -34,7 +34,7 @@
 	const off = $derived(hint ?? NO_TRAINER);
 </script>
 
-<div class="flex shrink-0 items-center gap-2">
+<div data-ride-control="trim" class="flex shrink-0 items-center gap-2">
 	<button
 		onclick={() => onBias?.(-0.01)}
 		disabled={!onBias}

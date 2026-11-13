@@ -71,6 +71,7 @@
 	disabled={!!off}
 	{@attach tooltip(null, title)}
 	aria-label="Easier"
+	data-ride-control="trim"
 	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40 max-xl:px-3"
 	><Minus size={20} class="xl:hidden" /><span class="max-xl:hidden">Easier</span
 	></button
@@ -80,6 +81,7 @@
 	disabled={!!off}
 	{@attach tooltip(null, title)}
 	aria-label="Harder"
+	data-ride-control="trim"
 	class="btn btn-secondary btn-ride touch-manipulation select-none disabled:opacity-40 max-xl:px-3"
 	><Plus size={20} class="xl:hidden" /><span class="max-xl:hidden">Harder</span
 	></button
