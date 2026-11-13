@@ -14,7 +14,10 @@ import { lightsUniforms, POOL, type Lights } from './lights';
 import { DIORAMA } from './pixel';
 import type { SignLook } from './setpieces';
 
-export type Palette = Record<Biome, string>;
+/** A designed scene's own ground (biome.ts): a look that names no colour for it draws it from the ones it has (geometry.ts). */
+type SceneBiome = typeof Biome.Moor | typeof Biome.Dry | typeof Biome.Frost;
+export type Palette = Record<Exclude<Biome, SceneBiome>, string> &
+	Partial<Record<SceneBiome, string>>;
 
 export type PropColors = {
 	spruce: string;

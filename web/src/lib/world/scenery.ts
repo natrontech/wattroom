@@ -14,11 +14,40 @@ export function waterSheets(
 	route: Route,
 	waters: readonly Water[],
 	color: string,
+	/** White water: a stream's where it falls. */
+	white: string,
 ): THREE.BufferGeometry {
 	const tint = new THREE.Color(color);
+	const foam = new THREE.Color(white);
 	const pos: number[] = [];
 	const col: number[] = [];
 	for (const w of waters) {
+		if (w.run) {
+			// Running water: a strip down its course, each cross-section at its own level, white where it falls.
+			const n = w.run.levels.length;
+			const last = w.outline.length - 1;
+			const corner = (i: number, right: boolean) => {
+				const [x, z] = w.outline[right ? last - i : i];
+				const t = w.run!.foam[i];
+				pos.push(x, yOf(route, w.run!.levels[i]), z);
+				col.push(
+					tint.r + (foam.r - tint.r) * t,
+					tint.g + (foam.g - tint.g) * t,
+					tint.b + (foam.b - tint.b) * t,
+				);
+			};
+			for (let i = 0; i < n - 1; i++)
+				for (const [k, right] of [
+					[i, false],
+					[i, true],
+					[i + 1, true],
+					[i, false],
+					[i + 1, true],
+					[i + 1, false],
+				] as const)
+					corner(k, right);
+			continue;
+		}
 		const ring = w.outline.map(([x, z]) => new THREE.Vector2(x, z));
 		const y = yOf(route, w.level);
 		for (const face of THREE.ShapeUtils.triangulateShape(ring, [])) {

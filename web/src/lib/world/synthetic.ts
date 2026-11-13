@@ -13,8 +13,8 @@ import type { TrackPoint } from '#lib/road/parse.ts';
 export const SYNTHETIC_NAME = 'Synthetic pass loop';
 
 export type Corner = { x: number; y: number; ele: number; r: number }; // metres; y is north
-/** A made-up loop: its corners, and the seed of its GPS noise. */
-export type Shape = { corners: Corner[]; seed: number };
+/** A made-up loop: its corners, and the seed of its GPS noise. `drawn`, it is a line as a draughtsman drew it, with no noise to see and no fault: a designed road's (designed.ts), which the world draws sample for sample. */
+export type Shape = { corners: Corner[]; seed: number; drawn?: boolean };
 
 const HAIRPIN_R = 14;
 export const PASS_LOOP_CORNERS: Corner[] = [
@@ -147,26 +147,30 @@ export function syntheticPoints(shape: Shape = PASS_LOOP): TrackPoint[] {
 	const { points, knots, length } = centreline(shape.corners);
 	const ele = heightAlong(shape.corners, knots, length);
 	const noise = prng(shape.seed);
+	// A drawn line keeps a hair of it, 3 cm: on a true arc every turn is the same, and one that sits on a rounding edge would be stored a degree off at every step (road/profile.ts).
+	const off = shape.drawn ? 0.04 : 1;
 	const track: { x: number; y: number; ele: number }[] = [];
 	let s = 0;
 	points.forEach((p, i) => {
 		if (i > 0) s += Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y);
 		const last = i === points.length - 1;
 		track.push({
-			x: p.x + (last ? 0 : (noise() - 0.5) * 1.6),
-			y: p.y + (last ? 0 : (noise() - 0.5) * 1.6),
-			ele: ele(Math.min(s, length)) + (noise() - 0.5) * 1.2,
+			x: p.x + (last ? 0 : (noise() - 0.5) * 1.6 * off),
+			y: p.y + (last ? 0 : (noise() - 0.5) * 1.6 * off),
+			ele: ele(Math.min(s, length)) + (noise() - 0.5) * 1.2 * off,
 		});
 	});
 	// A fix logged twice, and a 15 m out-and-back — both on the valley floor.
-	track.splice(40, 0, { ...track[40] });
-	const at = track[80];
-	track.splice(
-		81,
-		0,
-		{ x: at.x + 30, y: at.y, ele: at.ele },
-		{ x: at.x + 15, y: at.y + 0.5, ele: at.ele },
-	);
+	if (!shape.drawn) {
+		track.splice(40, 0, { ...track[40] });
+		const at = track[80];
+		track.splice(
+			81,
+			0,
+			{ x: at.x + 30, y: at.y, ele: at.ele },
+			{ x: at.x + 15, y: at.y + 0.5, ele: at.ele },
+		);
+	}
 	return track.map((p) => ({
 		lat: LAT0 + p.y / M_PER_DEG,
 		lon: LON0 + p.x / (M_PER_DEG * Math.cos((LAT0 * Math.PI) / 180)),

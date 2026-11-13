@@ -27,6 +27,8 @@ export type Prop = {
 	/** A tree's form (forest.ts `formOf`) and its shade, a keyed unit (batch.ts); none for anything else. */
 	form?: number;
 	tone?: number;
+	/** A tree standing in snow: drawn white. */
+	snow?: boolean;
 	x: number;
 	z: number;
 	base: number;
@@ -165,7 +167,7 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 		turn: Turn,
 		scale: number,
 		rank: number,
-		look?: { form: number; tone: number },
+		look?: { form: number; tone: number; snow?: boolean },
 	): Candidate<Prop> | null {
 		const p = placer.candidate(kind, cls, x, z, turn, scale);
 		return (
@@ -423,7 +425,8 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 			if (u(tree(i, j, 0)) >= woods.chance(b, far, frame, g)) return;
 			if (far < 140 && !ground.clearOf(x, z, 11)) return;
 			const h = heightAt(x, z);
-			const conifer = frame || h >= 900 || u(tree(i, j, 4)) >= 0.55;
+			const conifer =
+				b !== Biome.Moor && (frame || h >= 900 || u(tree(i, j, 4)) >= 0.55);
 			// Heights vary by the stand, taller in its heart, and by the tree; forms by the tree and its height above the sea.
 			const tall = 0.6 + u(tree(i, j, 3)) * 0.6 + 0.35 * Math.max(0, g);
 			const kind = conifer ? 'spruce' : 'broadleaf';
@@ -432,6 +435,7 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 				candidate(kind, 'kit', x, z, turn, tall, RANK.tree + u(tree(i, j, 6)), {
 					form: formOf(conifer, h, u(tree(i, j, 8))),
 					tone: u(tree(i, j, 9)),
+					...((b === Biome.Frost || b === Biome.Snow) && { snow: true }),
 				}),
 			);
 			const more = woods.neighbours(b, far, frame, g, u(tree(i, j, 7)));
@@ -457,6 +461,7 @@ export function scatter(place: Place, placer: Placer, villages: Village[]) {
 							{
 								form: formOf(conifer, h, u(tree(i, j, 40 + k))),
 								tone: u(tree(i, j, 43 + k)),
+								...((b === Biome.Frost || b === Biome.Snow) && { snow: true }),
 							},
 						),
 					);

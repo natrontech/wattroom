@@ -34,6 +34,17 @@ export function terrain(
 		cache.set(Number(k), new THREE.Color(v));
 	const meadow = cache.get(Biome.Meadow) ?? new THREE.Color();
 	const wood = cache.get(Biome.Forest) ?? meadow;
+	// A designed scene's ground in a look that names no colour for it: moor between meadow and rock, dry ground a pale pasture, frost snow.
+	const made = (b: Biome, from: Biome, to: Biome, t: number) => {
+		if (!cache.has(b))
+			cache.set(
+				b,
+				(cache.get(from) ?? meadow).clone().lerp(cache.get(to) ?? meadow, t),
+			);
+	};
+	made(Biome.Moor, Biome.Meadow, Biome.Rock, 0.5);
+	made(Biome.Dry, Biome.Alpine, Biome.Snow, 0.3);
+	made(Biome.Frost, Biome.Snow, Biome.Snow, 0);
 	const mix = new THREE.Color();
 	for (let i = 0; i < n; i++) {
 		p[i * 3] = pos[i * 3];

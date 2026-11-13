@@ -72,7 +72,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 	{
 		id: 'aare',
 		routeId: '7a77b0ad-0004-4000-8000-000000004248',
-		name: 'Aarenbogen',
+		name: 'Tour de l’Aaren',
 		story:
 			'A river in a gorge winds round a peninsula: four high bridges over it, and a steep ramp up a spur.',
 		shape: () => designed('aare'),
@@ -80,7 +80,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 	{
 		id: 'urnsee',
 		routeId: '7a77b0ad-0005-4000-8000-000000004248',
-		name: 'Urnsee',
+		name: 'Urnsee-Rundfahrt',
 		story:
 			'A long lake between mountains: a ledge under the cliffs of the east shore, a bridge over an inlet, and a terrace high over the west.',
 		shape: () => designed('urnsee'),

@@ -124,6 +124,8 @@ export type Drawn = {
 	form?: number;
 	/** A tree's shade, a keyed unit: TONE darker at 0, lighter at 1, its colours' own when absent. */
 	tone?: number;
+	/** A tree in snow: its colours washed out to white. */
+	snow?: boolean;
 	x: number;
 	z: number;
 	base: number;
@@ -143,6 +145,8 @@ export const FAR_M = 2500;
 export const FETCH_AHEAD = 1.2;
 /** How far a tree's shade strays from its colours' either way (#4256): no two neighbours one green. */
 export const TONE = 0.45;
+/** What a tree's colours are multiplied by where it stands in snow: far past any colour, which its material reads as snow (materials.ts `SNOWED_OVER`). */
+const SNOWED = 256;
 /** Instances a family's batch makes room for at first; it grows by half when it runs out. */
 const ROOM = 4096;
 
@@ -298,7 +302,9 @@ export function batchProps(
 				if (FAMILY[p.kind] === 'trees')
 					mesh.setColorAt(
 						n,
-						shade.setScalar(1 + TONE * (2 * (p.tone ?? 0.5) - 1)),
+						p.snow
+							? shade.setScalar(SNOWED)
+							: shade.setScalar(1 + TONE * (2 * (p.tone ?? 0.5) - 1)),
 					);
 				tile.members.push([mesh, n, p.kind, form]);
 				const light = litId.get(p.kind);

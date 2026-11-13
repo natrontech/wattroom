@@ -62,8 +62,10 @@ export type World = {
 	salt: Salt;
 	/** A designed road's scene, by its id (designed.ts): what a worker shapes the same land from. */
 	scene?: string;
-	/** The scene's standing water, drawn as sheets. */
+	/** The scene's water, drawn as sheets: its lakes and rivers, and its streams as the ground laid them. */
 	waters: Water[];
+	/** The level of the scene's water over (x, z), or null on land. */
+	waterAt: (x: number, z: number) => number | null;
 	/** Where the road is carried over the ground, in metres along it: its bridges. */
 	bridges: [from: number, to: number][];
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
@@ -125,11 +127,11 @@ export function generate(
 		},
 	];
 	// A designed road's scene shapes the land (designed.ts), and where it drops away under the road, the road is carried over it.
-	const scene = sceneOf(route.scene);
-	const bridges = scene
+	const layout = sceneOf(route.scene);
+	const bridges = layout
 		? bridgesOf(
 				rows,
-				makeGround(roads, { salt, scene }).natural,
+				makeGround(roads, { salt, scene: layout }).natural,
 				makeGround(roads, { salt }).natural,
 			)
 		: [];
@@ -139,14 +141,24 @@ export function generate(
 			open.fill(1, Math.round(from / ROW_M), Math.round(to / ROW_M) + 1);
 		roads[0].open = open;
 	}
-	const ground = makeGround(roads, { salt, scene });
+	const ground = makeGround(roads, { salt, scene: layout });
+	// The scene as the ground laid it: its streams run where that ground falls.
+	const scene = ground.scene;
 	const margin = opts.margin ?? 1400;
 	// The corridor's chunks are the diorama's alone: a ride never lists them.
 	let cover: ReturnType<typeof corridor> | null = null;
 	const chunks = () => (cover ??= corridor(ground.lines, margin)).chunks;
 	// The place's levels, not the corridor's: a streamed chunk is the one the props stood on.
-	const level = placeLevel(ground.lines);
-	const land = landUse(ground.noise, scene?.waterAt);
+	const level = placeLevel(
+		ground.lines,
+		(scene?.waters ?? [])
+			.filter((w) => w.run)
+			.map((w) => ({
+				x: w.outline.map((p) => p[0]),
+				z: w.outline.map((p) => p[1]),
+			})),
+	);
+	const land = landUse(ground.noise, scene);
 	const terrain = createTerrain(ground, level, land);
 	const bounds = boundsOf(ground.lines, margin);
 	const { nearest } = roadIndex(route);
@@ -223,6 +235,7 @@ export function generate(
 		salt,
 		...(route.scene !== undefined && scene && { scene: route.scene }),
 		waters: scene?.waters ?? [],
+		waterAt: (x, z) => scene?.waterAt(x, z) ?? null,
 		bridges,
 		tile: tiles.tile,
 		settled: tiles.has,

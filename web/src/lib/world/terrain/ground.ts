@@ -6,7 +6,7 @@ import { canonical, FAR_W, indexLines, type Hit, type Line } from './lines';
 import { roadFrame } from './road-frame';
 import type { RegionAt } from './region-relief';
 import { across, FORMATION } from './road-profile';
-import type { Scene } from '../designed';
+import type { Layout } from '../designed';
 
 /**
  * The place's ground as one function of position (#3075, ADR-0081): the same
@@ -46,7 +46,7 @@ export type GroundOpts = {
 	/** Where a private region keys the relief in its own frame (#3607); none: the world's everywhere. */
 	regions?: RegionAt;
 	/** A designed road's scene (designed.ts): its lakes, rivers and peaks shape the natural ground. */
-	scene?: Scene;
+	scene?: Layout;
 };
 
 const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -183,13 +183,25 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	const onGround = (hit: Hit | null) =>
 		hit && index.open[hit.i] && index.open[hit.i + 1] ? null : hit;
 
+	/** The generator's ground under a scene's lakes and peaks, before its streams are laid on it. */
+	function unwatered(x: number, z: number): number {
+		const h =
+			macro(x, z) +
+			noise('ground', DETAIL, x, z) * 7 * smoothstep(15, 120, dist(x, z));
+		return opts.scene!.shape(x, z, h, dist(x, z));
+	}
+	const scene = opts.scene?.laid(
+		`${opts.salt}:${opts.origin ?? ''}`,
+		unwatered,
+	);
+
 	/** The ground before any road cuts it. */
 	function natural(x: number, z: number): number {
 		if (opts.model) return opts.model(x, z);
 		const detail =
 			noise('ground', DETAIL, x, z) * 7 * smoothstep(15, 120, dist(x, z));
 		const h = macro(x, z) + detail;
-		return opts.scene ? opts.scene.shape(x, z, h, dist(x, z)) : h;
+		return scene ? scene.shape(x, z, h, dist(x, z)) : h;
 	}
 
 	/**
@@ -275,6 +287,8 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		heightAt,
 		drawnAt,
 		natural,
+		/** The scene the ground was shaped by, its streams laid (designed.ts). */
+		scene,
 		roadSurfaceAt,
 		roadDist,
 		clearOf,

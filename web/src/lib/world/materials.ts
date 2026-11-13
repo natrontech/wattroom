@@ -99,6 +99,9 @@ const UNDERSIDE = /* glsl */ `
 		normal = length( level ) > 1e-3 ? normalize( level ) : normalize( cross( upView, vec3( 0.0, 0.0, 1.0 ) ) );
 	}`;
 
+/** A vertex colour brighter than this is no colour but a mark: snow on it (props/batch.ts multiplies a snowed tree's by 256). */
+export const SNOWED_OVER = 4;
+
 /**
  * The dressing's material (ADR-0092): its models' colours, flat per face,
  * lit by the sky with one normal per face, so a change of shade falls on a
@@ -117,6 +120,23 @@ export function flat(
 			'#include <normal_fragment_begin>',
 			`#include <normal_fragment_begin>\n${UNDERSIDE}`,
 		);
+		// A tree in snow (props/batch.ts): its colours come multiplied far past any colour, and are drawn snow.
+		// Half of it keeps its white in the shade, where a face turned from the sun would be drawn as dark as a green tree's.
+		s.fragmentShader = s.fragmentShader
+			.replace(
+				'#include <color_fragment>',
+				`#include <color_fragment>
+				bool snowed = false;
+				#ifdef USE_COLOR
+					snowed = max(vColor.r, max(vColor.g, vColor.b)) > ${SNOWED_OVER.toFixed(1)};
+					if (snowed) diffuseColor.rgb = vec3(0.84, 0.88, 1.0);
+				#endif`,
+			)
+			.replace(
+				'#include <opaque_fragment>',
+				`if (snowed) outgoingLight = mix(outgoingLight, vec3(0.8, 0.83, 0.96), 0.5);
+				#include <opaque_fragment>`,
+			);
 		if (!opts.wind && !opts.fade) return;
 		Object.assign(s.uniforms, sight);
 		s.vertexShader = s.vertexShader

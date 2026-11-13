@@ -32,8 +32,8 @@ var library = func() map[string]libraryRoad {
 		"7a77b0ad-0001-4000-8000-000000004248": "Pass loop",
 		"7a77b0ad-0002-4000-8000-000000004248": "Valley loop",
 		"7a77b0ad-0003-4000-8000-000000004248": "Col de Berne",
-		"7a77b0ad-0004-4000-8000-000000004248": "Aarenbogen",
-		"7a77b0ad-0005-4000-8000-000000004248": "Urnsee",
+		"7a77b0ad-0004-4000-8000-000000004248": "Tour de l’Aaren",
+		"7a77b0ad-0005-4000-8000-000000004248": "Urnsee-Rundfahrt",
 	} {
 		packed, err := libraryFiles.ReadFile("library/" + id + ".road")
 		if err != nil {

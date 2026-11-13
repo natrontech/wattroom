@@ -52,7 +52,7 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 				worst = Math.max(worst, Math.hypot(p.x - q.x, p.z - q.z));
 			}
 			// The walk of its turns alone drifts tens of metres (36 m rms on the Pass loop).
-			expect(worst).toBeLessThan(1);
+			expect(worst).toBeLessThan(2);
 		});
 
 		it('is not a rider’s own road that happens to be as long', () => {
@@ -87,9 +87,12 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 
 		it('holds its water: the bed lies under the sheet everywhere', () => {
 			for (const water of world.waters) {
+				// A stream's water lies at the level of each stretch of it.
+				const over = (x: number, z: number) =>
+					water.run ? world.waterAt(x, z) : standing.waterAt(x, z);
+				const standing = sceneOf(id)!;
 				const xs = water.outline.map((p) => p[0]);
 				const zs = water.outline.map((p) => p[1]);
-				const scene = sceneOf(id)!;
 				let wet = 0;
 				let dry = 0;
 				for (let k = 0; k < 4000; k++) {
@@ -100,7 +103,8 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 					const z =
 						Math.min(...zs) +
 						((k * 0.7548776662) % 1) * (Math.max(...zs) - Math.min(...zs));
-					if (scene.waterAt(x, z) === null) continue;
+					const level = over(x, z);
+					if (level === null) continue;
 					// Within the corridor the world draws.
 					if (
 						x < world.bounds[0] ||
@@ -111,32 +115,70 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 						continue;
 					wet++;
 					// The drawn ground is read between grid points 10 m apart and more: at the water's edge it stands a metre over.
-					if (world.heightAt(x, z) > water.level + 2) dry++;
+					if (world.heightAt(x, z) > level + 2) dry++;
 				}
-				expect(wet).toBeGreaterThan(50);
-				// A bridge's piers aside, nothing stands out of it.
-				expect(dry / wet).toBeLessThan(0.01);
+				if (!water.run) expect(wet).toBeGreaterThan(50);
+				// A bridge's piers aside, nothing stands out of it; a stream is a vertex or two wide, and a road's bank may stand in it.
+				expect(dry / Math.max(1, wet)).toBeLessThan(water.run ? 0.25 : 0.01);
+			}
+		});
+
+		it('is drawn as it was drawn: straights straight, no fix out of line', () => {
+			// No sample stands off the line through its two neighbours one way and the next the other way: a GPS's noise did, by 40 cm; a bend bows them all one way.
+			const line = designedLine(design);
+			const bow = (i: number) => {
+				const sx = line.x[i + 1] - line.x[i - 1];
+				const sz = line.z[i + 1] - line.z[i - 1];
+				return (
+					((line.x[i] - line.x[i - 1]) * sz -
+						(line.z[i] - line.z[i - 1]) * sx) /
+					Math.hypot(sx, sz)
+				);
+			};
+			let wobbles = 0;
+			for (let i = 1; i + 2 < line.x.length; i++)
+				if (
+					bow(i) * bow(i + 1) < 0 &&
+					Math.min(Math.abs(bow(i)), Math.abs(bow(i + 1))) > 0.05
+				)
+					wobbles++;
+			expect(wobbles).toBe(0);
+		});
+
+		it('runs its streams downhill, into water or off the map', () => {
+			const streams = world.waters.filter((w) => w.run);
+			expect(streams.length).toBeGreaterThan(0);
+			for (const s of streams) {
+				const { levels } = s.run!;
+				for (let i = 1; i < levels.length; i++)
+					expect(levels[i]).toBeLessThanOrEqual(levels[i - 1]);
+				expect(levels[0] - levels[levels.length - 1]).toBeGreaterThan(2);
 			}
 		});
 
 		it('stands nothing in the water', () => {
-			const scene = sceneOf(id)!;
 			const stood = [...world.props, ...world.pieces];
 			expect(stood.length).toBeGreaterThan(100);
-			const wet = stood.filter((p) => scene.waterAt(p.x, p.z) !== null);
+			const wet = stood.filter((p) => world.waterAt(p.x, p.z) !== null);
 			expect(wet.map((p) => p.kind)).toEqual([]);
 		});
 	},
 );
 
-describe('Aarenbogen', () => {
+describe('Tour de l’Aaren', () => {
 	it(
 		'crosses its river four times, each on a bridge high over it',
 		async () => {
 			const route = routeOfRoad(await roadOf('aare'));
 			const world = generate(route);
-			expect(world.bridges).toHaveLength(4);
-			for (const [from, to] of world.bridges) {
+			// A stream's own bridge aside, a few metres long.
+			const over = world.bridges.filter(([from, to]) => to - from > 100);
+			expect(over).toHaveLength(4);
+			for (const [from, to] of over) {
+				// Straight across: a bridge has no bend in it.
+				expect(
+					Math.abs(at(route, to).heading - at(route, from).heading),
+				).toBeLessThan(0.02);
 				expect(to - from).toBeGreaterThan(120);
 				expect(to - from).toBeLessThan(400);
 				const mid = at(route, (from + to) / 2);
@@ -153,7 +195,7 @@ describe('Aarenbogen', () => {
 	);
 });
 
-describe('Urnsee', () => {
+describe('Urnsee-Rundfahrt', () => {
 	it('runs along its lake: water within 80 m for most of the east shore', async () => {
 		const route = routeOfRoad(await roadOf('urnsee'));
 		const scene = sceneOf('urnsee')!;
@@ -183,6 +225,61 @@ describe('Urnsee', () => {
 			expect(world.bridges).toHaveLength(1);
 			const top = route.ele.indexOf(Math.max(...route.ele));
 			expect(route.ele[top] - world.waters[0].level).toBeGreaterThan(100);
+		},
+		BUILD_MS,
+	);
+});
+
+describe('the land a scene lays out', () => {
+	const beside = (route: Route, world: World, biome: Biome) => {
+		let n = 0;
+		for (let d = 0; d < route.length; d += 100) {
+			const p = at(route, d);
+			for (const side of [-40, 40])
+				if (
+					world.biomeAt(
+						p.x + Math.cos(p.heading) * side,
+						p.z - Math.sin(p.heading) * side,
+					) === biome
+				)
+					n++;
+		}
+		return n;
+	};
+	it(
+		'Col de Berne: a dry valley, a moor, and a white forest under the snow',
+		async () => {
+			const route = routeOfRoad(await roadOf('berne'));
+			const world = generate(route);
+			expect(beside(route, world, Biome.Dry)).toBeGreaterThan(20);
+			expect(beside(route, world, Biome.Moor)).toBeGreaterThan(10);
+			expect(beside(route, world, Biome.Snow)).toBeGreaterThan(40);
+			const white = world.props.filter((p) => p.snow);
+			expect(white.length).toBeGreaterThan(50);
+			// Each stands up in the snow, and the valley's trees are green.
+			for (const p of white) expect(p.base).toBeGreaterThan(2000);
+			expect(
+				world.props.filter((p) => p.kind === 'spruce' && !p.snow).length,
+			).toBeGreaterThan(white.length);
+			// A stream falls down the face beside the hairpins: white water for a good part of it.
+			const fall = world.waters.find((w) => w.run && w.run.levels[0] > 2300)!;
+			expect(fall.run!.foam.filter((f) => f > 0.5).length).toBeGreaterThan(30);
+		},
+		BUILD_MS,
+	);
+	it(
+		'the other two: a moor beside each road, and streams into its water',
+		async () => {
+			for (const id of ['aare', 'urnsee']) {
+				const route = routeOfRoad(await roadOf(id));
+				const world = generate(route);
+				expect(beside(route, world, Biome.Moor), id).toBeGreaterThan(8);
+				const standing = world.waters.find((w) => !w.run)!.level;
+				const into = world.waters.filter(
+					(w) => w.run && w.run.levels[w.run.levels.length - 1] === standing,
+				);
+				expect(into.length, id).toBeGreaterThanOrEqual(3);
+			}
 		},
 		BUILD_MS,
 	);

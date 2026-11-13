@@ -18,15 +18,42 @@ import { DESIGNS } from './designs';
 import { smoothstep } from './rand';
 import { designPoint, syntheticPoints, type Shape } from './synthetic';
 
-/** A sheet of standing water: its level, metres above sea, and its outline in the world's frame. */
-export type Water = { level: number; outline: [x: number, z: number][] };
+/** A sheet of water: its level, metres above sea, and its outline in the world's frame. */
+export type Water = {
+	level: number;
+	outline: [x: number, z: number][];
+	/**
+	 * Running water, a stream down a hillside: the outline is its left bank
+	 * down it and its right bank back, and each cross-section has its own
+	 * level and its share of white water, 1 where it falls.
+	 */
+	run?: { levels: number[]; foam: number[] };
+};
+
+/** Ground a scene lays out by hand: a raised bog, a dry valley floor. */
+export type Cover = 'moor' | 'dry';
+/** Where a scene's snow lies from and its trees stand to, metres above sea: the generator's own where not given. */
+export type Climate = { snowline?: number; treeline?: number };
 
 export type Scene = {
 	/** The designed ground at (x, z), from the generator's `h` there; `d` is metres to the nearest road. */
 	shape(x: number, z: number, h: number, d: number): number;
-	/** The level of the water standing over (x, z), or null on land. */
+	/** The level of the water over (x, z), or null on land. */
 	waterAt(x: number, z: number): number | null;
+	/** What the scene lays over (x, z), or null where the land's own cover grows. */
+	coverAt(x: number, z: number): Cover | null;
+	climate: Climate;
 	waters: Water[];
+};
+
+/**
+ * A scene before its streams are laid. A stream runs where the land lets
+ * it: its levels are read off the ground it runs down, lakes and peaks and
+ * all, so it is laid once that ground is known (terrain/ground.ts).
+ */
+export type Layout = Scene & {
+	/** The scene with its streams, laid on `ground`: the land as `shape` has it. `key` names that ground, the place's salt. */
+	laid(key: string, ground: (x: number, z: number) => number): Scene;
 };
 
 /** A point on the design's map, metres east and north, as a road's corners are. */
@@ -54,6 +81,20 @@ export type Feature =
 			gorge?: { bank: number; slope: number };
 	  }
 	| {
+			kind: 'stream';
+			/** Its course from its source down: it follows the land, falls where the land falls, and ends at the first standing water it meets. */
+			course: readonly Spot[];
+			/** Metres wide: 7 where not given. */
+			width?: number;
+	  }
+	| {
+			kind: 'land';
+			cover: Cover;
+			at: Spot;
+			/** Metres out to its edge, which wanders a fifth of that. */
+			radius: number;
+	  }
+	| {
 			kind: 'peak';
 			at: Spot;
 			/** Metres it stands over the generator's ground. */
@@ -71,6 +112,7 @@ export type Designed = {
 	lengthM: number;
 	shape: Shape;
 	features: readonly Feature[];
+	climate?: Climate;
 };
 
 /** Rounds a line's corners off: each cut twice, a quarter in from either end (Chaikin). */
@@ -161,8 +203,142 @@ type Part = {
 	waterAt?(x: number, z: number): number | null;
 	water?: Water;
 };
+type Solid = Exclude<Feature, { kind: 'stream' | 'land' }>;
+type World = (s: Spot) => [number, number];
 
-function part(f: Feature, world: (s: Spot) => [number, number]): Part {
+/** Metres between a stream's cross-sections. */
+const STREAM_STEP_M = 10;
+/** A stream's bed lies this far under the land it runs down, and its water this far over its bed. */
+const STREAM_CUT_M = 1.4;
+const STREAM_DEEP_M = 0.6;
+/** Metres past its banks the ground is levelled to its bed: a terrain vertex stands every 10 m, and one at the least must stand in it. */
+const SWALE_M = 9;
+/** Past the swale its gully's sides rise no steeper than this. */
+const GULLY_SLOPE = 0.7;
+/** The fall along a stream at which its water starts to whiten, and at which it is a waterfall. */
+const FOAM = [0.2, 0.6] as const;
+
+/** A line walked again at every `step` metres. */
+function stepped(pts: readonly [number, number][], step: number) {
+	const out: [number, number][] = [pts[0]];
+	let carry = 0;
+	for (let i = 1; i < pts.length; i++) {
+		const [ax, az] = pts[i - 1];
+		const len = Math.hypot(pts[i][0] - ax, pts[i][1] - az);
+		let at = step - carry;
+		for (; at <= len; at += step)
+			out.push([
+				ax + ((pts[i][0] - ax) * at) / len,
+				az + ((pts[i][1] - az) * at) / len,
+			]);
+		carry = len - (at - step);
+	}
+	return out;
+}
+
+/** A stream, laid on the ground it runs down. */
+function stream(
+	f: Extract<Feature, { kind: 'stream' }>,
+	world: World,
+	ground: (x: number, z: number) => number,
+	standing: (x: number, z: number) => number | null,
+): Part | null {
+	const all = stepped(rounded(f.course.map(world), false), STREAM_STEP_M);
+	// To the first standing water: a stream ends in its lake.
+	const end = all.findIndex((p, i) => i > 0 && standing(p[0], p[1]) !== null);
+	const course = end < 0 ? all : all.slice(0, end + 1);
+	if (course.length < 3) return null;
+	const n = course.length;
+	// Water runs down: where the land rises again the stream has cut through it.
+	const levels: number[] = [];
+	let level = Infinity;
+	for (const [x, z] of course)
+		levels.push((level = Math.min(level, ground(x, z) - STREAM_CUT_M)));
+	// And never lower than the water it runs into: there it would have ponded.
+	const into = end < 0 ? null : standing(course[n - 1][0], course[n - 1][1]);
+	if (into !== null)
+		for (let i = 0; i < n; i++) levels[i] = Math.max(levels[i], into);
+	const foam = levels.map((_, i) => {
+		const a = Math.max(0, i - 1);
+		const b = Math.min(n - 1, i + 1);
+		return smoothstep(
+			FOAM[0],
+			FOAM[1],
+			(levels[a] - levels[b]) / ((b - a) * STREAM_STEP_M),
+		);
+	});
+	const half = (f.width ?? 7) / 2;
+	// Its stretches, each in its own box: a spot far from a stretch never walks it.
+	const SPAN = 12;
+	const boxes: Box[] = [];
+	for (let i = 0; i < n - 1; i += SPAN)
+		boxes.push(boxOf(course.slice(i, Math.min(n, i + SPAN + 1))));
+	/** The stream's nearest point to (x, z) within `reach`: metres off its centre, and its level and fall there. */
+	const near = (x: number, z: number, reach: number) => {
+		let best = reach * reach;
+		let at = -1;
+		let share = 0;
+		for (let b = 0; b < boxes.length; b++) {
+			if (offBox(boxes[b], x, z) > reach) continue;
+			const to = Math.min(n - 1, (b + 1) * SPAN);
+			for (let i = b * SPAN; i < to; i++) {
+				const [ax, az] = course[i];
+				const sx = course[i + 1][0] - ax;
+				const sz = course[i + 1][1] - az;
+				const t = Math.min(
+					1,
+					Math.max(0, ((x - ax) * sx + (z - az) * sz) / (sx * sx + sz * sz)),
+				);
+				const d = (ax + sx * t - x) ** 2 + (az + sz * t - z) ** 2;
+				if (d < best) {
+					best = d;
+					at = i;
+					share = t;
+				}
+			}
+		}
+		if (at < 0) return null;
+		return {
+			off: Math.sqrt(best),
+			level: levels[at] + (levels[at + 1] - levels[at]) * share,
+			fall: (levels[at] - levels[at + 1]) / STREAM_STEP_M,
+		};
+	};
+	const left: [number, number][] = [];
+	const right: [number, number][] = [];
+	course.forEach((p, i) => {
+		const a = course[Math.max(0, i - 1)];
+		const b = course[Math.min(n - 1, i + 1)];
+		const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+		const nx = -(b[1] - a[1]) / len;
+		const nz = (b[0] - a[0]) / len;
+		left.push([p[0] + nx * half, p[1] + nz * half]);
+		right.push([p[0] - nx * half, p[1] - nz * half]);
+	});
+	return {
+		shape(x, z, h) {
+			const s = near(x, z, half + SWALE_M + 40);
+			if (!s) return h;
+			// Its bed, deeper where it falls: the ground between two vertices is a straight line, and the water must lie over it.
+			const bed = s.level - STREAM_DEEP_M - 2 * s.fall;
+			const out = s.off - half;
+			if (out <= 3) return bed;
+			if (out <= SWALE_M) return Math.min(h, bed);
+			return Math.min(h, bed + GULLY_SLOPE * (out - SWALE_M));
+		},
+		waterAt(x, z) {
+			const s = near(x, z, half);
+			return s && s.level;
+		},
+		water: {
+			level: levels[n - 1],
+			outline: [...left, ...right.reverse()],
+			run: { levels, foam },
+		},
+	};
+}
+
+function part(f: Solid, world: World): Part {
 	if (f.kind === 'peak') {
 		const [px, pz] = world(f.at);
 		const [from, to] = f.clear ?? [120, 700];
@@ -250,8 +426,33 @@ function part(f: Feature, world: (s: Spot) => [number, number]): Part {
 	};
 }
 
-type Built = { line: Route; scene: Scene };
+type Built = { line: Route; scene: Layout };
 const built = new Map<string, Built>();
+
+function sceneFrom(
+	parts: readonly Part[],
+	covers: Scene['coverAt'],
+	climate: Climate,
+): Scene {
+	const wet = parts.filter((p) => p.waterAt);
+	return {
+		shape(x, z, h, dist) {
+			let out = h;
+			for (const p of parts) out = p.shape(x, z, out, dist);
+			return out;
+		},
+		waterAt(x, z) {
+			for (const p of wet) {
+				const level = p.waterAt!(x, z);
+				if (level !== null) return level;
+			}
+			return null;
+		},
+		coverAt: covers,
+		climate,
+		waters: parts.flatMap((p) => (p.water ? [p.water] : [])),
+	};
+}
 
 function build(d: Designed): Built {
 	let b = built.get(d.id);
@@ -264,26 +465,62 @@ function build(d: Designed): Built {
 		return [(p.lon - frame.lon0) * frame.kx, -(p.lat - frame.lat0) * frame.kz];
 	};
 	// Mountains first, water last: a peak's foot never stands in a lake, and a gorge is cut through whatever rose there.
-	const parts = [...d.features]
+	const solid = d.features.filter(
+		(f): f is Solid => f.kind !== 'stream' && f.kind !== 'land',
+	);
+	const parts = [...solid]
 		.sort((p, q) => Number(p.kind !== 'peak') - Number(q.kind !== 'peak'))
 		.map((f) => part(f, world));
-	const wet = parts.filter((p) => p.waterAt);
+	const lands = d.features.flatMap((f) => {
+		if (f.kind !== 'land') return [];
+		const [x, z] = world(f.at);
+		return [
+			{ x, z, r: f.radius, cover: f.cover, turn: (x * 7 + z * 13) % 6.28 },
+		];
+	});
+	const covers: Scene['coverAt'] = (x, z) => {
+		for (const l of lands) {
+			const dx = x - l.x;
+			const dz = z - l.z;
+			const r2 = dx * dx + dz * dz;
+			if (r2 > l.r * l.r * 1.6) continue;
+			// Its edge wanders in and out by a fifth, three bays and seven coves round it.
+			const a = Math.atan2(dz, dx) + l.turn;
+			const edge = l.r * (1 + 0.14 * Math.sin(3 * a) + 0.07 * Math.sin(7 * a));
+			if (r2 < edge * edge) return l.cover;
+		}
+		return null;
+	};
+	const climate = d.climate ?? {};
+	const dry = sceneFrom(parts, covers, climate);
+	const streams = d.features.filter((f) => f.kind === 'stream');
+	const laid = new Map<string, Scene>();
 	b = {
 		line: toRoute(points),
 		scene: {
-			shape(x, z, h, dist) {
-				let out = h;
-				for (const p of parts) out = p.shape(x, z, out, dist);
-				return out;
+			...dry,
+			laid(key, ground) {
+				if (streams.length === 0) return dry;
+				let scene = laid.get(key);
+				if (scene) return scene;
+				const run = streams.flatMap(
+					(f) => stream(f, world, ground, dry.waterAt) ?? [],
+				);
+				// The streams are cut into the ground they were laid on, and the standing water they run into is asked first.
+				const whole = sceneFrom([...parts, ...run], covers, climate);
+				scene = {
+					...whole,
+					shape(x, z, h, dist) {
+						let out = dry.shape(x, z, h, dist);
+						for (const p of run) out = p.shape(x, z, out, dist);
+						return out;
+					},
+				};
+				// A ride's place and the few a page may draw beside it: never every salt there is.
+				if (laid.size >= 4) laid.clear();
+				laid.set(key, scene);
+				return scene;
 			},
-			waterAt(x, z) {
-				for (const p of wet) {
-					const level = p.waterAt!(x, z);
-					if (level !== null) return level;
-				}
-				return null;
-			},
-			waters: parts.flatMap((p) => (p.water ? [p.water] : [])),
 		},
 	};
 	built.set(d.id, b);
@@ -307,8 +544,8 @@ export function designedFor(road: Road): Designed | undefined {
 /** A design's road on its own line: the samples the world draws it on. */
 export const designedLine = (d: Designed): Route => build(d).line;
 
-/** A design's scene, by its id: what the ground and its worker shape the land with. */
-export function sceneOf(id: string | undefined): Scene | undefined {
+/** A design's scene, by its id: what the ground and its worker shape the land with, once the ground has laid its streams. */
+export function sceneOf(id: string | undefined): Layout | undefined {
 	const d = id === undefined ? undefined : DESIGNS.find((k) => k.id === id);
 	return d && build(d).scene;
 }

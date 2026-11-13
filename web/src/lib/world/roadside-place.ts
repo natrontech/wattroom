@@ -308,11 +308,15 @@ export function roadsidePlacer(route: Route, world: World) {
 				biome === null ||
 				biome === Biome.Water ||
 				biome === Biome.Rock ||
-				biome === Biome.Snow
+				biome === Biome.Snow ||
+				biome === Biome.Frost
 			)
 				return false;
 			// Above the trees: pasture, bushes and people, no tree.
-			if (biome === Biome.Alpine && (name === 'spruce' || name === 'leafy'))
+			if (
+				(biome === Biome.Alpine || biome === Biome.Moor) &&
+				(name === 'spruce' || name === 'leafy')
+			)
 				return false;
 			if (!world.clearOf(c.x, c.z, FORMATION + reach(c.art))) return false;
 			const foot = FOOT[name];

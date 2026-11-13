@@ -15,6 +15,7 @@ import {
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
+import { Biome } from './biome';
 import { bridges, waterSheets } from './scenery';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
@@ -241,7 +242,15 @@ export function buildStage(
 			group.add(
 				tag(
 					'terrain',
-					new THREE.Mesh(waterSheets(route, world.waters, c.water), both),
+					new THREE.Mesh(
+						waterSheets(
+							route,
+							world.waters,
+							c.water,
+							style.palette[Biome.Snow],
+						),
+						both,
+					),
 				),
 			);
 		if (world.bridges.length > 0)

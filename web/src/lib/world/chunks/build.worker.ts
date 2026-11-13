@@ -28,7 +28,7 @@ self.onmessage = (e: MessageEvent<ToWorker | ToGroundWorker>) => {
 	if (m.type === 'ground') {
 		const scene = sceneOf(m.scene);
 		const ground = makeGround(m.roads, { salt: m.salt, scene });
-		place = { ground, land: landUse(ground.noise, scene?.waterAt) };
+		place = { ground, land: landUse(ground.noise, ground.scene) };
 		return;
 	}
 	if (m.type === 'grids') {

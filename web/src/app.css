@@ -399,6 +399,8 @@
 	--world-biome-rock: #414758;
 	--world-biome-snow: #9aa5b8;
 	--world-biome-verge: #3d4a36;
+	--world-biome-moor: #4c4535;
+	--world-biome-dry: #6d6440;
 
 	--world-ridge: #26304a;
 	--world-ridge-rock: #3c4258;
@@ -466,6 +468,8 @@
 	--world-px-biome-rock: #76709e;
 	--world-px-biome-snow: #f2eeff;
 	--world-px-biome-verge: #5bad6e;
+	--world-px-biome-moor: #6e6d63;
+	--world-px-biome-dry: #a8a877;
 	--world-px-ridge: #4a4596;
 	--world-px-ridge-rock: #5c5598;
 	--world-px-road-asphalt: #5c5a86;
