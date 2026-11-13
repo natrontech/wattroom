@@ -52,6 +52,7 @@
 	import {
 		startCrewGame,
 		startCrewSession,
+		startRideTogether,
 	} from '#lib/session/crew-session.ts';
 	import type { GameStart } from '#lib/session/modes.ts';
 	import { liveSessionId } from '#lib/channel/tick-session.ts';
@@ -335,6 +336,16 @@
 			: (game) => {
 					layers.setup.open = false;
 					startGame(game);
+				}}
+		onTogether={device.spectator
+			? undefined
+			: () => {
+					layers.setup.open = false;
+					void startRideTogether(channel.address.crew).then((res) => {
+						if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+						else
+							void goto(joinSessionPath(channel.address.crew, res.data.id), GO);
+					});
 				}}
 		trainer={unpaired ? trainerCard : undefined}
 		onClose={() => (layers.setup.open = false)}

@@ -58,3 +58,31 @@ describe('the picker (#4082)', () => {
 		);
 	});
 });
+
+// One door to a session (#4564): Ride together is the picker's first
+// choice, above the workouts, and only where the picker can start one.
+describe('Ride together in the picker', () => {
+	const props = {
+		shelf: [entry('w1', 'Last Ridden')],
+		ftp: 250,
+		onStart: () => {},
+		onPlan: () => {},
+		onClose: () => {},
+		onTogether: () => {},
+	};
+
+	it('comes first, before the workouts', () => {
+		const body = render(SessionPicker, { props }).body;
+		expect(body).toContain('Ride together');
+		expect(body.indexOf('Ride together')).toBeLessThan(
+			body.indexOf('Start Last Ridden'),
+		);
+	});
+
+	it('is not offered where the picker only plans', () => {
+		const body = render(SessionPicker, {
+			props: { ...props, intent: 'plan' as const },
+		}).body;
+		expect(body).not.toContain('Ride together');
+	});
+});

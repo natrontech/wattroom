@@ -15,6 +15,7 @@
 		type Suggestion,
 	} from '#lib/progression.ts';
 	import { untrack, type Snippet } from 'svelte';
+	import Bike from '@lucide/svelte/icons/bike';
 	import { countModal, modals } from '#lib/modals.svelte.ts';
 	import { focusTrap } from '#lib/components/focus-trap.ts';
 	import type { GameStart } from '#lib/session/modes.ts';
@@ -47,6 +48,7 @@
 		onRide,
 		onPlan,
 		onStartGame,
+		onTogether,
 		onClose,
 		shelfError = null,
 		onRetryShelf,
@@ -83,6 +85,10 @@
 		/** Absent hides the Games tab — games are a voice channel's, not a
 		 *  calendar's — and holds Race it. */
 		onStartGame?: (game: GameStart) => void;
+		/** A session with no workout (#4564): everyone rides their own free
+		 *  ride and sees the others. Its first choice, never a second button
+		 *  beside Start a session. Absent where nothing can start. */
+		onTogether?: () => void;
 		/** Where a plan runs, beside when (#2572): the crew's Schedule offers
 		 *  its voice channels here. Absent in a voice channel, which plans
 		 *  into itself. */
@@ -361,6 +367,25 @@
 			>Close</button
 		>
 	</header>
+
+	{#if mode === 'start' && onTogether}
+		<button
+			onclick={onTogether}
+			disabled={busy}
+			class="border-ink/5 hover:bg-surface-raised flex items-center gap-4 border-b px-5 py-4 text-left"
+		>
+			<Bike size={28} class="text-neon shrink-0" />
+			<span class="min-w-0 flex-1">
+				<span class="font-display block text-lg font-bold">Ride together</span>
+				<span class="text-muted block text-sm"
+					>Everyone rides their own: watts, grade or a road, and you see each
+					other.</span
+				>
+			</span>
+			<span class="btn btn-primary btn-lg shrink-0">Start</span>
+		</button>
+		<p class="eyebrow px-5 pt-3">or ride one workout or road together</p>
+	{/if}
 
 	{#if tab === 'roads' && roadsOn}
 		<RoutePicker
