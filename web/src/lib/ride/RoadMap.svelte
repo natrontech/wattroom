@@ -115,16 +115,11 @@
 		<wattalp.Map
 			line={wattalp.line}
 			m={onLine(view.m)}
+			reverse={wattalp.reverse}
 			mates={mates.map((mate) => ({ ...mate, m: onLine(mate.m) }))}
 			you="ink"
+			{toGo}
 		/>
-		<span
-			data-testid="map-to-go"
-			class="border-frame bg-surface text-ink absolute right-3 bottom-3 flex items-center gap-1 rounded border px-[0.4em] text-[max(16px,2.4vh)] leading-snug font-bold whitespace-nowrap"
-			><Flag aria-hidden="true" class="size-[0.9em]" /><span class="num"
-				>{toGo.toFixed(1)} km</span
-			></span
-		>
 	{:else if line && dot}
 		<svg
 			viewBox="0 0 {w} {h}"

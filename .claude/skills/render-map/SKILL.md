@@ -5,23 +5,30 @@ description: Regenerate the Wattalp map picture (web/src/lib/world/wattalp-map.p
 
 # Render the Wattalp map
 
-The route lab's Map view shows the designed map as one static picture with the
-live parts (the ridden loop, the rider's dot) drawn over it. The picture is
-generated, not drawn by hand, and committed. Regenerate it whenever the map moves.
+The route lab's Map view and a ride's Map view on any of the map's loops show
+the designed map as one static picture with the live parts (the ridden loop,
+the names along it, the rider's dot) drawn over it (WattalpMap.svelte). The
+picture is generated, not drawn by hand, and committed. Regenerate it whenever
+the map moves.
 
 ## What writes what
 
 - Generator: `web/src/lib/world/map-render.ts` (land raster, roads, label placement).
-  Water names it adds itself (`WATER_NAMES`); designs.ts names none.
 - Driver: `web/src/lib/world/map-render.golden.test.ts`. Builds the Col de Berne
   loop's world (its other roads are every road on the map), then writes:
   - `web/src/lib/world/wattalp-map.png`: MAP_BOUNDS at `MAP_MPP` (10 m) a pixel,
-    256-colour PNG, a few hundred KB. Terrain, hillshade, snow, rock, water, vignette.
+    256-colour PNG, about 100 KB. Drawn as a game's island map (Zwift's
+    Watopia): flat areas of each cover's world colour with rounded edges, the
+    relief as three steps of that colour, flat water with two bands of
+    shallows. No contours, no rim: the page draws the frame.
   - `web/src/lib/world/wattalp-map.json`: road paths (loops, spurs, bridges,
-    galleries) and labels (villages, passes with height, water) in the world's
-    frame (x east, z = −north). In `.prettierignore`: never reformat it.
-- Reader: `web/src/lib/world/MapOverview.svelte`. It uses the picture for any
-  route whose `scene` is in the JSON's `loops`, else falls back to the live SVG.
+    galleries), the roundabouts' centres and labels (villages, passes) in the
+    world's frame (x east, z = −north), and the font sizes they were placed
+    for. In `.prettierignore`: never reformat it.
+- Readers: `web/src/lib/world/WattalpMap.svelte`, through `MapOverview.svelte`
+  (the lab: any route whose `scene` is in the JSON's `loops`) and
+  `ride/RoadMap.svelte` (a ride, by `wattalp.ts` onWattalp). It names only the
+  villages and passes within 250 m of the loop ridden, no heights, no water.
 
 ## Regenerate
 
@@ -39,21 +46,23 @@ about 400 KB; raise `MAP_MPP` before shrinking the palette.
 
 ## Check it by looking
 
-1. Read the PNG itself (the Read tool shows images): land colours like the 3D
-   Diorama look (meadow green, forest teal, violet rock, snow above 2,050 m), relief
-   readable, lakes, river and streams blue with a darker shore.
-2. Open the lab (dev server on :5174, never restart it):
-   `http://localhost:5174/dev/route?shape=berne&view=map`, then `shape=urnsee`,
-   `shape=aare`. Headless screenshot from the scratchpad helper, e.g.
-   `Q="&view=map" nice -n 15 node shot.cjs <tag> shape:berne 1 2000:steady`.
+1. Read the PNG itself (the Read tool shows images): flat areas in the 3D
+   Diorama's colours (meadow green, forest teal, violet rock, snow above
+   2,050 m), the relief readable in its light and dark steps, lakes, river and
+   streams blue with lighter shallows.
+2. Open the lab (`make dev-env` prints this checkout's web port):
+   `/dev/route?shape=berne&view=map`, then `shape=urnsee`, `shape=aare`,
+   `shape=lac`, headless. A ride's Map view (`/ride?road=aare&sim=1`, Ride
+   simulated, Start the ride, Map) shows the same map smaller.
 3. Look for:
    - every road, spur, river and stream that leaves the rectangle runs to the
      picture's edge; nothing stops short in the open (a farm lane that truly ends
      inside may end round);
-   - the ridden loop (peach) sits exactly on its white road: the frame is right;
-   - no two names overlap, no name sits under the cartouche, north arrow or
-     scale bar, and names do not cover roads where there was room beside them;
-   - pass markers carry a sensible height; the dot (magenta) is on the road.
+   - the ridden loop (white, bright ahead of the dot, faint behind it) sits
+     exactly on its thin dark road: the frame is right;
+   - no two names overlap, no name sits under the map's name, north arrow or
+     scale bar, or over the start's flag, and names do not cover roads where
+     there was room beside them; the dot (magenta) is on the road.
 4. `&view=flat` uses the same world colours behind the Skyline.
 
 ## Finish

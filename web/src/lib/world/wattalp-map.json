@@ -29,9 +29,8 @@
 			"name": "Col de Berne",
 			"x": 3304,
 			"z": -1654,
-			"ele": 2306,
-			"tx": 3194,
-			"tz": -1598,
+			"tx": 3174,
+			"tz": -1587,
 			"anchor": "end"
 		},
 		{
@@ -39,19 +38,17 @@
 			"name": "Axenegg",
 			"x": -1477,
 			"z": -2075,
-			"ele": 1577,
-			"tx": -1587,
-			"tz": -2019,
-			"anchor": "end"
+			"tx": -1347,
+			"tz": -2008,
+			"anchor": "start"
 		},
 		{
 			"kind": "pass",
 			"name": "Seelisgrat",
 			"x": -1363,
 			"z": -855,
-			"ele": 1558,
-			"tx": -1473,
-			"tz": -799,
+			"tx": -1493,
+			"tz": -788,
 			"anchor": "end"
 		},
 		{
@@ -59,9 +56,8 @@
 			"name": "Morschachli",
 			"x": 561,
 			"z": -2295,
-			"ele": 1468,
-			"tx": 671,
-			"tz": -2239,
+			"tx": 691,
+			"tz": -2228,
 			"anchor": "start"
 		},
 		{
@@ -69,9 +65,8 @@
 			"name": "Bantigeregg",
 			"x": 139,
 			"z": 1253,
-			"ele": 1548,
-			"tx": 29,
-			"tz": 1309,
+			"tx": 9,
+			"tz": 1320,
 			"anchor": "end"
 		},
 		{
@@ -79,9 +74,8 @@
 			"name": "Längenhubel",
 			"x": -2575,
 			"z": 1296,
-			"ele": 1479,
-			"tx": -2487,
-			"tz": 1502,
+			"tx": -2471,
+			"tz": 1540,
 			"anchor": "start"
 		},
 		{
@@ -89,8 +83,8 @@
 			"name": "Urnried",
 			"x": -1186,
 			"z": 3044,
-			"tx": -1262,
-			"tz": 3229,
+			"tx": -1274,
+			"tz": 3262,
 			"anchor": "end"
 		},
 		{
@@ -98,37 +92,32 @@
 			"name": "Brunnach",
 			"x": 1107,
 			"z": 124,
-			"tx": 1031,
-			"tz": 309,
-			"anchor": "end"
+			"tx": 1107,
+			"tz": 378,
+			"anchor": "middle"
 		},
 		{
 			"kind": "village",
 			"name": "Flüetritt",
 			"x": 524,
 			"z": -966,
-			"tx": 619,
-			"tz": -913,
+			"tx": 634,
+			"tz": -903,
 			"anchor": "start"
-		},
-		{
-			"kind": "water",
-			"name": "Urnsee",
-			"x": -50,
-			"z": -2500,
-			"tx": -50,
-			"tz": -2500,
-			"anchor": "middle"
-		},
-		{
-			"kind": "river",
-			"name": "Aaren",
-			"x": 1680,
-			"z": 3100,
-			"tx": 1680,
-			"tz": 3100,
-			"anchor": "middle",
-			"angle": 83
 		}
-	]
+	],
+	"rings": [
+		{
+			"x": 200,
+			"z": -300
+		},
+		{
+			"x": 150,
+			"z": -4250
+		}
+	],
+	"type": {
+		"village": 180,
+		"pass": 190
+	}
 }

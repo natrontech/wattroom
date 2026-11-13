@@ -1,8 +1,8 @@
 /**
  * The map as one picture (map-render.golden.test.ts writes it): the whole
  * of MAP_BOUNDS drawn once from the world the Col de Berne loop builds, the
- * land in the colours the 3D world paints it, lit from the north-west so the
- * mountains stand up, and the water over it. What a page draws live over the
+ * land in flat areas of the colours the 3D world paints it, as a game's
+ * island map is drawn, and the water over it. What a page draws live over the
  * picture (the roads, the names, where you are) is worked out here too, as
  * data, in the world's frame: x east, z south (−north). Node and browser
  * alike: no I/O here, the test writes the files.
@@ -10,7 +10,7 @@
 import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
 import { Biome } from './biome';
-import { designedLine, sceneOf } from './designed';
+import { designedLine, roundaboutsOf, sceneOf } from './designed';
 import { DESIGNS, MAP_BOUNDS, MAP_NAME } from './designs';
 import { CHUNK_M, FINE_M } from './place/lattice';
 import { villageSites } from './props/scatter';
@@ -24,16 +24,6 @@ const GROUND_M = FINE_M;
 /** The loops drawn as the map's main roads, by design id. */
 export const MAP_LOOPS = DESIGNS.filter((d) => d.others).map((d) => d.id);
 
-/** The map's water by name: designs.ts names none, a map does. Each at the spot its name is written. */
-const WATER_NAMES: {
-	name: string;
-	at: [east: number, north: number];
-	river?: boolean;
-}[] = [
-	{ name: 'Urnsee', at: [-50, 2500] },
-	{ name: 'Aaren', at: [1680, -3100], river: true },
-];
-
 export type MapData = {
 	name: string;
 	bounds: typeof MAP_BOUNDS;
@@ -44,10 +34,14 @@ export type MapData = {
 	/** SVG path data in the world's frame, metres. */
 	roads: { loops: string; spurs: string; bridges: string; galleries: string };
 	labels: Label[];
+	/** Each roundabout's centre: the page draws a ring there as a map's symbol, bigger than the 18 m ring itself. */
+	rings: { x: number; z: number }[];
+	/** The font sizes, in the map's metres, the names were placed for. */
+	type: typeof MAP_TYPE;
 };
 
 export type Label = {
-	kind: 'village' | 'pass' | 'water' | 'river';
+	kind: 'village' | 'pass';
 	name: string;
 	/** The place itself. */
 	x: number;
@@ -56,10 +50,6 @@ export type Label = {
 	tx: number;
 	tz: number;
 	anchor: 'start' | 'middle' | 'end';
-	/** A pass's height, metres. */
-	ele?: number;
-	/** Degrees the name is turned by, a river's along it. */
-	angle?: number;
 };
 
 const hex = (s: string): [number, number, number] => {
@@ -79,10 +69,6 @@ export function tokensOf(
 
 const lerp3 = (a: number[], b: number[], t: number) =>
 	[0, 1, 2].map((k) => a[k] + (b[k] - a[k]) * t);
-const smooth = (a: number, b: number, v: number) => {
-	const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
-	return t * t * (3 - 2 * t);
-};
 
 /** Even-odd coverage of a ring over the picture, `ss`² samples a pixel: 0..1 per pixel added into `into`. */
 function fillRing(
@@ -150,10 +136,15 @@ function strokeLine(
 }
 
 /**
- * The land under the map, pixel by pixel, as RGB: each 40 m vertex of the
- * coarse ground coloured as geometry.ts's terrain() colours it, blended
- * between vertices as the GPU blends them, lit by a low north-western sun;
- * the lakes, the river and the streams over it; a soft dark rim round it.
+ * The land under the map, pixel by pixel, as RGB, drawn as a game's island
+ * map is (Zwift's Watopia): flat areas of colour with soft, rounded edges,
+ * not a photograph. Each 10 m vertex of the fine ground takes its cover
+ * (meadow, forest, rock, snow, moor, dry ground), each cover is softened over
+ * 100 m and the strongest one paints the pixel in its flat world colour; the
+ * relief is three steps of the same colour, the slopes turned from the
+ * north-western sun a shade darker and those facing it a shade lighter, so
+ * the hills and the col still read. The water flat blue, two lighter bands
+ * of shallows along its shore.
  */
 export function renderLand(
 	world: World,
@@ -163,21 +154,32 @@ export function renderLand(
 	const w = Math.round((east - west) / MAP_MPP);
 	const h = Math.round((north - south) / MAP_MPP);
 	const c = (t: string) => colours[`world-px-${t}`];
-	const palette: Record<number, number[]> = {
-		[Biome.Meadow]: c('biome-meadow'),
-		[Biome.Forest]: c('biome-forest'),
-		[Biome.Alpine]: c('biome-alpine'),
-		[Biome.Rock]: c('biome-rock'),
-		[Biome.Snow]: c('biome-snow'),
-		[Biome.Frost]: c('biome-snow'),
-		[Biome.Verge]: c('biome-verge'),
-		[Biome.Moor]: c('biome-moor'),
-		[Biome.Dry]: c('biome-dry'),
-		// Under the water's sheet: the bank the sheet's edge is drawn over.
-		[Biome.Water]: lerp3(c('biome-meadow'), c('biome-dry'), 0.5),
-	};
+	// The covers the map paints, each a flat colour.
+	const COVERS = [
+		c('biome-meadow'),
+		c('biome-forest'),
+		c('biome-alpine'),
+		c('biome-rock'),
+		c('biome-snow'),
+		c('biome-moor'),
+		c('biome-dry'),
+	];
+	const coverOf = (b: number, forest: number) =>
+		b === Biome.Forest || (b === Biome.Meadow && forest > 0.5)
+			? 1
+			: b === Biome.Alpine
+				? 2
+				: b === Biome.Rock
+					? 3
+					: b === Biome.Snow || b === Biome.Frost
+						? 4
+						: b === Biome.Moor
+							? 5
+							: b === Biome.Dry
+								? 6
+								: 0;
 
-	// The coarse ground's vertices over the whole rectangle, a chunk at a time.
+	// The fine ground's vertices over the whole rectangle, a chunk at a time.
 	const z0 = -north;
 	const ci0 = Math.floor(west / CHUNK_M);
 	const ci1 = Math.floor(east / CHUNK_M);
@@ -189,10 +191,7 @@ export function renderLand(
 	const gx0 = ci0 * CHUNK_M;
 	const gz0 = cj0 * CHUNK_M;
 	const H = new Float32Array(gw * gh);
-	const R = new Float32Array(gw * gh);
-	const G = new Float32Array(gw * gh);
-	const B = new Float32Array(gw * gh);
-	const AO = new Float32Array(gw * gh);
+	const W = COVERS.map(() => new Float32Array(gw * gh));
 	const edges = [GROUND_M, GROUND_M, GROUND_M, GROUND_M] as const;
 	for (let cj = cj0; cj <= cj1; cj++)
 		for (let ci = ci0; ci <= ci1; ci++) {
@@ -201,47 +200,39 @@ export function renderLand(
 				for (let i = 0; i < g.row; i++) {
 					const v = j * g.row + i;
 					const k = ((cj - cj0) * per + j) * gw + (ci - ci0) * per + i;
-					const b = g.biome[v];
-					const col =
-						b === Biome.Meadow || b === Biome.Forest
-							? lerp3(palette[Biome.Meadow], palette[Biome.Forest], g.forest[v])
-							: (palette[b] ?? palette[Biome.Meadow]);
 					H[k] = g.h[v];
-					R[k] = col[0];
-					G[k] = col[1];
-					B[k] = col[2];
-					AO[k] = Math.min(1, Math.max(0, (g.shade[v] - 0.72) / 0.4));
+					for (const A of W) A[k] = 0;
+					W[coverOf(g.biome[v], g.forest[v])][k] = 1;
 				}
 		}
+	// Each cover softened over 100 m: a patch is an area with a rounded edge, not a speckle.
+	for (const A of W) blur(A, gw, gh, 5);
 
-	// Hillshade per vertex: the sun 40° up in the north-west, the relief drawn 1.6 times as steep.
-	const LIGHT = (() => {
-		const alt = (40 * Math.PI) / 180;
-		const az = (315 * Math.PI) / 180;
-		// x east, z south: north-west is −x, −z.
-		return [
-			Math.cos(alt) * Math.sin(az),
-			Math.sin(alt),
-			-Math.cos(alt) * Math.cos(az),
-		];
-	})();
+	// The relief per vertex: how squarely a slope faces the sun in the north-west, 1 on the flat.
+	const alt = (45 * Math.PI) / 180;
+	const az = (315 * Math.PI) / 180;
+	// x east, z south: the sun's azimuth clockwise from north.
+	const L = [
+		Math.cos(alt) * Math.sin(az),
+		Math.sin(alt),
+		-Math.cos(alt) * Math.cos(az),
+	];
 	const SHADE = new Float32Array(gw * gh);
 	for (let j = 0; j < gh; j++)
 		for (let i = 0; i < gw; i++) {
 			const hx =
-				(H[j * gw + Math.min(gw - 1, i + 1)] - H[j * gw + Math.max(0, i - 1)]) /
-				(2 * GROUND_M);
+				(H[j * gw + Math.min(gw - 1, i + 2)] - H[j * gw + Math.max(0, i - 2)]) /
+				(4 * GROUND_M);
 			const hz =
-				(H[Math.min(gh - 1, j + 1) * gw + i] - H[Math.max(0, j - 1) * gw + i]) /
-				(2 * GROUND_M);
-			const ex = 1.6;
-			const nx = -hx * ex;
-			const nz = -hz * ex;
+				(H[Math.min(gh - 1, j + 2) * gw + i] - H[Math.max(0, j - 2) * gw + i]) /
+				(4 * GROUND_M);
+			const nx = -hx * 2;
+			const nz = -hz * 2;
 			const len = Math.hypot(nx, 1, nz);
-			const lit = (nx * LIGHT[0] + LIGHT[1] + nz * LIGHT[2]) / len;
-			// 1 on the flat, brighter facing the sun, darker away from it.
-			SHADE[j * gw + i] = lit / LIGHT[1];
+			SHADE[j * gw + i] =
+				Math.max(0, nx * L[0] + L[1] + nz * L[2]) / len / L[1];
 		}
+	blur(SHADE, gw, gh, 1);
 
 	const field = (A: Float32Array, fx: number, fz: number) => {
 		const i = Math.min(gw - 2, Math.max(0, Math.floor(fx)));
@@ -279,64 +270,128 @@ export function renderLand(
 		}
 		strokeLine(flowing, w, h, mid, Math.max(1.6, wide / MAP_MPP));
 	}
-	// The shore: a band just inside the water's edge, from how much of a pixel's neighbourhood is water.
-	const near = (
-		A: Float32Array,
-		k: number,
-		x: number,
-		y: number,
-		r: number,
-	) => {
-		let lo = A[k];
-		for (let dy = -r; dy <= r; dy++)
-			for (let dx = -r; dx <= r; dx++) {
-				const xx = x + dx;
-				const yy = y + dy;
-				if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-				lo = Math.min(lo, A[yy * w + xx]);
-			}
-		return lo;
-	};
+	// How far each pixel of a lake or river lies from its shore, in pixels: the shallows are drawn by it.
+	const shoreDist = chamfer(wet, w, h);
 
 	const water = c('biome-water');
-	const shore = lerp3(water, [16, 18, 52], 0.45);
-	const rim = [24, 18, 52];
+	const shallow = lerp3(
+		lerp3(water, c('biome-meadow'), 0.4),
+		c('sky-light'),
+		0.3,
+	);
+	const shoal = lerp3(water, c('biome-meadow'), 0.22);
+	const step = (a: number, b: number, v: number) =>
+		Math.min(1, Math.max(0, (v - a) / (b - a)));
 	const rgb = new Uint8Array(w * h * 3);
 	for (let y = 0; y < h; y++)
 		for (let x = 0; x < w; x++) {
 			const k = y * w + x;
-			const wx = west + (x + 0.5) * MAP_MPP;
-			const wz = z0 + (y + 0.5) * MAP_MPP;
-			const fx = (wx - gx0) / GROUND_M;
-			const fz = (wz - gz0) / GROUND_M;
+			const fx = (west + (x + 0.5) * MAP_MPP - gx0) / GROUND_M;
+			const fz = (z0 + (y + 0.5) * MAP_MPP - gz0) / GROUND_M;
+			// The strongest cover, its edge with the next one a pixel soft.
+			let first = 0;
+			let second = 0;
+			let a = -1;
+			let b = -1;
+			for (let i = 0; i < W.length; i++) {
+				const v = field(W[i], fx, fz);
+				if (v > a) {
+					[second, b] = [first, a];
+					[first, a] = [i, v];
+				} else if (v > b) [second, b] = [i, v];
+			}
+			let col = lerp3(
+				COVERS[second],
+				COVERS[first],
+				0.5 + Math.min(0.5, (a - b) * 6),
+			);
+			// Three steps of light, each a pixel soft at its edge.
 			const lit = field(SHADE, fx, fz);
-			const ao = field(AO, fx, fz);
-			const light =
-				Math.min(1.3, Math.max(0.62, 1 + (lit - 1) * 0.75)) *
-				(0.88 + 0.12 * ao);
-			let col = [
-				field(R, fx, fz) * light,
-				field(G, fx, fz) * light,
-				field(B, fx, fz) * light,
-			];
-			const sheet = Math.max(wet[k], flowing[k]);
+			const dark = 1 - step(0.8, 0.86, lit);
+			const light = step(1.12, 1.18, lit);
+			col = col.map((v) => v * (1 - 0.13 * dark + 0.1 * light));
+
+			const sheet = wet[k];
 			if (sheet > 0) {
-				const band = wet[k] - near(wet, k, x, y, 2);
-				const body = lerp3(water, shore, Math.min(1, band * 1.4));
+				const s = shoreDist[k];
+				const body = lerp3(
+					lerp3(water, shoal, 1 - step(10, 11, s)),
+					shallow,
+					1 - step(4, 5, s),
+				);
 				col = lerp3(col, body, sheet);
 			}
-			// The rim: the picture darkens toward its edge, its corners most.
-			const ux = (x + 0.5) / w - 0.5;
-			const uy = (y + 0.5) / h - 0.5;
-			const r = Math.hypot(ux * 2, uy * 2) / Math.SQRT2;
-			const edge = Math.min(x, y, w - 1 - x, h - 1 - y);
-			const v = 0.42 * smooth(0.6, 1.05, r) + 0.35 * (1 - smooth(0, 14, edge));
-			col = lerp3(col, rim, v);
+			if (flowing[k] > sheet) col = lerp3(col, shallow, flowing[k]);
+
 			rgb[k * 3] = Math.round(Math.min(255, Math.max(0, col[0])));
 			rgb[k * 3 + 1] = Math.round(Math.min(255, Math.max(0, col[1])));
 			rgb[k * 3 + 2] = Math.round(Math.min(255, Math.max(0, col[2])));
 		}
 	return { rgb, w, h };
+}
+
+/** A box blur of `r` vertices each way over a grid, in place: twice, so it falls off like a bell. */
+function blur(A: Float32Array, gw: number, gh: number, r: number) {
+	const tmp = new Float32Array(A.length);
+	for (let pass = 0; pass < 2; pass++) {
+		for (let j = 0; j < gh; j++)
+			for (let i = 0; i < gw; i++) {
+				let s = 0;
+				let n = 0;
+				for (let k = Math.max(0, i - r); k <= Math.min(gw - 1, i + r); k++) {
+					s += A[j * gw + k];
+					n++;
+				}
+				tmp[j * gw + i] = s / n;
+			}
+		for (let j = 0; j < gh; j++)
+			for (let i = 0; i < gw; i++) {
+				let s = 0;
+				let n = 0;
+				for (let k = Math.max(0, j - r); k <= Math.min(gh - 1, j + r); k++) {
+					s += tmp[k * gw + i];
+					n++;
+				}
+				A[j * gw + i] = s / n;
+			}
+	}
+}
+
+/** Each pixel's distance to the nearest pixel outside `cover` (under half covered), in pixels, by a two-pass chamfer: 0 outside. */
+function chamfer(cover: Float32Array, w: number, h: number): Float32Array {
+	const D = new Float32Array(w * h);
+	const far = 1e6;
+	for (let k = 0; k < D.length; k++) D[k] = cover[k] >= 0.5 ? far : 0;
+	const S = Math.SQRT2;
+	const at = (x: number, y: number) =>
+		x < 0 || y < 0 || x >= w || y >= h ? far : D[y * w + x];
+	for (let y = 0; y < h; y++)
+		for (let x = 0; x < w; x++) {
+			const k = y * w + x;
+			if (D[k] === 0) continue;
+			D[k] = Math.min(
+				D[k],
+				at(x - 1, y) + 1,
+				at(x, y - 1) + 1,
+				at(x - 1, y - 1) + S,
+				at(x + 1, y - 1) + S,
+			);
+		}
+	for (let y = h - 1; y >= 0; y--)
+		for (let x = w - 1; x >= 0; x--) {
+			const k = y * w + x;
+			if (D[k] === 0) continue;
+			D[k] = Math.min(
+				D[k],
+				at(x + 1, y) + 1,
+				at(x, y + 1) + 1,
+				at(x + 1, y + 1) + S,
+				at(x - 1, y + 1) + S,
+			);
+		}
+	// A pixel at the edge of the water is half a pixel from the shore.
+	for (let k = 0; k < D.length; k++) if (D[k] > 0) D[k] -= 0.5;
+	return D;
 }
 
 /** Douglas–Peucker, `tol` metres: a line's points that its shape needs. */
@@ -390,11 +445,11 @@ const pathOf = (lines: [number, number][][], close = false) =>
 		)
 		.join('');
 
-/** Rough width of a name in metres at `size` metres a letter: for keeping two names apart. */
-const widthOf = (name: string, size: number) => name.length * size * 0.58;
+/** Rough width of a name in metres at `size` metres a letter, in capitals spaced as WattalpMap.svelte writes them: for keeping two names apart. */
+const widthOf = (name: string, size: number) => name.length * size * 0.8;
 
-/** Font sizes in the map's metres, as MapOverview.svelte draws them. */
-export const MAP_TYPE = { village: 150, pass: 160, water: 210 } as const;
+/** Font sizes in the map's metres, as WattalpMap.svelte draws them. */
+export const MAP_TYPE = { village: 180, pass: 190 } as const;
 
 /**
  * What the page draws over the picture: the roads, the names and where each
@@ -450,6 +505,11 @@ export function mapData(world: World, route: Route): MapData {
 			galleries: pathOf(galleries),
 		},
 		labels,
+		rings: roundaboutsOf(route.scene).map((r) => ({
+			x: Math.round(r.x),
+			z: Math.round(r.z),
+		})),
+		type: MAP_TYPE,
 	};
 }
 
@@ -479,10 +539,18 @@ function placeLabels(
 	);
 	const { west, east, south, north } = MAP_BOUNDS;
 	const taken: Box[] = [];
-	// The cartouche's corner, the north arrow's and the scale bar's: no name there.
-	taken.push([west, -north, west + 2700, -north + 1150]);
+	// The map's name's corner, the north arrow's and the scale bar's: no name there.
+	taken.push([west, -north, west + 2900, -north + 900]);
 	taken.push([east - 800, -north, east, -north + 1150]);
 	taken.push([west, -south - 700, west + 2700, -south]);
+	// And none over a roundabout's ring.
+	for (const r of roundaboutsOf(route.scene))
+		taken.push([r.x - 130, r.z - 130, r.x + 130, r.z + 130]);
+	// Nor over the start's flag, planted north of each loop's start (WattalpMap.svelte).
+	for (const l of loops) {
+		const p = at(l, 0);
+		taken.push([p.x - 60, p.z - 490, p.x + 280, p.z + 60]);
+	}
 	const inside = (b: Box) =>
 		b[0] > west + 80 &&
 		b[2] < east - 80 &&
@@ -492,18 +560,14 @@ function placeLabels(
 	const place = (
 		base: Omit<Label, 'tx' | 'tz' | 'anchor'>,
 		size: number,
-		lines: number,
 		gap: number,
 	) => {
-		const wide = Math.max(
-			widthOf(base.name, size),
-			base.ele ? widthOf('0000 m', size * 0.8) : 0,
-		);
-		const tall = size * (lines === 2 ? 1.95 : 1.05);
+		const wide = widthOf(base.name, size);
+		const tall = size * 1.05;
 		const tries: [number, number, Label['anchor']][] = [
 			[base.x + gap, base.z + size * 0.35, 'start'],
 			[base.x - gap, base.z + size * 0.35, 'end'],
-			[base.x, base.z - gap - (lines - 1) * size * 0.9, 'middle'],
+			[base.x, base.z - gap, 'middle'],
 			[base.x, base.z + gap + size * 0.8, 'middle'],
 			[base.x + gap * 0.8, base.z - gap * 0.9, 'start'],
 			[base.x + gap * 0.8, base.z + gap + size * 0.6, 'start'],
@@ -564,7 +628,8 @@ function placeLabels(
 		return { name: p.name, ...top };
 	});
 	// Marks first: no name over a marker.
-	for (const p of passes) taken.push([p.x - 70, p.z - 80, p.x + 70, p.z + 60]);
+	for (const p of passes)
+		taken.push([p.x - 100, p.z - 110, p.x + 100, p.z + 80]);
 	for (const p of passes)
 		place(
 			{
@@ -572,55 +637,18 @@ function placeLabels(
 				name: p.name,
 				x: Math.round(p.x),
 				z: Math.round(p.z),
-				ele: Math.round(p.ele),
 			},
 			MAP_TYPE.pass,
-			2,
-			110,
+			130,
 		);
 
 	for (const v of villagesOf(world, route))
 		place(
 			{ kind: 'village', name: v.name, x: Math.round(v.x), z: Math.round(v.z) },
 			MAP_TYPE.village,
-			1,
-			95,
+			110,
 		);
 
-	for (const wn of WATER_NAMES) {
-		const x = wn.at[0];
-		const z = -wn.at[1];
-		let angle = 0;
-		if (wn.river) {
-			// Along the river where the name is written.
-			const r = world.waters.find(
-				(w) =>
-					!w.run &&
-					w.outline.some(([ox, oz]) => Math.hypot(ox - x, oz - z) < 400),
-			);
-			if (r) {
-				const near = r.outline
-					.map(([ox, oz], i) => ({ i, d: Math.hypot(ox - x, oz - z) }))
-					.sort((a, b) => a.d - b.d)[0];
-				const o = r.outline;
-				const a = o[Math.max(0, near.i - 3)];
-				const b = o[Math.min(o.length - 1, near.i + 3)];
-				angle = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
-				if (angle > 90) angle -= 180;
-				if (angle < -90) angle += 180;
-			}
-		}
-		out.push({
-			kind: wn.river ? 'river' : 'water',
-			name: wn.name,
-			x,
-			z,
-			tx: x,
-			tz: z,
-			anchor: 'middle',
-			...(angle && { angle: Math.round(angle) }),
-		});
-	}
 	return out;
 }
 
