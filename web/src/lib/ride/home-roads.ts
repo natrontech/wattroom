@@ -1,5 +1,5 @@
 import type { Route } from '#lib/road/route.ts';
-import type { Corner, Shape } from '#lib/world/synthetic.ts';
+import type { Shape } from '#lib/world/synthetic.ts';
 import type { RideableRoute } from '#lib/ride/roads.ts';
 import type { StoredRoute } from '#lib/road/stored.ts';
 
@@ -26,25 +26,6 @@ export type HomeRoad = {
 	listed?: boolean;
 };
 
-/**
- * Rolling farmland at about 520–630 m: meadows, so farms with their cows,
- * milk cans and cattle signs; two short ramps steep enough for the
- * steep-road sign. About 16 km, 130 m up.
- */
-const VALLEY_LOOP: Corner[] = [
-	{ x: 0, y: 0, ele: 520, r: 200 },
-	{ x: 2500, y: 0, ele: 522, r: 150 },
-	{ x: 2800, y: 0, ele: 549, r: 60 },
-	{ x: 4500, y: 800, ele: 560, r: 250 },
-	{ x: 5000, y: 2500, ele: 540, r: 200 },
-	{ x: 4200, y: 3600, ele: 600, r: 60 },
-	{ x: 3900, y: 3800, ele: 630, r: 40 },
-	{ x: 2500, y: 4300, ele: 600, r: 250 },
-	{ x: 800, y: 3800, ele: 560, r: 250 },
-	{ x: -600, y: 2600, ele: 535, r: 300 },
-	{ x: -500, y: 1000, ele: 522, r: 250 },
-];
-
 export const HOME_ROADS: readonly HomeRoad[] = [
 	{
 		id: 'intro',
@@ -61,8 +42,8 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		routeId: '7a77b0ad-0002-4000-8000-000000004248',
 		name: 'Valley loop',
 		story:
-			'Rolling farmland and villages, cows by the road, and two short steep ramps.',
-		shape: async () => ({ corners: VALLEY_LOOP, seed: 4248 }),
+			'Rolling farmland and villages, cows by the road, two bridges over the river and two short steep ramps.',
+		shape: () => designed('valley'),
 	},
 	// The map (world/designs.ts): one land, and four loops through it from its village, by the time they take.
 	{

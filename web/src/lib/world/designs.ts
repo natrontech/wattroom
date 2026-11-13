@@ -481,12 +481,17 @@ const MAP = {
 			{ x: -150, y: 4800, ele: 1462, r: 0 },
 			{ x: -100, y: 5400, ele: 1500, r: 0 },
 		],
-		// The village's own street, across the hub: from the lake's foot to the farms east of it.
+		// The village's lane down to the foot of the lake.
 		[
 			{ x: -250, y: 620, ele: 1440, r: 0 },
+			{ x: -30, y: 480, ele: 1443, r: 0 },
 			{ x: 200, y: 300, ele: 1446, r: 0 },
-			{ x: 900, y: 250, ele: 1452, r: 0 },
-			{ x: 1500, y: 450, ele: 1470, r: 0 },
+		],
+		// A farm lane north off the valley road, square to it: a road leaving another at a shallow angle runs beside it for a kilometre.
+		[
+			{ x: 1250, y: -350, ele: 1462, r: 0 },
+			{ x: 1500, y: 250, ele: 1480, r: 0 },
+			{ x: 2000, y: 600, ele: 1515, r: 0 },
 		],
 	],
 } satisfies Pick<
@@ -507,6 +512,108 @@ const loop = (
 	others,
 	...MAP,
 });
+
+/**
+ * The Valley loop, a land of its own below the map's: rolling farmland at
+ * about 520–630 m, so farms with their cows, milk cans and cattle signs;
+ * a river through the middle of it, bridged twice; a pond by the road; and
+ * two short ramps steep enough for the steep-road sign. About 16 km.
+ */
+const VALLEY_DRAWN: Corner[] = [
+	{ x: 0, y: 0, ele: 520, r: 200 },
+	{ x: 2500, y: 0, ele: 522, r: 150 },
+	{ x: 2800, y: 0, ele: 549, r: 60 },
+	{ x: 4500, y: 800, ele: 560, r: 250 },
+	{ x: 5000, y: 2500, ele: 540, r: 200 },
+	{ x: 4200, y: 3600, ele: 600, r: 60 },
+	{ x: 3900, y: 3800, ele: 630, r: 40 },
+	{ x: 2500, y: 4300, ele: 600, r: 250 },
+	{ x: 800, y: 3800, ele: 560, r: 250 },
+	{ x: -600, y: 2600, ele: 535, r: 300 },
+	{ x: -500, y: 1000, ele: 522, r: 250 },
+];
+// Its two bridges' legs stay straight; the rest winds through the fields.
+const VALLEY = wind(
+	[...VALLEY_DRAWN, VALLEY_DRAWN[0]],
+	4248,
+	(leg) => (leg === 3 || leg === 9 ? 0 : 34),
+	270,
+	2,
+).slice(0, -1);
+
+const VALLEY_LAND: Feature[] = [
+	// The river, in a shallow wooded valley of its own: under the road on its way in and on its way out.
+	{
+		kind: 'river',
+		course: [
+			[-2600, 2400],
+			[-1500, 2200],
+			[-560, 2050],
+			[800, 2000],
+			[2200, 2600],
+			[3600, 1900],
+			[4850, 1800],
+			[5800, 1500],
+			[7000, 1600],
+		],
+		width: 40,
+		level: 512,
+		gorge: { bank: 25, slope: 0.3 },
+	},
+	// The pond by the first straight, and the stream out of it.
+	{
+		kind: 'lake',
+		level: 515,
+		deep: 6,
+		basin: { slope: 0.12, reach: 260 },
+		shore: [
+			[1180, 190],
+			[1330, 150],
+			[1470, 230],
+			[1440, 380],
+			[1280, 430],
+			[1150, 330],
+		],
+	},
+	{
+		kind: 'stream',
+		course: [
+			[1350, 440],
+			[1500, 900],
+			[1300, 1500],
+			[1500, 2100],
+			[1550, 2300],
+		],
+	},
+	// Streams off the hills north and south into the river, under the road.
+	{
+		kind: 'stream',
+		course: [
+			[2700, 5600],
+			[2600, 4700],
+			[2300, 3700],
+			[2250, 2900],
+			[2200, 2600],
+		],
+	},
+	{
+		kind: 'stream',
+		course: [
+			[3900, -1200],
+			[3700, -300],
+			[3500, 700],
+			[3550, 1500],
+			[3600, 1900],
+		],
+	},
+	// Low wooded hills round it, and a knoll in the middle the loop goes round.
+	peak([2400, 6000], 160, 900),
+	peak([-2400, 500], 140, 900),
+	peak([6800, 3600], 150, 900),
+	peak([3300, -2200], 120, 800),
+	peak([1900, 1300], 45, 260, [40, 200]),
+	{ kind: 'land', cover: 'moor', at: [600, 2350], radius: 420 },
+];
 
 /** The loops, each from the hub and back: by the time they take, about 30, 40, 60 and 90 minutes. */
 export const DESIGNS: readonly Designed[] = [
@@ -532,4 +639,10 @@ export const DESIGNS: readonly Designed[] = [
 		[HUB, ...COL, HEAD, ...TERRACE],
 		['urnsee', 'aare'],
 	),
+	{
+		id: 'valley',
+		lengthM: 16036.55,
+		shape: { corners: VALLEY, seed: 4248, drawn: true },
+		features: VALLEY_LAND,
+	},
 ];

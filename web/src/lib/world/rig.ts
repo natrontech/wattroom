@@ -32,6 +32,8 @@ const DIO = { back: 9.5, up: 4.4, ahead: 34, fov: 44 };
 const OFF_AXIS = Math.cos((24 * Math.PI) / 180);
 /** The shortest it looks ahead, however tight the bend. */
 const REACH_FLOOR = 3;
+/** The cosine of the widest you may stand off the eased gaze: 17°, inside the frame with room for the figure. */
+const HELD_AXIS = Math.cos((17 * Math.PI) / 180);
 const EYE_FLOOR = 1.5; // metres the eye keeps above the drawn ground
 /** Past the heli's distances, the widest a camera change moves the goal. */
 const CUT_M = 500;
@@ -198,6 +200,18 @@ export function makeRig(route: Route, world: World) {
 			} else {
 				eye.lerp(want, damp(chase ? 0.22 : 0.6, real));
 				gaze.lerp(look, damp(0.12, real));
+				// The eased gaze trails the road through a fast bend, and you with it out of the frame: it is drawn towards you until you are HELD_AXIS off it at the most, however fast the bend comes.
+				for (let k = 0; k < 6; k++) {
+					const gx = gaze.x - eye.x;
+					const gz = gaze.z - eye.z;
+					const yx = you.x - eye.x;
+					const yz = you.z - eye.z;
+					const cos =
+						(gx * yx + gz * yz) /
+						((Math.hypot(gx, gz) || 1) * (Math.hypot(yx, yz) || 1));
+					if (cos >= HELD_AXIS) break;
+					gaze.lerp(you, 0.25);
+				}
 			}
 			// The goal clears the ground; the eased eye can still cut a crest.
 			eye.y = Math.max(eye.y, ground(eye.x, eye.z) + EYE_FLOOR);

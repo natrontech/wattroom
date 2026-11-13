@@ -37,9 +37,9 @@ import { createPlacer } from './props/placer';
 import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
-import { drawnRows } from './terrain/road-profile';
+import { drawnRows, FORMATION } from './terrain/road-profile';
 import { othersOf, sceneOf, type Water } from './designed';
-import { sideRoads } from './side-roads';
+import { sideRoads, type SideRoad } from './side-roads';
 
 export type World = {
 	/** The far skyline's seed: the backdrop is still drawn from the route. */
@@ -70,7 +70,9 @@ export type World = {
 	/** Where the road is carried over the ground, in metres along it: its bridges. */
 	bridges: [from: number, to: number][];
 	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges: drawn, never ridden. */
-	sides: { route: Route; bridges: [from: number, to: number][] }[];
+	sides: (SideRoad & { bridges: [from: number, to: number][] })[];
+	/** Whether (x, z) lies under a gallery's roof: nothing grows or stands there. */
+	roofedAt: (x: number, z: number) => boolean;
 	/** Where the road runs under a gallery's roof, in metres along it. */
 	galleries: [from: number, to: number][];
 	/** The ground at (x, z) as the place has it, earthworks and all, without drawing it: what the road's rails are read off (scenery.ts). */
@@ -137,7 +139,7 @@ export function generate(
 	const layout = sceneOf(route.scene);
 	// The map's other roads, where they leave this one (side-roads.ts): the ground is shaped by them as by the road ridden.
 	const beside = sideRoads(route, othersOf(route.scene));
-	const sideRows = beside.map((side) => drawnRows(side));
+	const sideRows = beside.map((side) => drawnRows(side.route));
 	sideRows.forEach((r, j) =>
 		roads.push({
 			key: `side:${j}`,
@@ -160,7 +162,7 @@ export function generate(
 	};
 	const bridges = spansOf(rows, roads[0]);
 	const sides = beside.map((side, j) => ({
-		route: side,
+		...side,
 		bridges: spansOf(sideRows[j], roads[j + 1]),
 	}));
 	const ground = makeGround(roads, { salt, scene: layout });
@@ -201,7 +203,8 @@ export function generate(
 		scatter(place, placer, villages),
 		set,
 		undefined,
-		scene && ((x, z) => scene.waterAt(x, z) !== null),
+		// Nor under a gallery's roof.
+		scene && ((x, z) => scene.waterAt(x, z) !== null || roofedAt(x, z)),
 	);
 	let all: Stood | null = null;
 	/** Every tile within reach of a road: a tree stands within 700 m of one, and its tile's centre within half a diagonal more. */
@@ -234,6 +237,21 @@ export function generate(
 		}))
 		.sort((a, b) => a.d - b.d);
 	const markers = markersFor(route, villageNames);
+	const galleries = (scene?.galleries ?? []).flatMap(([a, b]) => {
+		const from = nearest(a[0], a[1]);
+		const to = nearest(b[0], b[1]);
+		// A gallery on another of the map's roads is not this road's.
+		if (!from || !to || from.d > 30 || to.d > 30) return [];
+		const span = [from.i * route.step, to.i * route.step].sort((p, q) => p - q);
+		return [[span[0], span[1]] as [number, number]];
+	});
+	const roofedAt = (x: number, z: number) => {
+		if (galleries.length === 0) return false;
+		const hit = nearest(x, z);
+		if (!hit || hit.d > FORMATION + 2) return false;
+		const d = hit.i * route.step;
+		return galleries.some(([a, b]) => d >= a - 4 && d <= b + 4);
+	};
 	let whole: { mesh: TerrainMesh; rim: number[] } | null = null;
 	const diorama = () =>
 		(whole ??= {
@@ -260,16 +278,8 @@ export function generate(
 		waterAt: (x, z) => scene?.waterAt(x, z) ?? null,
 		bridges,
 		sides,
-		galleries: (scene?.galleries ?? []).flatMap(([a, b]) => {
-			const from = nearest(a[0], a[1]);
-			const to = nearest(b[0], b[1]);
-			// A gallery on another of the map's roads is not this road's.
-			if (!from || !to || from.d > 30 || to.d > 30) return [];
-			const span = [from.i * route.step, to.i * route.step].sort(
-				(p, q) => p - q,
-			);
-			return [[span[0], span[1]] as [number, number]];
-		}),
+		galleries,
+		roofedAt,
 		groundAt: ground.heightAt,
 		tile: tiles.tile,
 		settled: tiles.has,

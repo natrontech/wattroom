@@ -154,28 +154,35 @@ function bush(g: Ctx, c: Cell) {
 	ink(g, c);
 }
 
-/** A Swiss cow from the side, grazing or looking up: white, its patches, a bell. */
-function cow(g: Ctx, c: Cell, grazing: boolean) {
+/** A cow's coat: its body, its patches and the shade under its belly. The patched white of the lowlands, the brown of the Alps and the black of the Valais. */
+const COATS = [
+	{ body: C.paper, patch: C.ink, belly: C.lilac },
+	{ body: '#a9764f', patch: '#8a5b3a', belly: '#7a4e30' },
+	{ body: '#2f2836', patch: '#1b1622', belly: '#15111b' },
+] as const;
+
+/** A Swiss cow from the side, grazing or looking up, in one of the coats: its patches, a bell. */
+function cow(g: Ctx, c: Cell, grazing: boolean, coat: (typeof COATS)[number]) {
 	const x = c.x + 4;
 	const base = c.y + c.h - 2;
 	const bodyY = base - 22;
-	for (const lx of [4, 9, 30, 35]) rect(g, x + lx, base - 9, 3, 9, C.paper);
+	for (const lx of [4, 9, 30, 35]) rect(g, x + lx, base - 9, 3, 9, coat.body);
 	for (const lx of [4, 9, 30, 35]) rect(g, x + lx, base - 2, 3, 2, C.ink);
-	rect(g, x + 2, bodyY, 38, 14, C.paper);
-	rect(g, x + 1, bodyY + 2, 40, 10, C.paper);
-	rect(g, x + 8, bodyY + 1, 9, 7, C.ink);
-	rect(g, x + 24, bodyY + 6, 10, 6, C.ink);
-	rect(g, x + 30, bodyY, 6, 4, C.ink);
-	rect(g, x + 2, bodyY + 12, 38, 2, C.lilac);
+	rect(g, x + 2, bodyY, 38, 14, coat.body);
+	rect(g, x + 1, bodyY + 2, 40, 10, coat.body);
+	rect(g, x + 8, bodyY + 1, 9, 7, coat.patch);
+	rect(g, x + 24, bodyY + 6, 10, 6, coat.patch);
+	rect(g, x + 30, bodyY, 6, 4, coat.patch);
+	rect(g, x + 2, bodyY + 12, 38, 2, coat.belly);
 	rect(g, x + 26, base - 9, 5, 3, C.heart);
-	rect(g, x + 40, bodyY + 1, 2, 9, C.paper);
+	rect(g, x + 40, bodyY + 1, 2, 9, coat.body);
 	rect(g, x + 41, bodyY + 9, 2, 3, C.ink);
 	const hy = grazing ? bodyY + 10 : bodyY - 4;
-	rect(g, x - 6, hy, 9, 8, C.paper);
+	rect(g, x - 6, hy, 9, 8, coat.body);
 	rect(g, x - 7, hy + 4, 4, 4, C.heart);
-	rect(g, x - 4, hy + 2, 2, 2, C.ink);
+	rect(g, x - 4, hy + 2, 2, 2, coat.body === C.paper ? C.ink : C.paper);
 	rect(g, x - 2, hy - 2, 2, 2, C.amber);
-	rect(g, x + 1, hy - 1, 3, 2, C.paper);
+	rect(g, x + 1, hy - 1, 3, 2, coat.body);
 	rect(g, x - 2, hy + 8, 3, 3, C.amberDark);
 	ink(g, c);
 }
@@ -209,7 +216,7 @@ function sheet() {
 		spruce: (g, c, i) => spruce(g, c, i * 31),
 		leafy: (g, c, i) => leafy(g, c, i * 17),
 		bush: (g, c) => bush(g, c),
-		cow: (g, c, i) => cow(g, c, i === 0),
+		cow: (g, c, i) => cow(g, c, i % 2 === 0, COATS[(i >> 1) % COATS.length]),
 		person: (g, c, i) => person(g, c, i),
 	};
 	const kinds: Kind[] = ART.map((art) => {

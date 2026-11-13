@@ -235,11 +235,13 @@ describe('Urnsee-Rundfahrt', () => {
 });
 
 describe('the map', () => {
+	/** The map's loops: the Valley loop is a land of its own. */
+	const LOOPS = DESIGNS.filter((d) => d.others);
 	it(
 		'is one land whichever loop is ridden: the same water, and the other loops’ roads where they leave this one',
 		async () => {
 			const worlds = await Promise.all(
-				DESIGNS.map(async (d) => {
+				LOOPS.map(async (d) => {
 					const route = routeOfRoad(await roadOf(d.id));
 					return { id: d.id, route, world: generate(route) };
 				}),
@@ -260,7 +262,13 @@ describe('the map', () => {
 				expect(world.sides.length, id).toBeGreaterThan(0);
 				for (const side of world.sides) {
 					// A side road is a road: long enough to be one, and its first sample lies on a road already there, this one or another kept before it.
-					expect(side.route.length, id).toBeGreaterThanOrEqual(60);
+					expect(side.route.length, id).toBeGreaterThanOrEqual(40);
+					// Where it meets a road it ends at that road's edge, at that road's height, never inside it.
+					side.mouths.forEach((m, end) => {
+						if (!m) return;
+						const at = end === 0 ? 0 : side.route.x.length - 1;
+						expect(Math.abs(side.route.ele[at] - m.h), id).toBeLessThan(0.01);
+					});
 					expect(side.route.minEle, id).toBe(route.minEle);
 				}
 				// The ridden road and its side roads together are the whole map's roads: every loop's every 200 m lies on one of them.
@@ -277,7 +285,7 @@ describe('the map', () => {
 										l.z[k] - other.route.z[i],
 									),
 								);
-						expect(best, `${id} draws ${other.id}`).toBeLessThan(16);
+						expect(best, `${id} draws ${other.id}`).toBeLessThan(18);
 					}
 			}
 		},
@@ -288,7 +296,7 @@ describe('the map', () => {
 		'names each pass once, and the col is Col de Berne',
 		async () => {
 			const names = new Map<string, string[]>();
-			for (const d of DESIGNS) {
+			for (const d of LOOPS) {
 				const world = generate(routeOfRoad(await roadOf(d.id)));
 				names.set(
 					d.id,

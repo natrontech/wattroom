@@ -10,6 +10,9 @@
 	import { toRoute, type Route } from '#lib/road/route.ts';
 	import { crossingsOf, type Crossing } from '#lib/world/crossings.ts';
 	import type { CameraMode } from '#lib/world/scene.ts';
+	import type { World } from '#lib/world/world.ts';
+	import MapOverview from '#lib/world/MapOverview.svelte';
+	import Skyline from '#lib/ride/Skyline.svelte';
 
 	const params = page.url.searchParams;
 	// Look first: the place you stand at, from wherever you drag the eye. Orbit is the whole model on its table.
@@ -32,6 +35,16 @@
 	let share = $state(params.get('share') !== '0');
 	let camera = $state<CameraMode>(cameraOf(params.get('camera')) ?? 'look');
 	let kmh = $state(100);
+	// What the main pane shows: the world, the ride's flat road (the Skyline), or the map from above.
+	const VIEWS = [
+		['3d', '3D'],
+		['flat', 'Flat'],
+		['map', 'Map'],
+	] as const;
+	let view = $state<(typeof VIEWS)[number][0]>(
+		VIEWS.find(([id]) => id === params.get('view'))?.[0] ?? '3d',
+	);
+	let land = $state.raw<World | null>(null);
 	let playing = $state(false);
 	let m = $state(0);
 	let note = $state('');
@@ -171,9 +184,11 @@
 		]).then(([{ mount }, { generate }, look, { worldDiorama }]) => {
 			if (gone) return;
 			const paint = look.worldPaint(node.parentElement ?? document.body);
+			const built = generate(r);
+			land = built;
 			scene = mount(node, {
 				route: r,
-				world: generate(r),
+				world: built,
 				style: worldDiorama()
 					? look.dioramaLook(paint, { night: false, weather: 'clear' })
 					: look.rideLook(paint),
@@ -384,6 +399,17 @@
 					{@attach (node) => world(node, route!)}
 				></canvas>
 			{/key}
+			{#if view === 'flat'}
+				<div class="bg-surface absolute inset-0 grid place-items-center p-6">
+					<div class="h-1/2 w-full">
+						<Skyline road={route.road} {m} mps={playing ? kmh / 3.6 : 0} />
+					</div>
+				</div>
+			{:else if view === 'map' && land}
+				<div class="bg-surface absolute inset-0">
+					<MapOverview {route} world={land} {m} />
+				</div>
+			{/if}
 		{:else}
 			<p
 				class="text-muted absolute inset-0 grid place-items-center p-8 text-center"
@@ -457,6 +483,18 @@
 					</button>
 				{/each}
 				<span class="text-muted">km/h</span>
+			</div>
+			<div class="flex flex-wrap gap-2">
+				{#each VIEWS as [id, label] (id)}
+					<button
+						class="btn btn-sm"
+						class:btn-primary={view === id}
+						aria-pressed={view === id}
+						onclick={() => (view = id)}
+					>
+						{label}
+					</button>
+				{/each}
 			</div>
 			<div class="flex flex-wrap gap-2">
 				{#each CAMERAS as [id, label] (id)}

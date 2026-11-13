@@ -119,6 +119,8 @@ export function road(
 		shoulder?: number;
 		step?: number;
 		rows?: readonly [from: number, to: number];
+		/** Whether its first end and its last are rounded off: a side road's that ends at another road's edge is cut square (side-roads.ts). */
+		caps?: readonly [boolean, boolean];
 	} = {},
 ): THREE.BufferGeometry {
 	const half = (opts.width ?? ROAD_W) / 2;
@@ -213,8 +215,10 @@ export function road(
 	const cuts: number[] = [];
 	if (!rows.ring && shoulder > 0) {
 		const count = out.hidden.length;
-		if (lo === 0 && !out.hidden[0]) endCap(out, cuts, cols, drops, 0, 1);
-		if (hi === end && !out.hidden[count - 1])
+		const [capFirst, capLast] = opts.caps ?? [true, true];
+		if (capFirst && lo === 0 && !out.hidden[0])
+			endCap(out, cuts, cols, drops, 0, 1);
+		if (capLast && hi === end && !out.hidden[count - 1])
 			endCap(out, cuts, cols, drops, count - 1, count - 2);
 	}
 	const g = strip(out.pos, out.uv, cols, out.hidden, cuts);

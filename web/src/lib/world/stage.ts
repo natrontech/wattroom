@@ -17,7 +17,8 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
 import { sceneOf } from './designed';
-import { bridges, roadworks, waterSheets } from './scenery';
+import { bridges, junctions, roadworks, waterSheets } from './scenery';
+import { MOUTH_M } from './side-roads';
 import type { Piece } from './setpieces';
 import {
 	plinth,
@@ -95,7 +96,7 @@ const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
 /** The ground is culled by cells this wide, not piece by piece (piece-pool.ts, #4566). */
 const GROUND_CELL_M = 960;
 /** A side road's ribbon lies this far under the ridden road's. */
-const SIDE_SINK = 0.05;
+const SIDE_SINK = 0.01;
 const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
@@ -224,11 +225,15 @@ export function buildStage(
 	group.add(tag('road', ribbon.mesh));
 	// The road ridden, and the map's other roads where they leave it (side-roads.ts): a hair lower, so where one meets the ridden road it lies under its asphalt.
 	const ribbons = [
-		{ of: route, lift: undefined as number | undefined },
-		// Each a hair under the last, so two side roads meeting at a junction never share a surface.
-		...world.sides.map((s, k) => ({
+		{
+			of: route,
+			lift: undefined as number | undefined,
+			caps: undefined as readonly [boolean, boolean] | undefined,
+		},
+		...world.sides.map((s) => ({
 			of: s.route,
-			lift: ROAD_LIFT - SIDE_SINK - 0.008 * (k % 6),
+			lift: ROAD_LIFT - SIDE_SINK,
+			caps: [!s.mouths[0], !s.mouths[1]] as const,
 		})),
 	].map((r, j) => ({ ...r, j, pieces: roadPieces(r.of) }));
 	let here: string | null = null;
@@ -239,7 +244,7 @@ export function buildStage(
 		]);
 		if (at === here) return;
 		here = at;
-		for (const { of, lift, j, pieces } of ribbons)
+		for (const { of, lift, caps, j, pieces } of ribbons)
 			pieces.forEach((p, k) => {
 				const key = j === 0 ? String(k) : `${j}:${k}`;
 				const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
@@ -251,6 +256,7 @@ export function buildStage(
 							shoulder: SHOULDER,
 							rows: p.rows,
 							lift,
+							caps,
 						}),
 					);
 				else if (d > REACH.near * LEAVE) ribbon.drop(key);
@@ -318,6 +324,33 @@ export function buildStage(
 						light: c.wall,
 						band: c.hiking,
 					}),
+					both,
+				),
+			),
+		);
+	}
+	// Where a side road meets a road (side-roads.ts): the junction's asphalt, its stop line, STOP and its sign.
+	const mouths = world.sides.flatMap((s) => s.mouths.flatMap((m) => m ?? []));
+	if (mouths.length > 0) {
+		const both = flat(sight);
+		both.side = THREE.DoubleSide;
+		group.add(
+			tag(
+				'road',
+				new THREE.Mesh(
+					junctions(
+						route,
+						mouths,
+						// To the met road's edge line, and a hand past it.
+						MOUTH_M - ROAD_W / 2 + 0.4,
+						ROAD_LIFT + 0.03,
+						{
+							asphalt: style.road.asphalt,
+							line: style.road.line,
+							sign: c.warning,
+							post: c.pole,
+						},
+					),
 					both,
 				),
 			),

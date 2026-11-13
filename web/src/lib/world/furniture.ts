@@ -66,6 +66,9 @@ export function paintSign(
 
 /** The arch's banner, painted at ARCH_PAINT's size. */
 export const ARCH_PAINT = [1024, 160] as const;
+/** Pixels of the banner's 1,024 its text keeps clear of: the posts stand over its ends. */
+const BANNER_MARGIN = 200;
+
 export function paintArch(
 	x: NonNullable<Painting['x']>,
 	text: string,
@@ -81,7 +84,7 @@ export function paintArch(
 	// As large as the banner holds: a long pass's name is set smaller, never cut.
 	let size = 96;
 	do x.font = `bold ${size}px "Chakra Petch", ${FONT}`;
-	while (x.measureText(text).width > W - 80 && (size -= 6) > 40);
+	while (x.measureText(text).width > W - BANNER_MARGIN && (size -= 6) > 40);
 	x.textAlign = 'center';
 	x.textBaseline = 'middle';
 	x.fillText(text, W / 2, 84);

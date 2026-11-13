@@ -376,3 +376,157 @@ export function roadworks(
 	g.computeBoundingSphere();
 	return g;
 }
+
+/** STOP, as it is painted on the road: five cells across and seven along, each letter. */
+const STOP_LETTERS = [
+	['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+	['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+	['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+	['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+];
+/** The painted STOP: a cell's width across the lane and its length along it (stretched, as road lettering is), the gap between letters, and how far short of the stop line it ends. */
+const STOP_PAINT = { cell: 0.11, long: 0.36, gap: 0.22, before: 0.7 };
+/** The stop line: metres thick, and how far from the side road's end it lies, on the junction's apron. */
+const STOP_LINE = { thick: 0.5, at: 0.5 };
+/** The apron: asphalt from this far back up the side road to the met road's edge line, flaring by `flare` either side. */
+const APRON = { back: 1.2, flare: 2.2, lift: 0.03 };
+/** The stop sign: its post's height, the disc's radius, and where it stands, back from the mouth and out from the centre. */
+const STOP_SIGN = { up: 2.3, r: 0.42, back: 3.5, out: FORMATION + 0.4 };
+
+/**
+ * A junction as it is painted (side-roads.ts): where a side road ends at a
+ * road's edge, asphalt across that road's verge and shoulder to its edge
+ * line, so the two are one surface with no kerb of gravel between; a stop
+ * line across the side road's own lane, STOP painted before it, and a stop
+ * sign on its right. The road met has the right of way.
+ */
+export function junctions(
+	route: Route,
+	mouths: readonly {
+		x: number;
+		z: number;
+		tx: number;
+		tz: number;
+		h: number;
+	}[],
+	metFrom: number,
+	lift: number,
+	colors: { asphalt: string; line: string; sign: string; post: string },
+): THREE.BufferGeometry {
+	const pos: number[] = [];
+	const col: number[] = [];
+	const asphalt = new THREE.Color(colors.asphalt);
+	const line = new THREE.Color(colors.line);
+	const sign = new THREE.Color(colors.sign);
+	const post = new THREE.Color(colors.post);
+	const quad = (c: THREE.Vector3[], tint: THREE.Color) => {
+		for (const p of [c[0], c[1], c[2], c[0], c[2], c[3]]) {
+			pos.push(p.x, p.y, p.z);
+			col.push(tint.r, tint.g, tint.b);
+		}
+	};
+	for (const m of mouths) {
+		// Along the side road into the junction, and to the right of that: the lane a rider comes in on.
+		const [rx, rz] = [-m.tz, m.tx];
+		const y = yOf(route, m.h) + lift;
+		const at = (along: number, right: number, dy = 0) =>
+			new THREE.Vector3(
+				m.x + m.tx * along + rx * right,
+				y + dy,
+				m.z + m.tz * along + rz * right,
+			);
+		const half = ROAD_W / 2 + 0.9;
+		quad(
+			[
+				at(-APRON.back, -half),
+				at(-APRON.back, half),
+				at(metFrom, half + APRON.flare),
+				at(metFrom, -half - APRON.flare),
+			],
+			asphalt,
+		);
+		const paint = APRON.lift;
+		quad(
+			[
+				at(STOP_LINE.at, 0.15, paint),
+				at(STOP_LINE.at, ROAD_W / 2 - 0.1, paint),
+				at(STOP_LINE.at + STOP_LINE.thick, ROAD_W / 2 - 0.1, paint),
+				at(STOP_LINE.at + STOP_LINE.thick, 0.15, paint),
+			],
+			line,
+		);
+		// STOP, read by the rider coming in: its letters' feet towards them, left to right across their lane.
+		const wide = 4 * 5 * STOP_PAINT.cell + 3 * STOP_PAINT.gap;
+		const left = (ROAD_W / 2 - wide) / 2 + 0.1;
+		const top = STOP_LINE.at - STOP_PAINT.before;
+		STOP_LETTERS.forEach((rows, letter) =>
+			rows.forEach((row, r) => {
+				for (let c = 0; c < 5; c++) {
+					if (row[c] !== '1') continue;
+					let to = c;
+					while (to + 1 < 5 && row[to + 1] === '1') to++;
+					const u0 =
+						left +
+						letter * (5 * STOP_PAINT.cell + STOP_PAINT.gap) +
+						c * STOP_PAINT.cell;
+					const u1 = u0 + (to - c + 1) * STOP_PAINT.cell;
+					const a0 = top - r * STOP_PAINT.long;
+					quad(
+						[
+							at(a0 - STOP_PAINT.long, u0, paint),
+							at(a0 - STOP_PAINT.long, u1, paint),
+							at(a0, u1, paint),
+							at(a0, u0, paint),
+						],
+						line,
+					);
+					c = to;
+				}
+			}),
+		);
+		// The sign: an eight-sided disc on a post, facing the rider coming in.
+		const foot = at(-STOP_SIGN.back, STOP_SIGN.out, -0.6);
+		const head = at(-STOP_SIGN.back, STOP_SIGN.out, STOP_SIGN.up);
+		const w = 0.04;
+		quad(
+			[
+				foot.clone().add(new THREE.Vector3(rx * -w, 0, rz * -w)),
+				foot.clone().add(new THREE.Vector3(rx * w, 0, rz * w)),
+				head.clone().add(new THREE.Vector3(rx * w, 0, rz * w)),
+				head.clone().add(new THREE.Vector3(rx * -w, 0, rz * -w)),
+			],
+			post,
+		);
+		for (const [r, tint, off] of [
+			[STOP_SIGN.r, line, 0],
+			[STOP_SIGN.r * 0.84, sign, 0.02],
+		] as const) {
+			const centre = head
+				.clone()
+				.add(new THREE.Vector3(-m.tx * (0.03 + off), 0, -m.tz * (0.03 + off)));
+			const rim = Array.from({ length: 8 }, (_, k) => {
+				const a = ((k + 0.5) * Math.PI) / 4;
+				return centre
+					.clone()
+					.add(
+						new THREE.Vector3(
+							rx * Math.cos(a) * r,
+							Math.sin(a) * r,
+							rz * Math.cos(a) * r,
+						),
+					);
+			});
+			for (let k = 0; k < 8; k++)
+				for (const p of [centre, rim[k], rim[(k + 1) % 8]]) {
+					pos.push(p.x, p.y, p.z);
+					col.push(tint.r, tint.g, tint.b);
+				}
+		}
+	}
+	const g = new THREE.BufferGeometry();
+	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+	g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+	g.computeVertexNormals();
+	g.computeBoundingSphere();
+	return g;
+}
