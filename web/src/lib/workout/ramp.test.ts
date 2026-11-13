@@ -44,7 +44,9 @@ describe('buildRampTest', () => {
 	it('is a valid workout the normal engine can run', () => {
 		const workout = buildRampTest();
 		expect(validateWorkout(workout).ok).toBe(true);
-		expect(durationSeconds(workout)).toBe(300 + RAMP.steps * RAMP.stepSeconds);
+		expect(durationSeconds(workout)).toBe(
+			300 + RAMP.steps * RAMP.stepSeconds + RAMP.coolSeconds,
+		);
 	});
 
 	it('steps by 20 W a minute from 100 W, in absolute watts', () => {
@@ -56,6 +58,17 @@ describe('buildRampTest', () => {
 		expect(atAnyFtp(400, 300)).toBe(100); // same number for a stronger rider
 		expect(atAnyFtp(200, 360)).toBe(120);
 		expect(atAnyFtp(200, 300 + 10 * 60)).toBe(300);
+	});
+
+	// #4558: the ramp part rolls into a cool-down at the FTP the ride
+	// started with, from 50 % down to 35 %.
+	it('ends in a cool-down on the old FTP', () => {
+		const segments = flatten(buildRampTest());
+		const cool = 300 + RAMP.steps * RAMP.stepSeconds;
+		expect(targetAt(segments, 200, cool).targetWatts).toBe(100);
+		expect(
+			targetAt(segments, 200, cool + RAMP.coolSeconds - 1).targetWatts,
+		).toBeLessThanOrEqual(71);
 	});
 
 	// #1400: the ride is kept, but the flag on this JSON is the only thing

@@ -30,6 +30,14 @@ export const RAMP = {
 	 * and FTP scales every workout, so accepting it silently ruins the whole library.
 	 */
 	minSteps: 2,
+	/**
+	 * The cool-down every ending of the ramp part rolls into (#4558): eased
+	 * from 50 % to 35 % of the FTP the ride started with, never the one just
+	 * measured. End ride ends it at any time.
+	 */
+	coolSeconds: 600,
+	coolFrom: 0.5,
+	coolTo: 0.35,
 } as const;
 
 /**
@@ -65,6 +73,12 @@ export function buildRampTest(): Workout {
 				seconds: RAMP.stepSeconds,
 				watts: RAMP.startWatts + i * RAMP.stepWatts,
 			})),
+			{
+				type: 'cooldown',
+				seconds: RAMP.coolSeconds,
+				from: RAMP.coolFrom,
+				to: RAMP.coolTo,
+			},
 		],
 	};
 }

@@ -1,4 +1,6 @@
 import { stampFtpAfter } from '#lib/ride/save.ts';
+import { play } from '#lib/sound/cues.ts';
+import { toasts } from '#lib/toast.svelte.ts';
 import { RAMP, rampOver } from '#lib/workout/ramp.ts';
 import { SIGNAL_LOST_MS } from '#lib/workout/ride-state.ts';
 import type { createRideSession } from '#lib/workout/session.svelte.ts';
@@ -18,7 +20,30 @@ export function holdRampAlone(deps: {
 	savedId: () => string | null;
 }) {
 	const { session } = deps;
+	// The ramp part is over (#4558): blown, ridden to its last step, or
+	// stopped with I'm done. The ride runs on into its cool-down; only End
+	// ride, or the cool-down running out, ends it.
 	let done = $state(false);
+	// Where the ramp part ended: the clock and the samples it had. The FTP
+	// and the steps count from these, never from the cool-down after them.
+	let rampSeconds = $state(0);
+	let rampSamples = $state(0);
+	const coolIndex = () => session.segments.length - 1;
+
+	function endRamp() {
+		if (done) return;
+		done = true;
+		rampSeconds = session.elapsed;
+		rampSamples = session.recording.length;
+		if (session.state === 'done') return;
+		// Straight to the cool-down: the trainer drops to its easy target now.
+		for (let i = 0; i < session.segments.length; i++) {
+			if (session.info.segmentIndex >= coolIndex()) break;
+			session.skip();
+		}
+		play('fanfare');
+		toasts.push('Test over · cool-down. End ride whenever you like.');
+	}
 	// The number this test produced, once the rider accepts it (#1572). The
 	// ride is saved the moment the test ends, carrying the FTP it was SCORED
 	// against, and the rider accepts a new one seconds later, so the two
@@ -47,15 +72,20 @@ export function holdRampAlone(deps: {
 			// it looks again.
 			const last = session.sample;
 			const stale = !last || Date.now() - last.at > SIGNAL_LOST_MS;
+			// The cool-down block reached is the last step ridden through.
+			const cooling = session.info.segmentIndex >= coolIndex();
 			if (
-				rampOver(session.state === 'done', session.elapsed, trailing, {
-					stale,
-					released: session.spiralActive,
-				})
-			) {
-				session.stop();
-				done = true;
-			}
+				rampOver(
+					session.state === 'done' || cooling,
+					session.elapsed,
+					trailing,
+					{
+						stale,
+						released: session.spiralActive,
+					},
+				)
+			)
+				endRamp();
 		});
 
 		// The FTP the test produced, onto the ride the test became (#1572),
@@ -77,18 +107,34 @@ export function holdRampAlone(deps: {
 	});
 
 	return {
-		/** The test is over: by its own end, or by I'm done. */
+		/** The test is over: by its own end, or by I'm done. The ride may
+		 *  still be in its cool-down. */
 		get done() {
 			return done;
+		},
+		/** The ramp part's own clock: the cool-down never counts as a step. */
+		get elapsed() {
+			return done ? rampSeconds : session.elapsed;
+		},
+		/** The ramp part's power, for the FTP: never the cool-down's. */
+		get watts() {
+			const samples = done
+				? session.recording.slice(0, rampSamples)
+				: session.recording;
+			return samples.map((s) => s.watts);
+		},
+		/** Its heart rate, for the LTHR suggestion. */
+		get heartRates() {
+			return session.recording
+				.slice(0, done ? rampSamples : undefined)
+				.map((s) => s.heartRate ?? 0);
 		},
 		get ftpMarkStatus() {
 			return ftpMarkStatus;
 		},
 		/** I'm done, after its confirm (#2623). */
 		stop() {
-			if (done) return;
-			session.stop();
-			done = true;
+			endRamp();
 		},
 		/** The rider kept the number the test produced (#1572). */
 		accept(ftp: number) {
