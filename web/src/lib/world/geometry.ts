@@ -8,6 +8,7 @@ import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
 import type { World } from './world';
+import { bareAt } from './crossings';
 import { sharedAt } from './shared-road';
 import { BANK_SPAN_M, banksOf, bendsOf } from './terrain/road-frame';
 import { ribbonRows, ROAD_W, SHOULDER_DROP } from './terrain/road-profile';
@@ -110,6 +111,8 @@ export function road(
 	const uv: number[] = [];
 	const prev: THREE.Vector3[] = [];
 	const hidden: boolean[] = [];
+	// Through a crossing the ribbon is bare asphalt, no lines and no shoulder (crossings.ts).
+	const bare: number[] = [];
 	for (let r = first; r <= last; r++) {
 		const p = centre[r - first];
 		const d = rows.metre(r);
@@ -140,9 +143,11 @@ export function road(
 			prev[c] = v;
 			pos.push(v.x, v.y, v.z);
 			uv.push(offs[c], d);
+			bare.push(bareAt(route, d));
 		}
 	}
 	const whole = strip(pos, uv, cols, hidden);
+	whole.setAttribute('bare', new THREE.Float32BufferAttribute(bare, 1));
 	whole.setAttribute(
 		'normal',
 		new THREE.Float32BufferAttribute(normals(pos, sides, cols), 3),
@@ -166,6 +171,13 @@ export function road(
 		keep(whole.attributes.uv as THREE.BufferAttribute),
 		cols,
 		hidden.slice(lo - first, hi - first + 1),
+	);
+	piece.setAttribute(
+		'bare',
+		new THREE.Float32BufferAttribute(
+			keep(whole.attributes.bare as THREE.BufferAttribute),
+			1,
+		),
 	);
 	piece.setAttribute(
 		'normal',
@@ -283,12 +295,13 @@ export function roadMaterial(
 		s.vertexShader = s.vertexShader
 			.replace(
 				'#include <common>',
-				'#include <common>\nvarying vec2 vRoad;\nvarying vec3 vLampAt;',
+				'#include <common>\nattribute float bare;\nvarying float vBare;\nvarying vec2 vRoad;\nvarying vec3 vLampAt;',
 			)
 			.replace(
 				'#include <begin_vertex>',
 				`#include <begin_vertex>
 				vRoad = uv;
+				vBare = bare;
 				vec4 lampAt = vec4(transformed, 1.0);
 				#ifdef USE_BATCHING
 					lampAt = batchingMatrix * lampAt;
@@ -300,6 +313,7 @@ export function roadMaterial(
 				'#include <common>',
 				`#include <common>
 				varying vec2 vRoad;
+				varying float vBare;
 				varying vec3 vLampAt;
 				${POOL}
 				uniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge; uniform vec3 uShoulder;
@@ -324,6 +338,7 @@ export function roadMaterial(
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
 				col = mix(col, uLine, line * (1.0 - shoulder));
 				col = mix(col, uVerge, verge);
+				col = mix(col, uAsphalt, step(0.5, vBare)); // a crossing: bare asphalt, edge to edge
 				vec4 diffuseColor = vec4(col, opacity);`,
 			)
 			.replace(

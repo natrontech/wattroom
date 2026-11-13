@@ -4,6 +4,7 @@ import { gainOf, gradeOf, roadName } from '#lib/road/profile.ts';
 import type { Road } from '#lib/road/road.ts';
 import type { Route } from '#lib/road/route.ts';
 import { walk } from './place/stroke';
+import { bareStretches, crossingsOf, levelCrossings } from './crossings';
 import { shareRoad } from './shared-road';
 
 /** Metres between the route's samples, as a route file's are (route.ts). */
@@ -45,13 +46,23 @@ export function routeOfRoad(road: Road, share = true): Route {
 	const gain = gainOf(ele);
 	// A road ridden twice is drawn once (#4531): its metres and grades stay as recorded.
 	const drawn = share ? shareRoad(x, z, ele, step) : null;
+	// And one that crosses itself meets there at one height (crossings.ts).
+	const line = {
+		x: drawn?.x ?? x,
+		z: drawn?.z ?? z,
+		ele: drawn?.ele ?? ele,
+		step,
+		length: road.length,
+	};
+	const level = levelCrossings(line);
+	const bare = bareStretches(crossingsOf(line));
 	return {
 		name: roadName(road.length, gain),
 		step,
 		length: road.length,
 		x: drawn?.x ?? x,
 		z: drawn?.z ?? z,
-		ele: drawn?.ele ?? ele,
+		ele: level ?? drawn?.ele ?? ele,
 		grade: gradeOf(ele, step),
 		gain,
 		minEle: Math.min(...ele),
@@ -63,6 +74,7 @@ export function routeOfRoad(road: Road, share = true): Route {
 		climbs: climbsOf(road),
 		fixed: { spikes: 0, heldM: 0 },
 		...(drawn && { shared: drawn.shared }),
+		...(bare.length > 0 && { bare }),
 	};
 }
 

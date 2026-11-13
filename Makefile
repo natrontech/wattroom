@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra radio dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol themes migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes world-bench voice-bench licenses
+.PHONY: route-lab infra radio dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol themes migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes world-bench voice-bench licenses
 
 DEV_ENV := scripts/dev-env.sh
 # "wattroom dev key, never deployed" in base64: 32 bytes, for make dev-server only.
@@ -140,6 +140,9 @@ world-bench: web-deps ## the world's frame time, draws and triangles on software
 
 voice-bench: web-deps ## the same numbers for the world ridden in a voice channel against /ride alone (#4533; needs `make dev-server` + `make dev-web`) — docs/PERFORMANCE.md
 	@eval "$$($(DEV_ENV) print)"; cd web && BENCH_SCENES="$${BENCH_SCENES:-ride voice voice-standing}" BENCH_RATES="$${BENCH_RATES:-1}" node scripts/world-bench.mjs
+
+route-lab: ## where the route lab is: pick a GPX/TCX/FIT and fly the road the world builds from it (dev only; needs `make dev-web`)
+	@eval "$$($(DEV_ENV) print)"; echo "http://localhost:$$WATTROOM_DEV_WEB_PORT/dev/route"
 
 build: web ## single binary with embedded frontend
 	cd server && go build -o ../bin/wattroom-server .
