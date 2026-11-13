@@ -38,6 +38,12 @@ type SessionState struct {
 	// The road the session rides (#3095), from the pick or the game that
 	// opened it; absent on a session with no road.
 	Route *SessionRoute `json:"route,omitempty"`
+	// The plan that opened it (#4562), so its coach's Undo of a cancel can
+	// start that plan again. Empty off a plan.
+	PlanID string `json:"planId,omitempty"`
+	// Who planned it (#4562): they may cancel it before its count-in,
+	// whoever pressed Start.
+	Planner string `json:"planner,omitempty"`
 }
 
 // SessionRecapRider is one person a session saw, and when — the only two

@@ -209,6 +209,6 @@ func (fakePresence) SessionAnnounce(string, string, string, string, time.Time) {
 func (fakePresence) PresenceChanged()            {}
 func (fakePresence) PresenceChangedFor([]string) {}
 
-func (fakePresence) OpenSession(string, protocol.Rider, string, string, *protocol.ControlRoute, string, []protocol.RsvpRider) (string, string, string) {
+func (fakePresence) OpenSession(string, protocol.Rider, string, string, *protocol.ControlRoute, string, string, []protocol.RsvpRider) (string, string, string) {
 	return "", "", ""
 }

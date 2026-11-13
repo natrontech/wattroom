@@ -289,6 +289,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		os.Exit(1)
 	}
 	h.SetHider(hidden)
+	h.SetPlanKeeper(crewsService)
 	h.SetRoads(roads)
 	// The road a session rides reaches its channel's members (#3096).
 	routesService.SetRiding(h)

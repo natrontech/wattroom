@@ -31,3 +31,25 @@ describe('controlsFor (#2598)', () => {
 		expect(controlsFor({ state, canControl, canManage, spectator })).toBe(want);
 	});
 });
+
+// Whoever planned it may cancel it until it runs (#4562), whoever pressed
+// Start; once it runs it is the coach's.
+describe('the planner', () => {
+	const plan = (phase: string) => ({ id: 's1', phase, planner: 'bob' });
+	it.each([
+		['their plan, picked', plan('idle'), 'bob', 'clear'],
+		['their plan, counting in', plan('countdown'), 'bob', 'clear'],
+		['their plan, running', plan('running'), 'bob', 'none'],
+		['someone else’s plan, picked', plan('idle'), 'dan', 'held'],
+	] as const)('%s → %s', (_, state, me, want) => {
+		expect(
+			controlsFor({
+				state,
+				me,
+				canControl: false,
+				canManage: false,
+				spectator: false,
+			}),
+		).toBe(want);
+	});
+});

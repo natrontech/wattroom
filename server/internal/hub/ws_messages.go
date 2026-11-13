@@ -242,7 +242,9 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 	}
 	if code, refusal := rm.controlOn(cmd, route, rider, h.now()); code != "" {
 		h.writeError(c, code, refusal)
+		return
 	}
+	h.giveBackPlan(rm)
 }
 
 // askedRoute is the road a pick or a game asked for, resolved; nil when it

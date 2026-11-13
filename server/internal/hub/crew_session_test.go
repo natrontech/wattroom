@@ -244,7 +244,7 @@ func TestRideTogether(t *testing.T) {
 func TestPlansAndGamesOpenCrewSessions(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	alice := protocol.Rider{ID: "alice", Name: "Alice", Role: "member", FtpWatts: 250}
-	plan, code, msg := h.OpenSession(protocol.CrewSessionPlace("crew1", ""), alice, "Tempo", crewWorkout, nil, "", nil)
+	plan, code, msg := h.OpenSession(protocol.CrewSessionPlace("crew1", ""), alice, "Tempo", crewWorkout, nil, "", "", nil)
 	if code != "" {
 		t.Fatalf("plan: %s %s", code, msg)
 	}

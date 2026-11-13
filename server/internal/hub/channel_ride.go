@@ -280,6 +280,9 @@ func (rm *channelState) control(c protocol.Control, rider protocol.Rider, now ti
 func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider protocol.Rider, now time.Time) (code, message string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// The phase as of now (#4562): a countdown that ran out between ticks is
+	// a running session, which its planner may no longer cancel.
+	rm.session.state(now)
 	if code, message := rm.refusalLocked(c.Action, rider); code != "" {
 		return code, message
 	}
@@ -306,6 +309,7 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 	was := rm.session.state(now).Phase
 	stopping := c.Action == "end" && (was == "countdown" || (was == "idle" && rm.session.open()))
 	stopped := rm.session.workoutName
+	plan := rm.session.plan
 	// The session answers first: a start the phase refuses — a stale coach
 	// tab, two coaches racing the countdown — used to wipe the running
 	// ride's record and roster before hearing no (audit 2026-09-09).
@@ -317,6 +321,7 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 	}
 	if stopping {
 		rm.events.add(sessionLine("stopped", "", stopped, time.Time{}, now), now)
+		rm.givenBack = plan
 	}
 	// A new start is a new ride.
 	if c.Action == "start" {
@@ -362,8 +367,12 @@ func (rm *channelState) refusalLocked(action string, rider protocol.Rider) (code
 			return "invalid_request", "No session is running in this channel."
 		}
 	case "end":
-		if s.open() && s.coach != rider.ID && !rider.Administers() {
-			return "forbidden", "Only the session's coach, or the crew's owner or an admin, can end it."
+		// Whoever planned it may cancel it before its count-in (#4562),
+		// whoever pressed Start: it is still their plan until it runs.
+		planner := s.planner != "" && s.planner == rider.ID &&
+			(s.phase == "idle" || s.phase == "countdown")
+		if s.open() && s.coach != rider.ID && !rider.Administers() && !planner {
+			return "forbidden", "Only the session's coach, its planner before it starts, or the crew's owner or an admin, can end it."
 		}
 	default: // pause, resume, handoff, and the game and sprint buttons
 		if s.open() && s.coach != rider.ID {

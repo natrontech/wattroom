@@ -17,6 +17,7 @@
 	import { leaveChannel } from '#lib/channel/leave.ts';
 	import { controlsFor } from '#lib/session/controls.ts';
 	import { sessionOpen } from '#lib/channel/tick-session.ts';
+	import { cancelSession } from '#lib/session/cancel.ts';
 	import { endGame } from '#lib/session/end-game.ts';
 	import { showsStartLine } from '#lib/session/start-line.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
@@ -42,9 +43,8 @@
 	// out of it, and it held the channel. Nothing has been ridden, so it
 	// goes at once and without asking, as a stopped countdown does.
 	const waiting = $derived(idle && sessionOpen(channel.shared));
-	function cancelSession() {
-		channel.control('end');
-	}
+	// With an Undo that opens it again (#4562): the cancel is reversible.
+	const cancel = () => cancelSession(channel);
 
 	async function endSession() {
 		const n = channel.riders.filter((r) => r.inSession).length;
@@ -63,6 +63,7 @@
 			canControl: channel.canControl,
 			canManage: channel.canManage,
 			spectator: device.spectator,
+			me: account.me?.id,
 		}),
 	);
 	const coachName = $derived(channel.shared?.coachName || 'the coach');
@@ -139,7 +140,7 @@
 		>
 	{:else if waiting}
 		<button
-			onclick={cancelSession}
+			onclick={cancel}
 			data-ride-control="cancel"
 			class="btn btn-danger {compact
 				? 'btn-ride'
@@ -165,7 +166,7 @@
 		>
 	{:else if phase === 'countdown'}
 		<button
-			onclick={() => channel.control('end')}
+			onclick={cancel}
 			data-ride-control="cancel"
 			class="btn btn-danger {compact
 				? 'btn-ride'

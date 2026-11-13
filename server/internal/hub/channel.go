@@ -18,6 +18,9 @@ type channelState struct {
 	// sample's timeline second is theirs to choose (#791).
 	now     func() time.Time
 	channel string
+	// A plan whose session was cancelled before its count-in (#4562),
+	// waiting to be given back outside the lock. Caller holds mu.
+	givenBack string
 	// Closed when the room is deleted (#618) — the tick goroutine is the
 	// only reader, and it returns rather than ticking for a room nobody
 	// can reach any more.

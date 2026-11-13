@@ -121,7 +121,9 @@ type Hub struct {
 	// Who rides which crew session, for the voice channels to show.
 	onSession *sessionRiders
 	saver     SessionSaver
-	now       func() time.Time
+	// Puts a plan back on its crew's calendar (#4562); nil keeps it started.
+	plans PlanKeeper
+	now   func() time.Time
 	// What every socket's writer pings on (keepalive.go). A field, like now,
 	// so a test can shorten it for one hub.
 	keepalive keepalive
@@ -293,10 +295,10 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 // A plan of the crew's own (docs/SESSIONS.md) names no voice channel: its
 // channel is the crew's place with no session in it yet,
 // protocol.CrewSessionPlace(crew, ""), and it opens a crew session of its own.
-func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (id, code, message string) {
+func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner, planID string, awaited []protocol.RsvpRider) (id, code, message string) {
 	if crew, ok := protocol.CrewOfPlace(channel); ok && strings.HasSuffix(channel, "/") {
 		rm := h.newCrewRoom(crew)
-		id, code, message = h.openPlan(rm, rider, workoutName, workoutJSON, route, routeOwner, awaited)
+		id, code, message = h.openPlan(rm, rider, workoutName, workoutJSON, route, routeOwner, planID, awaited)
 		h.settleCrewRoom(rm, rider, code)
 		return id, code, message
 	}
@@ -312,12 +314,12 @@ func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, wor
 	if underWay {
 		return "", "conflict", "You're already riding " + current + " in this channel — end it before starting " + workoutName + "."
 	}
-	return h.openPlan(rm, rider, workoutName, workoutJSON, route, routeOwner, awaited)
+	return h.openPlan(rm, rider, workoutName, workoutJSON, route, routeOwner, planID, awaited)
 }
 
 // openPlan is a plan's pick and start in rm: on its road it waits on its
 // start line with the riders who said they are in.
-func (h *Hub) openPlan(rm *channelState, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (id, code, message string) {
+func (h *Hub) openPlan(rm *channelState, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner, planID string, awaited []protocol.RsvpRider) (id, code, message string) {
 	var ride *routeRide
 	if route != nil {
 		// No crew to ask: the plan was asked when it was planned (ADR-0063).
@@ -339,6 +341,11 @@ func (h *Hub) openPlan(rm *channelState, rider protocol.Rider, workoutName, work
 	defer rm.mu.Unlock()
 	if ride != nil {
 		rm.session.awaited = awaited
+	}
+	// The plan it came from and who planned it (#4562): the planner may
+	// cancel it before its count-in, and a cancel gives the plan back.
+	if planID != "" {
+		rm.session.plan, rm.session.planner = planID, routeOwner
 	}
 	return rm.session.id, "", ""
 }
