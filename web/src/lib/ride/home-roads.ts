@@ -60,7 +60,38 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 			'Rolling farmland and villages, cows by the road, and two short steep ramps.',
 		shape: async () => ({ corners: VALLEY_LOOP, seed: 4248 }),
 	},
+	// The designed roads (world/designs.ts): each drawn with the land it runs through.
+	{
+		id: 'berne',
+		routeId: '7a77b0ad-0003-4000-8000-000000004248',
+		name: 'Col de Berne',
+		story:
+			'Twenty-one hairpins up a south face to a notch between two snow peaks, and the long way down the north side.',
+		shape: () => designed('berne'),
+	},
+	{
+		id: 'aare',
+		routeId: '7a77b0ad-0004-4000-8000-000000004248',
+		name: 'Aarenbogen',
+		story:
+			'A river in a gorge winds round a peninsula: four high bridges over it, and a steep ramp up a spur.',
+		shape: () => designed('aare'),
+	},
+	{
+		id: 'urnsee',
+		routeId: '7a77b0ad-0005-4000-8000-000000004248',
+		name: 'Urnsee',
+		story:
+			'A long lake between mountains: a ledge under the cliffs of the east shore, a bridge over an inlet, and a terrace high over the west.',
+		shape: () => designed('urnsee'),
+	},
 ];
+
+/** A designed road's corners (world/designs.ts), loaded with the world's own chunk. */
+async function designed(id: string): Promise<Shape> {
+	const { DESIGNS } = await import('#lib/world/designs.ts');
+	return DESIGNS.find((d) => d.id === id)!.shape;
+}
 
 /** One of WattRoom's roads, by its own id or the id a session rides it under. */
 export const homeRoad = (id: string) =>

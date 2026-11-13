@@ -31,6 +31,9 @@ var library = func() map[string]libraryRoad {
 	for id, name := range map[string]string{
 		"7a77b0ad-0001-4000-8000-000000004248": "Pass loop",
 		"7a77b0ad-0002-4000-8000-000000004248": "Valley loop",
+		"7a77b0ad-0003-4000-8000-000000004248": "Col de Berne",
+		"7a77b0ad-0004-4000-8000-000000004248": "Aarenbogen",
+		"7a77b0ad-0005-4000-8000-000000004248": "Urnsee",
 	} {
 		packed, err := libraryFiles.ReadFile("library/" + id + ".road")
 		if err != nil {

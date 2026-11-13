@@ -2,10 +2,11 @@ import { keyer, unit, type Kind, type Salt } from '../place/keyed';
 import { CHUNK_M, COARSE_M } from '../place/lattice';
 import { smoothstep } from '../rand';
 import { patchJunctions } from './junctions';
-import { canonical, FAR_W, indexLines, type Line } from './lines';
+import { canonical, FAR_W, indexLines, type Hit, type Line } from './lines';
 import { roadFrame } from './road-frame';
 import type { RegionAt } from './region-relief';
 import { across, FORMATION } from './road-profile';
+import type { Scene } from '../designed';
 
 /**
  * The place's ground as one function of position (#3075, ADR-0081): the same
@@ -44,6 +45,8 @@ export type GroundOpts = {
 	model?: (x: number, z: number) => number;
 	/** Where a private region keys the relief in its own frame (#3607); none: the world's everywhere. */
 	regions?: RegionAt;
+	/** A designed road's scene (designed.ts): its lakes, rivers and peaks shape the natural ground. */
+	scene?: Scene;
 };
 
 const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -176,12 +179,17 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		return base + rise + hills;
 	});
 
+	/** A road's nearest point, where the road lies on the ground: none where it is carried over it, on a bridge. */
+	const onGround = (hit: Hit | null) =>
+		hit && index.open[hit.i] && index.open[hit.i + 1] ? null : hit;
+
 	/** The ground before any road cuts it. */
 	function natural(x: number, z: number): number {
 		if (opts.model) return opts.model(x, z);
 		const detail =
 			noise('ground', DETAIL, x, z) * 7 * smoothstep(15, 120, dist(x, z));
-		return macro(x, z) + detail;
+		const h = macro(x, z) + detail;
+		return opts.scene ? opts.scene.shape(x, z, h, dist(x, z)) : h;
 	}
 
 	/**
@@ -202,11 +210,13 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	 * stacked switchbacks share one slope and a hairpin's inside is one bank.
 	 */
 	function heightAt(x: number, z: number): number {
-		const hit = index.nearest(x, z, 2);
+		const hit = onGround(index.nearest(x, z, 2));
 		if (hit && hit.d <= FORMATION) return hit.h - SUBGRADE;
 		let lower = -Infinity;
 		let upper = Infinity;
-		const cone = (vh: number, d: number, slack: number) => {
+		const cone = (vh: number, d: number, slack: number, g = -1) => {
+			// A bridge's vertex bears on no ground.
+			if (g >= 0 && index.open[g]) return;
 			const dd = Math.max(0, d - FORMATION);
 			lower = Math.max(lower, vh - SUBGRADE - FILL * dd - slack);
 			upper = Math.min(
@@ -218,8 +228,8 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		// nearest point exactly. Those are tighter by under 2 m at 60 m, so they let go by
 		// that much between 40 and 60 m before they drop out: no vertex leaves while it binds.
 		const letGo = (d: number) => 2 * smoothstep(40, EARTHWORKS_M, d);
-		index.thinWithin(x, z, CONE_M, (vh, d) => cone(vh, d, 0));
-		index.within(x, z, EARTHWORKS_M, (vh, d) => cone(vh, d, letGo(d)));
+		index.thinWithin(x, z, CONE_M, (vh, d, g) => cone(vh, d, 0, g));
+		index.within(x, z, EARTHWORKS_M, (vh, d, g) => cone(vh, d, letGo(d), g));
 		if (hit) cone(hit.h, hit.d, letGo(hit.d));
 		const ground = natural(x, z);
 		if (lower === -Infinity) return ground;
@@ -236,7 +246,7 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	 */
 	function drawnAt(x: number, z: number): number {
 		const h = heightAt(x, z);
-		const hit = index.nearest(x, z, 1);
+		const hit = onGround(index.nearest(x, z, 1));
 		if (!hit || hit.d >= SHELF_M) return h;
 		const dd = Math.max(0, hit.d - FORMATION);
 		return Math.min(h, hit.h - SUBGRADE + CUT * Math.max(0, dd - BENCH));
@@ -264,6 +274,7 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	return {
 		heightAt,
 		drawnAt,
+		natural,
 		roadSurfaceAt,
 		roadDist,
 		clearOf,

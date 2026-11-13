@@ -1,7 +1,8 @@
 // Land use from the ground itself: what grows where, and how the light
 // sits in the hollows. Pure functions of place, height and slope, shared by
 // coarse and fine chunks so both agree along their seams. No water: the
-// generator invents no lakes (#3075); real water is the map's (#3180).
+// generator invents no lakes (#3075); real water is the map's (#3180), and a
+// designed road's is its scene's (designed.ts).
 import { Biome } from './biome';
 import { CHUNK_M } from './place/lattice';
 import { smoothstep } from './rand';
@@ -15,7 +16,11 @@ const OUTCROP_CUT = 0.35;
 // Forest where it is steep or north-facing (the farmer mows the flat sunny
 // bits), never right beside a village road. `forest` is continuous so edges
 // blend instead of printing camouflage.
-export function landUse(noise: Relief) {
+export function landUse(
+	noise: Relief,
+	/** A designed scene's water (designed.ts): the level standing over a spot, or null. */
+	waterAt?: (x: number, z: number) => number | null,
+) {
 	return (
 		x: number,
 		z: number,
@@ -26,6 +31,9 @@ export function landUse(noise: Relief) {
 	): Cover => {
 		const slope = Math.sqrt(gx * gx + gz * gz);
 		const bare = (biome: Biome): Cover => ({ biome, forest: 0 });
+		// A bed, and the hand's width of shore the water laps.
+		const level = waterAt?.(x, z) ?? null;
+		if (level !== null && h < level + 0.1) return bare(Biome.Water);
 		const treeline = 1850 + 80 * noise('biome', [16 * CHUNK_M], x, z);
 		if (d < 5) return bare(Biome.Verge);
 		if (h > 2350) return bare(Biome.Snow);

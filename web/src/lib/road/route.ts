@@ -78,6 +78,11 @@ export type Route = {
 	 */
 	shared?: Float64Array;
 	/**
+	 * The world's road only: the designed scene it is drawn in, by its id
+	 * (world/designed.ts). Absent on every road but WattRoom's designed ones.
+	 */
+	scene?: string;
+	/**
 	 * The world's road only: the stretches, in metres along it, where it
 	 * meets another pass of itself at one height, a crossroads or a road
 	 * joining a road, each with the metres of the pass it meets and which of

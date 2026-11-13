@@ -20,13 +20,15 @@ import { spawn } from './builder';
  */
 
 export type ToGroundWorker =
-	| { type: 'ground'; roads: Line[]; salt: Salt }
+	| { type: 'ground'; roads: Line[]; salt: Salt; scene?: string }
 	| { type: 'grids'; asks: GridAsk[] };
 export type FromGroundWorker = { type: 'grid'; ask: GridAsk; grid: Grid };
 
 type Place = {
 	roads: Line[];
 	salt: Salt;
+	/** A designed road's scene, by its id (designed.ts): the worker shapes the same land from it. */
+	scene?: string;
 	/** How finely the place draws each chunk: what the world built and kept. */
 	level: Coverage;
 	/** A chunk's grid at the place's level, built on this thread and kept. */
@@ -90,6 +92,7 @@ export function placeGrids(
 			type: 'ground',
 			roads: place.roads,
 			salt: place.salt,
+			scene: place.scene,
 		} satisfies ToGroundWorker);
 	}
 

@@ -44,6 +44,12 @@ const LAT0 = 46.6;
 const LON0 = 7.6;
 const M_PER_DEG = (Math.PI / 180) * 6371008.8;
 
+/** A spot of a made-up map, metres east and north of its origin, as a GPS would log it. */
+export const designPoint = (x: number, y: number) => ({
+	lat: LAT0 + y / M_PER_DEG,
+	lon: LON0 + x / (M_PER_DEG * Math.cos((LAT0 * Math.PI) / 180)),
+});
+
 type Pt = { x: number; y: number };
 const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
 const unit = (a: Pt): Pt => {

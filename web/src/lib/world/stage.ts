@@ -15,6 +15,7 @@ import {
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
+import { bridges, waterSheets } from './scenery';
 import type { Piece } from './setpieces';
 import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { lightsMaterial, lightsUniforms, OFF } from './lights';
@@ -232,6 +233,31 @@ export function buildStage(
 	group.add(tag('road', overview));
 
 	const c = style.props;
+	// A designed road's scene (designed.ts): its water, and the bridges that carry the road over it.
+	if (world.waters.length > 0 || world.bridges.length > 0) {
+		const both = flat(sight);
+		both.side = THREE.DoubleSide;
+		if (world.waters.length > 0)
+			group.add(
+				tag(
+					'terrain',
+					new THREE.Mesh(waterSheets(route, world.waters, c.water), both),
+				),
+			);
+		if (world.bridges.length > 0)
+			group.add(
+				tag(
+					'road',
+					new THREE.Mesh(
+						bridges(route, world.bridges, world.heightAt, {
+							deck: c.stone,
+							pier: c.stone,
+						}),
+						both,
+					),
+				),
+			);
+	}
 	const treeMat = flat(sight, { wind: true, fade: true });
 	const houseMat = flat(sight, { fade: true });
 	const plain = flat(sight);

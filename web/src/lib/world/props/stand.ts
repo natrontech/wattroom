@@ -27,6 +27,8 @@ export function standTiles(
 	props: { tile(ti: number, tj: number): Candidate<Prop>[] },
 	set: Pick<SetPieces, 'tile' | 'boards'>,
 	origin: Origin = [0, 0],
+	/** Where nothing stands: a designed scene's water (designed.ts). */
+	wet?: (x: number, z: number) => boolean,
 ) {
 	const candidates = new Map<string, Candidate<Thing>[]>();
 	const stood = new Map<string, Stood>();
@@ -50,7 +52,13 @@ export function standTiles(
 		for (let dj = -1; dj <= 1; dj++)
 			for (let di = -1; di <= 1; di++)
 				around.push(...candidatesOf(ti + di, tj + dj));
-		const ok = settle(candidatesOf(ti, tj), around);
+		const settled = settle(candidatesOf(ti, tj), around);
+		const ok = wet
+			? settled.filter((c) => {
+					const at = isStanding(c.is) ? c.is.piece : c.is;
+					return !wet(at.x, at.z);
+				})
+			: settled;
 		const standing = ok.flatMap((c) => (isStanding(c.is) ? [c.is] : []));
 		const out: Stood = {
 			props: ok.flatMap((c) => (isStanding(c.is) ? [] : [c.is])),

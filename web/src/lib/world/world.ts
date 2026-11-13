@@ -38,6 +38,7 @@ import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
 import { drawnRows } from './terrain/road-profile';
+import { sceneOf, type Water } from './designed';
 
 export type World = {
 	/** The far skyline's seed: the backdrop is still drawn from the route. */
@@ -59,6 +60,12 @@ export type World = {
 	/** The roads the ground is shaped by, and the salt it is keyed by: what a worker builds the same ground from. */
 	roads: Line[];
 	salt: Salt;
+	/** A designed road's scene, by its id (designed.ts): what a worker shapes the same land from. */
+	scene?: string;
+	/** The scene's standing water, drawn as sheets. */
+	waters: Water[];
+	/** Where the road is carried over the ground, in metres along it: its bridges. */
+	bridges: [from: number, to: number][];
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
 	/** What grows at (x, z); null where no ground is drawn. What the ride hears beside the road (#3186). */
 	biomeAt: (x: number, z: number) => Biome | null;
@@ -117,14 +124,29 @@ export function generate(
 			h: rows.map((p) => p.ele),
 		},
 	];
-	const ground = makeGround(roads, { salt });
+	// A designed road's scene shapes the land (designed.ts), and where it drops away under the road, the road is carried over it.
+	const scene = sceneOf(route.scene);
+	const bridges = scene
+		? bridgesOf(
+				rows,
+				makeGround(roads, { salt, scene }).natural,
+				makeGround(roads, { salt }).natural,
+			)
+		: [];
+	if (bridges.length > 0) {
+		const open = new Uint8Array(rows.length);
+		for (const [from, to] of bridges)
+			open.fill(1, Math.round(from / ROW_M), Math.round(to / ROW_M) + 1);
+		roads[0].open = open;
+	}
+	const ground = makeGround(roads, { salt, scene });
 	const margin = opts.margin ?? 1400;
 	// The corridor's chunks are the diorama's alone: a ride never lists them.
 	let cover: ReturnType<typeof corridor> | null = null;
 	const chunks = () => (cover ??= corridor(ground.lines, margin)).chunks;
 	// The place's levels, not the corridor's: a streamed chunk is the one the props stood on.
 	const level = placeLevel(ground.lines);
-	const land = landUse(ground.noise);
+	const land = landUse(ground.noise, scene?.waterAt);
 	const terrain = createTerrain(ground, level, land);
 	const bounds = boundsOf(ground.lines, margin);
 	const { nearest } = roadIndex(route);
@@ -141,7 +163,12 @@ export function generate(
 		ground.lines,
 	);
 	const set = setPieces({ ...place, placer, villages });
-	const tiles = standTiles(scatter(place, placer, villages), set);
+	const tiles = standTiles(
+		scatter(place, placer, villages),
+		set,
+		undefined,
+		scene && ((x, z) => scene.waterAt(x, z) !== null),
+	);
 	let all: Stood | null = null;
 	/** Every tile within reach of a road: a tree stands within 700 m of one, and its tile's centre within half a diagonal more. */
 	function everything(): Stood {
@@ -194,6 +221,9 @@ export function generate(
 		gridAt: (ci, cj, at, edges) => gridAt(ground, land, ci, cj, at, edges),
 		roads,
 		salt,
+		...(route.scene !== undefined && scene && { scene: route.scene }),
+		waters: scene?.waters ?? [],
+		bridges,
 		tile: tiles.tile,
 		settled: tiles.has,
 		forget(x, z, r) {
@@ -231,6 +261,53 @@ export function generate(
 		markers,
 		names: set.names,
 	};
+}
+
+/** Metres between the ground's rows of the road (drawnRows). */
+const ROW_M = 2;
+/** A road this far over the designed ground is carried, not banked up: an embankment that high is 12 m wide at its foot each side. */
+const BRIDGE_OVER_M = 4;
+/** A bridge is this long at the least, and stands this far onto the land at each end. */
+const BRIDGE_MIN_M = 12;
+const ABUTMENT_M = 8;
+
+/**
+ * The stretches of the road its scene's ground drops away under, in metres
+ * along it: where a lake's arm or a river's gorge lies under the line, the
+ * road is a bridge. Read off the ground as designed, so a bridge stands
+ * where the water is, wherever the road was drawn.
+ */
+export function bridgesOf(
+	rows: readonly { x: number; z: number; ele: number }[],
+	natural: (x: number, z: number) => number,
+	/** The ground as the generator alone has it: a bridge stands only where the scene cut it away, never over a hollow of the generator's, which a road fills. */
+	uncut: (x: number, z: number) => number = () => Infinity,
+): [number, number][] {
+	const out: [number, number][] = [];
+	let from = -1;
+	for (let k = 0; k <= rows.length; k++) {
+		const under = k < rows.length ? natural(rows[k].x, rows[k].z) : 0;
+		const over =
+			k < rows.length &&
+			rows[k].ele - under > BRIDGE_OVER_M &&
+			uncut(rows[k].x, rows[k].z) - under > 1;
+		if (over && from < 0) from = k;
+		if (!over && from >= 0) {
+			if ((k - from) * ROW_M >= BRIDGE_MIN_M) {
+				const a = Math.max(0, from * ROW_M - ABUTMENT_M);
+				const b = Math.min(
+					(rows.length - 1) * ROW_M,
+					(k - 1) * ROW_M + ABUTMENT_M,
+				);
+				// Two spans a pier's reach apart are one bridge.
+				const last = out[out.length - 1];
+				if (last && a - last[1] < 2 * ABUTMENT_M) last[1] = b;
+				else out.push([a, b]);
+			}
+			from = -1;
+		}
+	}
+	return out;
 }
 
 /**
