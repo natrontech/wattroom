@@ -86,7 +86,11 @@ export function createPacer() {
 			// Only a delta after a frame that drew nothing measures the display:
 			// one after a render carries the render's cost, and a world that
 			// only ever makes 20 fps would otherwise teach it a 20 Hz display.
-			if (!drew && delta > 0 && delta < 100) {
+			// A delta well under the period is the exception: a render only
+			// lengthens it, so it proves a faster display whatever it follows.
+			// Without it a slow frame while the world mounts taught a 30 Hz
+			// display, every frame drew, none measured, and the ride ran at 60.
+			if ((!drew || delta < period * 0.75) && delta > 0 && delta < 100) {
 				deltas.push(delta);
 				if (deltas.length > 60) deltas.shift();
 				period = periodOf(deltas);
