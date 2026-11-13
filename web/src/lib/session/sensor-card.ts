@@ -125,3 +125,12 @@ export function cardView(args: {
 		button: { label: 'Pair', variant: 'primary' },
 	};
 }
+
+/**
+ * An optional sensor with nothing to read may rest as a chip on /ride's
+ * setup (#4568): only one that waits to be paired. Live, connecting,
+ * reconnecting, failed, held elsewhere or unable to pair here, it has a line
+ * a rider needs, and keeps its card.
+ */
+export const restsAsChip = (view: CardView): boolean =>
+	view.button?.variant === 'primary';

@@ -42,7 +42,7 @@
 	// for a running session's header where the grid does not fit.
 	import { device } from '#lib/device.svelte.ts';
 	import type { SensorKind } from '#lib/ble/sensor.ts';
-	import { cardView } from '#lib/session/sensor-card.ts';
+	import { cardView, restsAsChip } from '#lib/session/sensor-card.ts';
 	import { sensorReading, sensorState } from '#lib/session/sensor-status.ts';
 	import { sensors } from '#lib/sensors.svelte.ts';
 	import {
@@ -131,6 +131,90 @@
 		if (netShifter) obcNet.start();
 	});
 
+	/**
+	 * The optional sensors, each as its card's arguments. On /ride's setup
+	 * (`large`) one that only waits to be paired is a chip in one row under
+	 * the trainer (#4568), so Start stays on the first screen; anything with
+	 * a line to read keeps its card.
+	 */
+	const optional = $derived.by(() => {
+		const list: {
+			key: string;
+			label: string;
+			icon: typeof Zap;
+			state: PairState;
+			device?: string;
+			reading?: string;
+			elsewhere?: string;
+			supported?: boolean;
+			unavailable?: string;
+			onPair: () => void;
+			onForget: () => void;
+		}[] = SENSORS.map((sensor) => ({
+			key: sensor.kind,
+			label: sensor.label,
+			icon: sensor.icon,
+			state: sensorState(sensor.kind),
+			device: sensors.slot(sensor.kind).name,
+			reading: sensorReading(sensor.kind),
+			elsewhere: elsewhere[sensor.kind],
+			onPair: () => void sensors.pair(sensor.kind),
+			onForget: () => void sensors.forget(sensor.kind),
+		}));
+		if (gearsEnabled('obc'))
+			list.push({
+				key: 'obc',
+				label: 'Shifter',
+				icon: Gamepad2,
+				state: shifterOn('obc'),
+				device: shifterSlot.name,
+				onPair: () => void shifterSlot.pair(),
+				onForget: () => void shifterSlot.forget(),
+			});
+		if (netShifter)
+			// shortcut: pairs the first controller found; a picker when a
+			// rider reports two on one network.
+			list.push({
+				key: 'obc-net',
+				label: 'Network shifter',
+				icon: Wifi,
+				state: shifterOn('obc-net'),
+				device: shifterSlot.name,
+				supported: true,
+				unavailable: obcNet.denied
+					? 'Allow Local Network for WattRoom in System Settings'
+					: obcNet.found.length
+						? undefined
+						: 'Open BikeControl and turn on its network mode',
+				onPair: () => {
+					const [found] = obcNet.found;
+					if (found)
+						void shifterSlot.pair(
+							() => createObcNetController(found),
+							'obc-net',
+						);
+				},
+				onForget: () => void shifterSlot.forget(),
+			});
+		return list.map((item) => ({
+			...item,
+			chip:
+				large &&
+				restsAsChip(
+					cardView({
+						state: item.state,
+						supported: item.supported ?? supported,
+						unavailable: item.unavailable,
+						elsewhere: item.elsewhere,
+					}),
+				),
+		}));
+	});
+	const chips = $derived(optional.filter((item) => item.chip));
+	const simulates = $derived(
+		!!trainer.onSimulate && !elsewhere.trainer && !trainer.onRide,
+	);
+
 	const trainerView = $derived(
 		cardView({
 			state: trainer.state,
@@ -163,6 +247,8 @@
 	unavailable?: string;
 	onPair: () => void;
 	onForget: () => void;
+	/** The trainer on /ride's setup: the full width of the grid (#4568). */
+	wide?: boolean;
 })}
 	{@const view = cardView({
 		state: args.state,
@@ -174,7 +260,9 @@
 		targetsNote: args.targetsNote,
 	})}
 	<div
-		class="panel panel-lg flex min-w-0 flex-col items-center gap-2 text-center"
+		class="panel panel-lg flex min-w-0 flex-col items-center gap-2 text-center {args.wide
+			? 'col-span-full'
+			: ''}"
 	>
 		<args.icon
 			size={28}
@@ -330,58 +418,33 @@
 				onRide: trainer.onRide,
 				onPair: trainer.onPair,
 				onForget: trainer.onForget,
+				wide: large,
 			})}
-			{#each SENSORS as sensor (sensor.kind)}
-				{@const slot = sensors.slot(sensor.kind)}
-				{@render card({
-					label: sensor.label,
-					icon: sensor.icon,
-					required: false,
-					state: sensorState(sensor.kind),
-					device: slot.name,
-					reading: sensorReading(sensor.kind),
-					elsewhere: elsewhere[sensor.kind],
-					onPair: () => void sensors.pair(sensor.kind),
-					onForget: () => void sensors.forget(sensor.kind),
-				})}
+			{#if chips.length}
+				<!-- One row, under the trainer and across the grid (#4568): what a
+				     rider may pair, never what a rider has to read. -->
+				<div class="col-span-full flex flex-wrap gap-2">
+					{#each chips as item (item.key)}
+						<button onclick={item.onPair} class="btn btn-secondary btn-lg">
+							<item.icon size={16} class="text-muted" />
+							{item.label} · Pair
+						</button>
+					{/each}
+					{#if simulates}
+						<!-- In the row rather than under the grid: a line less
+						     between the trainer and Start. -->
+						<button
+							onclick={trainer.onSimulate}
+							class="btn btn-secondary btn-lg">Ride simulated</button
+						>
+					{/if}
+				</div>
+			{/if}
+			{#each optional as item (item.key)}
+				{#if !item.chip}
+					{@render card({ ...item, required: false })}
+				{/if}
 			{/each}
-			{#if gearsEnabled('obc')}
-				{@render card({
-					label: 'Shifter',
-					icon: Gamepad2,
-					required: false,
-					state: shifterOn('obc'),
-					device: shifterSlot.name,
-					onPair: () => void shifterSlot.pair(),
-					onForget: () => void shifterSlot.forget(),
-				})}
-			{/if}
-			{#if netShifter}
-				<!-- shortcut: pairs the first controller found; a picker when a
-				     rider reports two on one network. -->
-				{@render card({
-					label: 'Network shifter',
-					icon: Wifi,
-					required: false,
-					state: shifterOn('obc-net'),
-					device: shifterSlot.name,
-					supported: true,
-					unavailable: obcNet.denied
-						? 'Allow Local Network for WattRoom in System Settings'
-						: obcNet.found.length
-							? undefined
-							: 'Open BikeControl and turn on its network mode',
-					onPair: () => {
-						const [found] = obcNet.found;
-						if (found)
-							void shifterSlot.pair(
-								() => createObcNetController(found),
-								'obc-net',
-							);
-					},
-					onForget: () => void shifterSlot.forget(),
-				})}
-			{/if}
 		</div>
 		{#if !supported}
 			<!-- Each card already says "needs Chrome or Edge"; this is the part a
@@ -418,7 +481,7 @@
 				>.
 			</p>
 		{/if}
-		{#if trainer.onSimulate && !elsewhere.trainer && !trainer.onRide}
+		{#if simulates && !chips.length}
 			<!-- Dev-only (#123): simulated watts in a live session would count for
 			     medals, XP and streaks — the fairness layer takes no fakes. Gone
 			     while another screen holds the trainer: the hub would take no

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardView } from './sensor-card';
+import { cardView, restsAsChip } from './sensor-card';
 
 /**
  * The state→render mapping for every state one card can be in (#1000).
@@ -147,5 +147,26 @@ describe('cardView', () => {
 			elsewhere: 'on your phone',
 		});
 		expect(view.shape).toBe('live');
+	});
+});
+
+describe('an optional sensor rests as a chip only while it waits to be paired (#4568)', () => {
+	const view = (args: Partial<Parameters<typeof cardView>[0]>) =>
+		cardView({ state: 'idle', supported: true, ...args });
+
+	it('is a chip when idle and pairable here', () => {
+		expect(restsAsChip(view({}))).toBe(true);
+	});
+
+	it.each([
+		['connected', view({ state: 'connected' })],
+		['connecting', view({ state: 'connecting' })],
+		['reconnecting', view({ state: 'reconnecting' })],
+		['failed', view({ state: 'failed' })],
+		['held by another screen', view({ elsewhere: 'on your phone' })],
+		['no Web Bluetooth', view({ supported: false })],
+		['not found', view({ unavailable: 'Open BikeControl' })],
+	])('keeps its card when %s', (_, card) => {
+		expect(restsAsChip(card)).toBe(false);
 	});
 });
