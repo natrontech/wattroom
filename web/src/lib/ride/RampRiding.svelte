@@ -49,19 +49,27 @@
 	// navigation leaves exactly as it was (#1797). The finished test is let
 	// go, and /ramp opens on its setup with the trainer back in the grid.
 	function restart() {
+		// From the cool-down (#4558), Test again ends this ride first.
+		if (session && session.state !== 'done') session.stop();
 		theRide.dismiss();
 		void goto('/ramp');
 	}
 
-	const usable = $derived(rampUsable(session?.elapsed ?? 0));
+	// The ramp part's clock: the cool-down after it is never a step (#4558).
+	const rampElapsed = $derived(ramp?.elapsed ?? session?.elapsed ?? 0);
+	const usable = $derived(rampUsable(rampElapsed));
 	const stepsDone = $derived(
-		Math.max(
-			0,
-			Math.floor(
-				((session?.elapsed ?? 0) - RAMP.warmupSeconds) / RAMP.stepSeconds,
+		Math.min(
+			RAMP.steps,
+			Math.max(
+				0,
+				Math.floor((rampElapsed - RAMP.warmupSeconds) / RAMP.stepSeconds),
 			),
 		),
 	);
+	// Test over, ride not (#4558): the trainer eases the rider down while the
+	// result is read. End ride, or the cool-down running out, ends it.
+	const cooling = $derived(done && session?.state !== 'done');
 	// The same header every other ride gets (ADR-0046). The ramp counts its own
 	// steps, because the warm-up is segment one and "step 1" must not name it;
 	// everything else in the block — the next step's ABSOLUTE watts above all —
@@ -171,6 +179,32 @@
 		</p>
 	{/if}
 
+	{#if cooling}
+		<div class="panel mt-8 flex flex-wrap items-center gap-4 p-5" role="status">
+			<div class="min-w-0 flex-1">
+				<p class="eyebrow">test over · cool-down</p>
+				<p class="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+					<span class="whitespace-nowrap"
+						><span class="font-display text-4xl font-bold tabular-nums"
+							>{session.target > 0 ? session.target : '—'}</span
+						>
+						<span class="text-muted text-sm">W, easing down</span></span
+					>
+					<span class="whitespace-nowrap"
+						><span class="font-display text-muted text-2xl tabular-nums"
+							>{formatClock(Math.max(0, session.total - session.elapsed))}</span
+						>
+						<span class="text-muted text-sm">left</span></span
+					>
+				</p>
+			</div>
+			<button
+				onclick={() => session.stop()}
+				class="btn btn-primary btn-ride max-sm:w-full">End ride</button
+			>
+		</div>
+	{/if}
+
 	{#if session.state === 'countdown'}
 		<!-- One count-in for the surface (ADR-0046, #1800): the same screen a
 		     session and /ride draw, so the test starts the way every ride does. -->
@@ -267,7 +301,7 @@
 		<div class="panel mt-8 p-8">
 			<h2 class="font-display text-2xl font-bold">Not enough to measure</h2>
 			<p class="text-muted mt-3 max-w-md text-sm leading-relaxed">
-				You stopped after {formatClock(session.elapsed)}. The test needs the
+				You stopped after {formatClock(rampElapsed)}. The test needs the
 				{formatClock(RAMP.warmupSeconds)} warm-up plus at least {RAMP.minSteps}
 				steps before the number means anything.
 			</p>
@@ -281,7 +315,9 @@
 	{:else}
 		<!-- The number, and what to do with it: its own component (#1799). -->
 		<RampResult
-			{session}
+			watts={ramp?.watts ?? []}
+			heartRates={ramp?.heartRates ?? []}
+			elapsed={rampElapsed}
 			{stepsDone}
 			onRestart={restart}
 			onFtpSaved={(ftp) => theRide.ramp?.accept(ftp)}

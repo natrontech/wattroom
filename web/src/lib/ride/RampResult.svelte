@@ -12,16 +12,21 @@
 	import { pushProfile } from '#lib/profile-sync.svelte.ts';
 	import { createProfileStore, PROFILE_LIMITS } from '#lib/profile.svelte.ts';
 	import { ftpFromRamp, RAMP } from '#lib/workout/ramp.ts';
-	import type { createRideSession } from '#lib/workout/session.svelte.ts';
 
 	let {
-		session,
+		watts,
+		heartRates,
+		elapsed,
 		stepsDone,
 		onRestart,
 		onFtpSaved,
 		children,
 	}: {
-		session: ReturnType<typeof createRideSession>;
+		/** The ramp part's power and heart rate, never its cool-down's (#4558). */
+		watts: number[];
+		heartRates: number[];
+		/** How long the ramp part lasted. */
+		elapsed: number;
 		stepsDone: number;
 		onRestart: () => void;
 		/**
@@ -42,7 +47,7 @@
 	let lthrSaved = $state(false);
 	let error = $state<string | null>(null);
 
-	const result = $derived(ftpFromRamp(session.recording.map((s) => s.watts)));
+	const result = $derived(ftpFromRamp(watts));
 	const wkg = $derived((result.ftp / profile.current.kg).toFixed(2));
 
 	// LTHR suggestion (ADR-0014): a maximal ramp ends near HRmax, and the
@@ -56,10 +61,7 @@
 	// produced. RESEARCH §17.2. The real measurement is the 30-minute field
 	// test, which the app now reads off a ride on its own.
 	const maxHr = $derived(
-		session.recording.reduce(
-			(peak, sample) => Math.max(peak, sample.heartRate ?? 0),
-			0,
-		),
+		heartRates.reduce((peak, bpm) => Math.max(peak, bpm), 0),
 	);
 	const suggestedLthr = $derived.by(() => {
 		const estimate = Math.round(0.9 * maxHr);
@@ -110,7 +112,7 @@
 			RAMP.ftpFraction * 100,
 		)} % of that — an estimate good to about ±5 %, because that fraction is a population
 		average and yours is your own (RESEARCH §17.1). You lasted {formatClock(
-			session.elapsed,
+			elapsed,
 		)} — {stepsDone}
 		steps. Every workout you ride from here scales to this number —
 		<a href="/workouts" class="underline">the library</a>
