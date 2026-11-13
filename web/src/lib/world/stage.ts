@@ -38,6 +38,7 @@ import { lightsMaterial, lightsUniforms, OFF } from './lights';
 import { flat, type Sight } from './materials';
 import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
+import { merge } from './model';
 import { shoreDressing } from './shore';
 import { waterMaterial, waterSheets, type ShorePoint } from './water';
 import { CHUNK_M } from './place/lattice';
@@ -283,6 +284,8 @@ export function buildStage(
 	group.add(tag('road', overview));
 
 	const c = style.props;
+	/** The scene's own dressing, one draw: reeds and stones at its water's edge, its roundabouts' islands and signs. */
+	const built: THREE.BufferGeometry[] = [];
 	// A designed road's scene (designed.ts): its water, and the bridges that carry the road over it.
 	if (world.scene !== undefined) {
 		const both = flat(sight);
@@ -300,7 +303,7 @@ export function buildStage(
 			);
 			// Reeds and stones at its edge.
 			const dressed = shoreDressing(route, waterline, world.clearOf, c);
-			if (dressed) group.add(tag('terrain', new THREE.Mesh(dressed, flat(sight))));
+			if (dressed) built.push(dressed);
 		}
 		for (const b of [{ route, bridges: world.bridges }, ...world.sides])
 			if (b.bridges.length > 0)
@@ -348,13 +351,18 @@ export function buildStage(
 	};
 	// Its roundabouts: a statue on each island, the signs before each arm, and the give-way line across each way in.
 	const rounds = roundaboutsOf(route.scene);
-	if (rounds.length > 0) {
+	if (rounds.length > 0) built.push(roundabouts(route, rounds, c));
+	if (built.length > 0)
 		group.add(
 			tag(
 				'dressing',
-				new THREE.Mesh(roundabouts(route, rounds, c), flat(sight)),
+				new THREE.Mesh(
+					built.length === 1 ? built[0] : merge(built),
+					flat(sight),
+				),
 			),
 		);
+	if (rounds.length > 0) {
 		group.add(
 			tag(
 				'road',
