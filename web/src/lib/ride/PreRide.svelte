@@ -154,8 +154,6 @@
 				<Banner tone="error">{error}</Banner>
 			{/if}
 
-			{#if guessed}{@render ftpField()}{/if}
-
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
 				<!-- Never render a button that will fail (errors.md): with no
 		     trainer there is nothing to hold a target, and with no road a
@@ -196,6 +194,18 @@
 						A free ride alone rides one of your roads — pick one with Change.
 					</p>
 				{/if}
+				{#if guessed && held.paired && !roadless}
+					<!-- The guess no longer stands between a rider and Start
+					     (#4568): one line here, the field below. -->
+					<p class="text-muted text-sm">
+						Targets use {ftp} W, our starting guess.
+						<button
+							class="btn-link"
+							onclick={() => document.getElementById('ride-ftp')?.focus()}
+							>Set your FTP</button
+						>
+					</p>
+				{/if}
 				{#if replayName}
 					<button
 						onclick={onReplay}
@@ -207,9 +217,9 @@
 
 			<!-- Below Start on purpose: the grid made this column taller than a
 	     laptop window, and FTP is a number you correct once in a month
-	     while Start is what you came for — unless nobody chose it yet, when
-	     it is the question to answer first (above). -->
-			{#if !guessed}{@render ftpField()}{/if}
+	     while Start is what you came for. A guess says so beside Start and
+	     points here (#4568). -->
+			{@render ftpField()}
 		</div>
 	</div>
 </div>
@@ -219,6 +229,7 @@
 		<label class="block">
 			<span class="eyebrow">your FTP (watts)</span>
 			<input
+				id="ride-ftp"
 				type="number"
 				value={ftp}
 				onchange={(event) => onFtp(Number(event.currentTarget.value))}
