@@ -4,15 +4,25 @@ import { at } from '#lib/road/along.ts';
 import type { Road } from '#lib/road/road.ts';
 import { toRoute, type Route } from '#lib/road/route.ts';
 import { Biome } from './biome';
-import { designedFor, designedLine, sceneOf } from './designed';
+import {
+	ARM_M,
+	armWiden,
+	designedFor,
+	designedLine,
+	ringSignAt,
+	roundaboutsOf,
+	sceneOf,
+} from './designed';
 import { DESIGNS } from './designs';
 import { routeOfRoad } from './road-route';
 import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
-import { JOINED, JOINS } from './crossings';
-import { surfaceOf } from './geometry';
-import { SQUARE_COS, stops } from './scenery';
-import { ROAD_W } from './terrain/road-profile';
+import { JOINED, JOINS, meetingAt } from './crossings';
+import { ROAD_LIFT, surfaceOf } from './geometry';
+import { giveWays, SQUARE_COS, stops } from './scenery';
+import { sharedAt } from './shared-road';
+import { sideLift } from './stage';
+import { FORMATION, ROAD_W } from './terrain/road-profile';
 import { BUILD_MS } from './world.test-helper';
 
 /**
@@ -699,8 +709,227 @@ describe('what stands along the map’s roads', () => {
 			for (const s of spots)
 				if (off(s.x, s.z) < FORMATION)
 					bad.push(`${ART[s.art].name} on a road ${where(s.x, s.z)}`);
+			// Nor on a roundabout: its island, an arm where it flares wider than a road's formation, or the signs before an arm.
+			for (const ring of roundaboutsOf(id))
+				for (const t of things) {
+					const dx = t.x - ring.x;
+					const dz = t.z - ring.z;
+					if (Math.hypot(dx, dz) < ring.r)
+						bad.push(`${t.what} on an island ${where(t.x, t.z)}`);
+					for (const arm of ring.arms) {
+						const m = dx * arm[0] + dz * arm[1] - ring.r;
+						const across = Math.abs(dz * arm[0] - dx * arm[1]);
+						if (m >= 0 && m <= ARM_M && across < FORMATION * armWiden(m) + t.r)
+							bad.push(`${t.what} on a flared arm ${where(t.x, t.z)}`);
+						const sign = ringSignAt(ring, arm);
+						if (Math.hypot(t.x - sign.x, t.z - sign.z) < t.r + 0.3)
+							bad.push(`${t.what} on a roundabout sign ${where(t.x, t.z)}`);
+					}
+				}
 			expect(bad).toEqual([]);
 		},
 		6 * BUILD_MS,
+	);
+});
+
+describe('a roundabout', () => {
+	// Its rings and arms are the map's: every loop draws all of them, and the Flèche du Lac rides through both.
+	let world: World;
+	let id: string;
+	beforeAll(async () => {
+		id = 'lac';
+		world = generate(routeOfRoad(await roadOf(id)));
+	}, BUILD_MS);
+
+	/** Each ring as the world draws it, with its arms: unit vector, the arm's route, and a point `a` metres out from the centre and `u` across. */
+	const rings = () =>
+		roundaboutsOf(id).map((ring) => {
+			const route = world.sides.find(
+				(s) =>
+					s.route.loop &&
+					s.route.level &&
+					Math.abs(
+						Math.hypot(s.route.x[0] - ring.x, s.route.z[0] - ring.z) - ring.r,
+					) < 0.5,
+			)!.route;
+			const arms = ring.arms.map((v) => ({
+				v,
+				route: world.sides.find(
+					(s) =>
+						s.route.widen &&
+						Math.hypot(
+							s.route.x[0] - (ring.x + v[0] * ring.r),
+							s.route.z[0] - (ring.z + v[1] * ring.r),
+						) < 0.5,
+				)!.route,
+			}));
+			const point = (v: readonly [number, number], a: number, u: number) => ({
+				x: ring.x + v[0] * a - v[1] * u,
+				z: ring.z + v[1] * a + v[0] * u,
+			});
+			return { ...ring, route, arms, point };
+		});
+
+	/** Points round each arm's mouth: from `band[0]` to `band[1]` metres out past the ring's centre line, every 0.2 m, at every degree within 50° of the arm. */
+	function* mouths(band: [number, number]) {
+		for (const ring of rings())
+			for (const arm of ring.arms)
+				for (let deg = -50; deg <= 50; deg++)
+					for (let r = band[0]; r <= band[1] + 1e-9; r += 0.2) {
+						const t = (deg * Math.PI) / 180;
+						const u = (ring.r + r) * Math.sin(t);
+						const along = (ring.r + r) * Math.cos(t);
+						yield {
+							ring,
+							arm,
+							m: along - ring.r,
+							u,
+							...ring.point(arm.v, along, u),
+						};
+					}
+	}
+	const asphalt = (m: number) => (ROAD_W / 2) * armWiden(m);
+
+	it('gives up its ring’s shoulder only under an arm’s asphalt: no ground between the two', () => {
+		const bad: string[] = [];
+		for (const p of mouths([ROAD_W / 2 + 0.05, FORMATION - 0.05])) {
+			const [o, as] = meetingAt(p.ring.route, 0, p.x, p.z);
+			const givenUp = as === JOINED && o < ROAD_W / 2 - 0.15;
+			// Under this arm's asphalt or a neighbour's: a node's arms may leave 50° apart.
+			const under = p.ring.arms.some((arm) => {
+				const dx = p.x - p.ring.x;
+				const dz = p.z - p.ring.z;
+				const m = dx * arm.v[0] + dz * arm.v[1] - p.ring.r;
+				return (
+					m > -ROAD_W / 2 &&
+					Math.abs(dz * arm.v[0] - dx * arm.v[1]) < asphalt(Math.max(0, m))
+				);
+			});
+			if (givenUp && !under)
+				bad.push(
+					`${p.ring.statue}: ${p.u.toFixed(2)} m across, ${p.m.toFixed(2)} m out`,
+				);
+		}
+		expect(bad.slice(0, 5)).toEqual([]);
+	});
+
+	it('draws an arm’s asphalt to the ring’s and its shoulder from there out', () => {
+		const bad: string[] = [];
+		for (const p of mouths([ROAD_W / 2 + 0.05, FORMATION + 3])) {
+			if (p.m < 0 || Math.abs(p.u) >= FORMATION * armWiden(p.m)) continue;
+			const [o, as] = meetingAt(p.arm.route, p.m, p.x, p.z);
+			const shoulder = Math.abs(p.u) >= asphalt(p.m);
+			// The shader's own cuts (geometry.ts roadMaterial): asphalt inside the ring's, a shoulder inside its formation.
+			const cut =
+				as === JOINS && (o < ROAD_W / 2 - 0.1 || (shoulder && o < FORMATION));
+			if (cut)
+				bad.push(
+					`${p.ring.statue}: ${shoulder ? 'shoulder' : 'asphalt'} ${p.u.toFixed(2)} m across, ${p.m.toFixed(2)} m out`,
+				);
+		}
+		expect(bad.slice(0, 5)).toEqual([]);
+	});
+
+	it('dashes the ring’s edge line across the whole of each mouth', () => {
+		const bad: string[] = [];
+		const line = ROAD_W / 2 - 0.25;
+		for (const ring of rings())
+			for (const arm of ring.arms)
+				for (let deg = -30; deg <= 30; deg += 0.5) {
+					const t = (deg * Math.PI) / 180;
+					const u = (ring.r + line) * Math.sin(t);
+					const along = (ring.r + line) * Math.cos(t);
+					// To a hand short of where the arm's own edge line comes in.
+					if (
+						Math.abs(u) >
+						(ROAD_W / 2 - 0.25) * armWiden(along - ring.r) - 0.3
+					)
+						continue;
+					const p = ring.point(arm.v, along, u);
+					const [o, as] = meetingAt(ring.route, 0, p.x, p.z);
+					if (!(as === JOINED && o < ROAD_W / 2 - 0.6))
+						bad.push(`${ring.statue}: solid ${u.toFixed(2)} m across`);
+				}
+		expect(bad.slice(0, 5)).toEqual([]);
+	});
+
+	it('paints the give-way line across each way in, off the ring and inside the lane', () => {
+		const all = rings();
+		const g = giveWays(
+			all,
+			all.flatMap((ring) =>
+				ring.arms.map((arm) => ({
+					route: arm.route,
+					surface: surfaceOf(arm.route, sideLift(arm.route)),
+				})),
+			),
+			'#fff',
+		);
+		const pos = g.getAttribute('position');
+		expect(pos.count).toBeGreaterThan(0);
+		const lanes = new Set<string>();
+		for (let i = 0; i < pos.count; i++) {
+			const x = pos.getX(i);
+			const z = pos.getZ(i);
+			const ring = all.find((k) => Math.hypot(x - k.x, z - k.z) < k.r + 6)!;
+			const r = Math.hypot(x - ring.x, z - ring.z) - ring.r;
+			expect(r).toBeGreaterThan(ROAD_W / 2);
+			expect(r).toBeLessThan(FORMATION);
+			const arm = ring.arms.find(
+				(k) => (x - ring.x) * k.v[0] + (z - ring.z) * k.v[1] > ring.r,
+			)!;
+			// Left of the arm's way out: a rider coming in has it on the right, short of the edge line.
+			const u = (x - ring.x) * arm.v[1] - (z - ring.z) * arm.v[0];
+			const m = (x - ring.x) * arm.v[0] + (z - ring.z) * arm.v[1] - ring.r;
+			expect(u).toBeGreaterThan(0);
+			expect(u).toBeLessThan((ROAD_W / 2 - 0.25) * armWiden(m));
+			lanes.add(`${ring.statue}:${arm.v.join()}`);
+		}
+		expect(lanes.size).toBe(all.reduce((n, k) => n + k.arms.length, 0));
+	});
+
+	it(
+		'lays the road ridden level where it laps an arm: no edge of it stands through the arm’s asphalt',
+		async () => {
+			const bad: string[] = [];
+			for (const d of DESIGNS.filter((k) => k.rings)) {
+				const w =
+					d.id === id ? world : generate(routeOfRoad(await roadOf(d.id)));
+				const ridden = w.ridden;
+				const surface = surfaceOf(ridden, ROAD_LIFT);
+				for (const ring of roundaboutsOf(d.id))
+					for (const v of ring.arms) {
+						const arm = w.sides.find(
+							(s) =>
+								s.route.widen &&
+								Math.hypot(
+									s.route.x[0] - (ring.x + v[0] * ring.r),
+									s.route.z[0] - (ring.z + v[1] * ring.r),
+								) < 0.5,
+						)!.route;
+						const armAt = surfaceOf(arm, sideLift(arm));
+						for (let m = 0; m <= ridden.length; m += 2) {
+							if (sharedAt(ridden, m) >= 1) continue;
+							const c = at(ridden, m);
+							const dx = c.x - ring.x;
+							const dz = c.z - ring.z;
+							const out = dx * v[0] + dz * v[1] - ring.r;
+							if (out < 0 || out > ARM_M || Math.abs(dz * v[0] - dx * v[1]) > 1)
+								continue;
+							for (const u of [-3, -1.5, 0, 1.5, 3]) {
+								const p = surface(m, u);
+								const q = armAt(out, 0);
+								// A centimetre either way is the two roads' own heights; banked into the turn onto the ring, its edge stood 0.2 m over.
+								if (p.y > q.y + 0.03)
+									bad.push(
+										`${d.id} ${Math.round(m)} m, ${u} m across: ${(p.y - q.y).toFixed(2)} m over the arm`,
+									);
+							}
+						}
+					}
+			}
+			expect(bad.slice(0, 5)).toEqual([]);
+		},
+		4 * BUILD_MS,
 	);
 });

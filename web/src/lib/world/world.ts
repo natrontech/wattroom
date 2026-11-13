@@ -15,7 +15,7 @@ import { markersFor, type Marker } from './markers';
 import { CHUNK_M } from './place/lattice';
 import { keyer, type Salt } from './place/keyed';
 import { forest } from './props/forest';
-import { hashSeed } from './rand';
+import { hashSeed, smoothstep } from './rand';
 import type { Route } from '#lib/road/route.ts';
 import type { Names } from './names';
 import { setPieces, type Arch, type Piece, type Sign } from './setpieces';
@@ -37,22 +37,19 @@ import { createPlacer } from './props/placer';
 import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
-import { drawnRows, FORMATION } from './terrain/road-profile';
+import { drawnRows, FORMATION, ROAD_W, SHOULDER } from './terrain/road-profile';
 import {
 	ARM_M,
 	armsOf,
+	armWiden,
 	othersOf,
+	ringSignAt,
 	ringsOf,
+	roundaboutsOf,
 	sceneOf,
 	type Water,
 } from './designed';
-import {
-	END_M,
-	offRoad,
-	sideRoads,
-	type Mouth,
-	type SideRoad,
-} from './side-roads';
+import { offRoad, sideRoads, type Mouth, type SideRoad } from './side-roads';
 import { JOINED, JOINS } from './crossings';
 
 export type World = {
@@ -249,14 +246,7 @@ export function generate(
 	);
 	// A roundabout: the road ridden runs on its ring and in on its arms, and is drawn on neither. Within reach of the ring its ribbon is hidden, and the ring and its straight arms (designed.ts armsOf) are drawn whole; further out its paint gives way to an arm's where the two overlap.
 	let hidden: Float64Array | null = null;
-	const joins = (r: Route, to: Route) =>
-		(r.meets ??= []).push({
-			from: 0,
-			to: r.length,
-			x: to.x,
-			z: to.z,
-			role: JOINS,
-		});
+	let flat: Float64Array | null = null;
 	rings.forEach((_, j) => {
 		const ring = beside[j].route;
 		const n = ring.x.length - 1;
@@ -270,26 +260,33 @@ export function generate(
 			.slice(rings.length, kept.length)
 			.map((s) => s.route)
 			.filter((a) => Math.hypot(a.x[0] - cx, a.z[0] - cz) < radius + 1);
+		// The arm reads the ring's line a shoulder's width in towards the island: drawn under the ring, it gives way to it to the ring's asphalt edge and no further, and lays its own shoulder over the ring's where the two meet. Read on the ring's own line it gave its shoulder up over the ring's whole formation, and the ground showed in the corner between them.
+		const inner = (radius - SHOULDER) / radius;
+		const towards = (v: ArrayLike<number>, c: number) =>
+			Array.from(v, (p) => c + (p - c) * inner);
 		for (const arm of arms) {
-			joins(arm, ring);
-			// The ring gives its shoulder and dashes its edge where the arm comes in: read from the ring's edge out.
-			const from = Math.ceil(END_M / arm.step);
-			// And across the whole of the arm's flared mouth: the arm's line, and one either side of it.
+			(arm.meets ??= []).push({
+				from: 0,
+				to: arm.length,
+				x: towards(ring.x, cx),
+				z: towards(ring.z, cz),
+				role: JOINS,
+			});
+			// The ring gives its shoulder and dashes its edge where the arm comes in, across the whole of its flared mouth: the arm's line, and one either side of it that follows its asphalt's edge a hand inside it. Further out, the ring's shoulder gave way where the arm had none, and the ground showed between the two.
 			const [ux, uz] = [arm.x[1] - arm.x[0], arm.z[1] - arm.z[0]].map(
 				(v) => v / arm.step,
 			);
-			for (const side of [0, -1, 1])
+			for (const side of [0, -1, 1]) {
+				const out = (k: number) =>
+					side * mouthSide(arm.widen?.(k * arm.step) ?? 1);
 				(ring.meets ??= []).push({
 					from: 0,
 					to: ring.length,
-					x: arm.x
-						.slice(from, from + 6)
-						.map((v) => v - uz * side * MOUTH_SIDE_M),
-					z: arm.z
-						.slice(from, from + 6)
-						.map((v) => v + ux * side * MOUTH_SIDE_M),
+					x: arm.x.slice(0, MOUTH_ROWS).map((v, k) => v - uz * out(k)),
+					z: arm.z.slice(0, MOUTH_ROWS).map((v, k) => v + ux * out(k)),
 					role: JOINED,
 				});
+			}
 		}
 		const off = (i: number) => Math.hypot(route.x[i] - cx, route.z[i] - cz);
 		const last = route.x.length - 1;
@@ -310,21 +307,45 @@ export function generate(
 					role: JOINS,
 				});
 			}
-			for (let k = i; k <= end; k++)
+			for (let k = i; k <= end; k++) {
 				if (off(k) < radius + ARM_M - RING_LAP_M)
 					(hidden ??= new Float64Array(route.x.length))[k] = 1;
+				// Level where it laps the arm, as the arm is: banked into its turn onto the ring, its high edge stood up to 0.2 m through the arm's asphalt.
+				const levelled =
+					1 - smoothstep(radius + ARM_M, radius + ARM_M + FLAT_EASE_M, off(k));
+				if (levelled > 0) {
+					const f = (flat ??= new Float64Array(route.x.length));
+					f[k] = Math.max(f[k], levelled);
+				}
+			}
 			i = end;
 		}
 	});
 	const shown = hidden as Float64Array | null;
+	const flattened = flat as Float64Array | null;
 	if (shown && route.shared)
 		for (let i = 0; i < shown.length; i++)
 			shown[i] = Math.max(shown[i], route.shared[i]);
 	const ridden: Route =
 		meets.length > 0 || shown
-			? { ...route, meets, ...(shown && { shared: shown }) }
+			? {
+					...route,
+					meets,
+					...(shown && { shared: shown }),
+					...(flattened && { flat: flattened }),
+				}
 			: route;
-	const ground = makeGround(roads, { salt, scene: layout });
+	const made = makeGround(roads, { salt, scene: layout });
+	// Nothing stands on a roundabout's island, nor on an arm where it flares wider than the road its line is: the ground knows a road by its line and one width.
+	const rounds = roundaboutsOf(route.scene);
+	const ground =
+		rounds.length === 0
+			? made
+			: {
+					...made,
+					clearOf: (x: number, z: number, base: number) =>
+						made.clearOf(x, z, base) && offRoundabouts(rounds, x, z, base),
+				};
 	// The scene as the ground laid it: its streams run where that ground falls.
 	const scene = ground.scene;
 	const margin = opts.margin ?? 1400;
@@ -515,6 +536,43 @@ export function generate(
 	};
 }
 
+/**
+ * Whether (x, z) keeps `base` metres off every roundabout's arm, as
+ * ground.clearOf asks of a road, where the arm flares wider than one (its
+ * line alone is the ground's); off every island, which its statue holds;
+ * and off the signs before each arm.
+ */
+export function offRoundabouts(
+	rounds: ReturnType<typeof roundaboutsOf>,
+	x: number,
+	z: number,
+	base: number,
+): boolean {
+	for (const ring of rounds) {
+		const dx = x - ring.x;
+		const dz = z - ring.z;
+		if (Math.hypot(dx, dz) < ring.r) return false;
+		for (const arm of ring.arms) {
+			const [ux, uz] = arm;
+			// Nor on the signs before it: what keeps `base` off a road's line reaches that far past its formation.
+			const sign = ringSignAt(ring, arm);
+			if (
+				Math.hypot(x - sign.x, z - sign.z) <
+				Math.max(0, base - FORMATION) + SIGN_CLEAR_M
+			)
+				return false;
+			const m = dx * ux + dz * uz - ring.r;
+			if (m < 0 || m > ARM_M) continue;
+			const across = Math.abs(dz * ux - dx * uz);
+			if (across < base + FORMATION * (armWiden(m) - 1)) return false;
+		}
+	}
+	return true;
+}
+
+/** Metres a roundabout's sign post keeps anything off it, past what that thing reaches. */
+const SIGN_CLEAR_M = 0.6;
+
 /** A gallery's roof reaches this far from the road's centre, where its back wall and pillars stand (scenery.ts GALLERY.out). */
 const GALLERY_EDGE = FORMATION + 0.9;
 /** Half its back wall's thickness, and what a thing keeps clear of the wall or the pillars past its own reach. */
@@ -528,8 +586,18 @@ const NODE_M = 20;
 const RING_REACH_M = 35;
 /** Metres of an arm's far end the road ridden is drawn over, so the two lap. */
 const RING_LAP_M = 12;
-/** Metres either side of an arm's line its flared mouth reaches on the ring. */
-const MOUTH_SIDE_M = 4;
+/**
+ * Where the ring reads an arm's mouth either side of its line, metres off
+ * it, where the arm is drawn `wide` times a road (designed.ts armWiden):
+ * the ring gives its shoulder up within ROAD_W / 2 − 0.15 of such a line
+ * (geometry.ts), so to a hand inside the arm's asphalt edge, never past it.
+ */
+const mouthSide = (wide: number) =>
+	Math.max(0, (ROAD_W / 2) * wide - ROAD_W / 2 - 0.1);
+/** The arm's rows, from the ring's centre line out, over which the ring reads its mouth: past its shoulder. */
+const MOUTH_ROWS = 4;
+/** Metres past an arm's end over which the road ridden eases from level back into its own bank. */
+const FLAT_EASE_M = 30;
 /** Metres between the ground's rows of the road (drawnRows). */
 const ROW_M = 2;
 /** A road this far over the designed ground is carried, not banked up: an embankment that high is 12 m wide at its foot each side. */

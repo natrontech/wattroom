@@ -16,6 +16,7 @@ import type { Road } from '#lib/road/road.ts';
 import { toRoute, type Route } from '#lib/road/route.ts';
 import { DESIGNS } from './designs';
 import { smoothstep } from './rand';
+import { FORMATION } from './terrain/road-profile';
 import {
 	designPoint,
 	syntheticPoints,
@@ -670,6 +671,9 @@ export const ARM_M = 30;
 /** How much wider an arm is at the ring than a road, and the metres over which it narrows to one. */
 const ARM_FLARE = 1.1;
 const ARM_FLARE_M = 22;
+/** How many times a road's width an arm is drawn `m` metres out from the ring's centre line: what its asphalt, its shoulders and everything kept off it go by. */
+export const armWiden = (m: number) =>
+	1 + ARM_FLARE * (1 - smoothstep(2, ARM_FLARE_M, m));
 
 /**
  * A design's roundabouts' arms, each a straight road from the ring out
@@ -724,14 +728,26 @@ export function armsOf(id: string | undefined): Route[] {
 				loop: false,
 				level: true,
 				// Flared to the ring, as a roundabout's entries and exits are: a rider turning onto the ring or off it stays on asphalt.
-				widen: (m: number) =>
-					1 + ARM_FLARE * (1 - smoothstep(2, ARM_FLARE_M, m)),
+				widen: armWiden,
 				climbs: [],
 				shared: undefined,
 				meets: undefined,
 			};
 		}),
 	);
+}
+
+/** A roundabout's signs stand this far out from its ring's centre line, and this far past the arm's shoulder there, on the right of each arm as it comes in. */
+const RING_SIGN = { out: 15, past: 0.8 };
+
+/** Where the signs before an arm leaving the ring at (x, z) on the unit vector (dx, dz) stand: off its flared shoulder, on the right coming in, which is the arm's left as it leaves. */
+export function ringSignAt(
+	ring: { x: number; z: number; r: number },
+	[dx, dz]: readonly [number, number],
+) {
+	const out = ring.r + RING_SIGN.out;
+	const side = FORMATION * armWiden(RING_SIGN.out) + RING_SIGN.past;
+	return { x: ring.x + dx * out + dz * side, z: ring.z + dz * out - dx * side };
 }
 
 /** A design's roundabouts as the stage dresses them, in the world's frame: the centre, the ring's radius, the way each arm leaves (a unit vector), and its statue. */

@@ -17,7 +17,14 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
 import { roundaboutsOf, sceneOf } from './designed';
-import { bridges, roadworks, roundabouts, stops, waterSheets } from './scenery';
+import {
+	bridges,
+	giveWays,
+	roadworks,
+	roundabouts,
+	stops,
+	waterSheets,
+} from './scenery';
 import type { Piece } from './setpieces';
 import {
 	plinth,
@@ -97,6 +104,20 @@ const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
 const GROUND_CELL_M = 960;
 /** A side road's ribbon lies this far under the ridden road's. */
 const SIDE_SINK = 0.01;
+
+/**
+ * The lift a side road's ribbon is drawn with (geometry.ts road): a hair
+ * under the ridden road's, so where one meets it it lies under its asphalt.
+ * But a roundabout's arm lies a finger over the road ridden where that laps
+ * it, and its ring a finger over the arm: the ring's asphalt and its edge,
+ * dashed across the mouth, are drawn whole over the arm's flared start,
+ * which the ring's shoulder gives way to.
+ */
+export function sideLift(of: Route): number {
+	if (of.widen) return ROAD_LIFT + 0.01;
+	if (of.level && of.loop) return ROAD_LIFT + 0.02;
+	return ROAD_LIFT - SIDE_SINK;
+}
 const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
@@ -232,8 +253,7 @@ export function buildStage(
 		},
 		...world.sides.map((s) => ({
 			of: s.route,
-			// A roundabout's arm a finger over the ring it flares onto: its asphalt covers the ring's shoulder there.
-			lift: ROAD_LIFT - SIDE_SINK + (s.route.widen ? 0.02 : 0),
+			lift: sideLift(s.route),
 			caps: s.square
 				? ([false, false] as const)
 				: ([!s.mouths[0], !s.mouths[1]] as const),
@@ -332,23 +352,46 @@ export function buildStage(
 			),
 		);
 	}
-	// Its roundabouts: a statue on each island, and the signs before each arm.
+	// Paint laid on a road, drawn over the ribbon it lies on from any distance, where a centimetre of height no longer tells in the depth buffer.
+	const paintMaterial = () => {
+		const paint = flat(sight);
+		paint.side = THREE.DoubleSide;
+		paint.polygonOffset = true;
+		paint.polygonOffsetFactor = -2;
+		paint.polygonOffsetUnits = -8;
+		return paint;
+	};
+	// Its roundabouts: a statue on each island, the signs before each arm, and the give-way line across each way in.
 	const rounds = roundaboutsOf(route.scene);
-	if (rounds.length > 0)
+	if (rounds.length > 0) {
 		group.add(
 			tag(
 				'dressing',
 				new THREE.Mesh(roundabouts(route, rounds, c), flat(sight)),
 			),
 		);
+		group.add(
+			tag(
+				'road',
+				new THREE.Mesh(
+					giveWays(
+						rounds,
+						world.sides
+							.filter((s) => s.route.widen)
+							.map((s) => ({
+								route: s.route,
+								surface: surfaceOf(s.route, sideLift(s.route)),
+							})),
+						style.road.line,
+					),
+					paintMaterial(),
+				),
+			),
+		);
+	}
 	// Where a side road comes in square (side-roads.ts): its stop line, STOP and its sign, laid on its own surface.
 	if (world.sides.some((s) => s.mouths.some((m) => m))) {
-		const paint = flat(sight);
-		paint.side = THREE.DoubleSide;
-		// Drawn over the ribbon it lies on from any distance, where a centimetre of height no longer tells in the depth buffer.
-		paint.polygonOffset = true;
-		paint.polygonOffsetFactor = -2;
-		paint.polygonOffsetUnits = -8;
+		const paint = paintMaterial();
 		group.add(
 			tag(
 				'road',
@@ -356,7 +399,7 @@ export function buildStage(
 					stops(
 						world.sides.map((s) => ({
 							length: s.route.length,
-							surface: surfaceOf(s.route, ROAD_LIFT - SIDE_SINK),
+							surface: surfaceOf(s.route, sideLift(s.route)),
 							mouths: s.mouths.map((m) =>
 								// Onto a roundabout nobody stops: no line, no STOP, no sign.
 								!m || (m.met > 0 && world.sides[m.met - 1].route.level)

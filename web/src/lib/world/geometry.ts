@@ -72,15 +72,25 @@ export function surfaceOf(route: Route, lift = ROAD_LIFT) {
 	return (d: number, u: number) => {
 		const p = at(route, Math.min(Math.max(d, 0), route.length));
 		const k = Math.min(banks.length - 1, Math.max(0, Math.round(d / 2)));
+		const bank = route.level ? 0 : banks[k] * (1 - flatAt(route, d));
 		return {
 			x: p.x + Math.cos(p.heading) * u,
-			y: yOf(route, p.ele) + lift - u * Math.tan(banks[k]),
+			y: yOf(route, p.ele) + lift - u * Math.tan(bank),
 			z: p.z - Math.sin(p.heading) * u,
 		};
 	};
 }
 
 export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
+
+/** How far a road's bank is taken out at metre `d` (Route.flat): 1 drawn level across. */
+const flatAt = (route: Route, d: number) =>
+	route.flat
+		? sharedAt(
+				{ shared: route.flat, length: route.length, step: route.step },
+				d,
+			)
+		: 0;
 
 export function terrain(
 	route: Route,
@@ -198,7 +208,10 @@ export function road(
 		// A later pass easing onto an earlier one sinks under it, and is not drawn where it is on it (#4531).
 		const w = sharedAt(route, d);
 		// Its bend onto the earlier one is no road's bend: unbanked as it lands, so it never tilts up through the earlier one.
-		const bank = route.level ? 0 : banks[r - first] * (1 - w);
+		// Nor where it laps a roundabout's level arm: banked into its turn onto the ring, its high edge stood through the arm's asphalt.
+		const bank = route.level
+			? 0
+			: banks[r - first] * (1 - w) * (1 - flatAt(route, d));
 		const lx = Math.cos(p.heading); // left of travel
 		const lz = -Math.sin(p.heading);
 		sides.push(new THREE.Vector3(lx, -Math.tan(bank), lz)); // across the asphalt, leftward

@@ -8,7 +8,7 @@ import { cow } from './props';
 import type { PropColors } from './styles';
 import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
-import type { Water } from './designed';
+import { ringSignAt, type Water } from './designed';
 import { yOf } from './geometry';
 import { FORMATION, ROAD_W } from './terrain/road-profile';
 
@@ -556,8 +556,8 @@ export function stops(
 	return g;
 }
 
-/** A roundabout's signs stand this far out from its ring's centre line, on the right of each arm as it comes in. */
-const RING_SIGN = { out: 15, side: FORMATION + 0.8, up: 2.2 };
+/** A roundabout's signs: the give-way triangle's height on its post (designed.ts ringSignAt says where it stands). */
+const RING_SIGN = { up: 2.2 };
 
 /** A tube from `a` to `b`. */
 function tube(a: THREE.Vector3, b: THREE.Vector3, r: number) {
@@ -675,17 +675,12 @@ export function roundabouts(
 				ring.z,
 			),
 		);
-		for (const [dx, dz] of ring.arms) {
-			// Coming in, the rider's right is the arm's left as it leaves.
-			const out = ring.r + RING_SIGN.out;
+		for (const arm of ring.arms) {
+			const at = ringSignAt(ring, arm);
 			parts.push(
 				ringSign(c)
-					.rotateY(Math.atan2(dx, dz))
-					.translate(
-						ring.x + dx * out + dz * RING_SIGN.side,
-						y,
-						ring.z + dz * out - dx * RING_SIGN.side,
-					),
+					.rotateY(Math.atan2(arm[0], arm[1]))
+					.translate(at.x, y, at.z),
 			);
 		}
 	}
@@ -694,3 +689,75 @@ export function roundabouts(
 	g.computeBoundingSphere();
 	return g;
 }
+
+/**
+ * The Swiss give-way line across each roundabout's entry lane: a broken
+ * line along the ring's edge, just off its asphalt, from the arm's centre
+ * line to a hand inside its edge line, which the rider coming in stops at
+ * to let the ring go by. Laid on the arm's own drawn surface (`surface`,
+ * geometry.ts surfaceOf), as a stop line is on its side road's. The ring's
+ * own edge line, dashed across the mouth, is its paint (crossings.ts).
+ */
+export function giveWays(
+	rings: readonly { x: number; z: number; r: number }[],
+	arms: readonly {
+		route: Route;
+		surface: (d: number, u: number) => { x: number; y: number; z: number };
+	}[],
+	color: string,
+): THREE.BufferGeometry {
+	const pos: number[] = [];
+	for (const { route, surface } of arms) {
+		const ring = rings.find(
+			(k) => Math.abs(Math.hypot(route.x[0] - k.x, route.z[0] - k.z) - k.r) < 1,
+		);
+		if (!ring) continue;
+		const wide = (m: number) => route.widen?.(m) ?? 1;
+		// A spot `a` metres out from the ring's centre and `u` across the arm, left of its way out: the rider's right coming in.
+		const spot = (a: number, u: number) => {
+			const p = surface(a - ring.r, u);
+			return [p.x, p.y + PAINT_LIFT, p.z];
+		};
+		const r0 = ring.r + ROAD_W / 2 + GIVE_WAY.off;
+		const r1 = r0 + GIVE_WAY.thick;
+		// The lane, at the ring's edge: from the centre line out to the edge line, a hand clear of each.
+		const edge = (ROAD_W / 2 - 0.25 - 0.06) * wide(r0 - ring.r) - 0.15;
+		// Arcs along the ring's edge, read by their angle off the arm's line.
+		const from = Math.asin(GIVE_WAY.inside / r0);
+		const to = Math.asin(Math.min(1, edge / r0));
+		const period = (GIVE_WAY.dash + GIVE_WAY.gap) / r0;
+		for (let a = from; a < to; a += period) {
+			const b = Math.min(to, a + GIVE_WAY.dash / r0);
+			const corner = (r: number, t: number) =>
+				spot(r * Math.cos(t), r * Math.sin(t));
+			const q = [corner(r0, a), corner(r0, b), corner(r1, b), corner(r1, a)];
+			pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
+		}
+	}
+	const g = new THREE.BufferGeometry();
+	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+	const tone = new THREE.Color(color);
+	g.setAttribute(
+		'color',
+		new THREE.Float32BufferAttribute(
+			Array.from({ length: pos.length / 3 }, () => [
+				tone.r,
+				tone.g,
+				tone.b,
+			]).flat(),
+			3,
+		),
+	);
+	g.computeVertexNormals();
+	g.computeBoundingSphere();
+	return g;
+}
+
+/** The give-way line (Wartelinie): metres off the ring's asphalt it starts, thick, its dashes and gaps along the ring's edge, and how far from the arm's centre line it starts. */
+export const GIVE_WAY = {
+	off: 0.2,
+	thick: 0.3,
+	dash: 0.5,
+	gap: 0.5,
+	inside: 0.2,
+};
