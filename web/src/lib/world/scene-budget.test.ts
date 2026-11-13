@@ -67,6 +67,10 @@ function cost(
 	const g = mesh.geometry;
 	const batched = o as THREE.BatchedMesh;
 	if (batched.isBatchedMesh) {
+		// A pool culled by cells shows what this frustum sees first (piece-pool.ts).
+		(batched.userData.cull as ((f: THREE.Frustum) => void) | undefined)?.(
+			frustum,
+		);
 		const sphere = new THREE.Sphere();
 		const m = new THREE.Matrix4();
 		let visible = 0;
