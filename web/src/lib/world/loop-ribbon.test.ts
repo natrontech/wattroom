@@ -2,10 +2,17 @@ import type * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import type { Route } from '#lib/road/route.ts';
-import { road } from './geometry';
+import { CAP_ROWS, road } from './geometry';
 import { roadPieces } from './ground-stream';
 import { routeOfRoad } from './road-route';
-import { ribbonRows, ringOf, rowCount, SHOULDER } from './terrain/road-profile';
+import {
+	endsMeet,
+	FORMATION,
+	ribbonRows,
+	ringOf,
+	rowCount,
+	SHOULDER,
+} from './terrain/road-profile';
 
 /**
  * A loop's road at its start line (#4534): a voice channel's free ride
@@ -104,6 +111,40 @@ describe('a road with two ends', () => {
 		const rows = ribbonRows(route);
 		expect(rows.ring).toBe(false);
 		expect(rows.count).toBe(rowCount(route));
-		expect(rowsOf(road(route, { shoulder: SHOULDER }))).toBe(rowCount(route));
+		// Its own rows, and each end's rounded off after them.
+		expect(rowsOf(road(route, { shoulder: SHOULDER }))).toBe(
+			rowCount(route) + 2 * CAP_ROWS,
+		);
+	});
+
+	it('rounds each end off: the edge and the shoulder run round it to a point a formation beyond', () => {
+		const route = outAndBack();
+		const g = road(route, { shoulder: SHOULDER });
+		const count = rowCount(route);
+		// After the road's rows: the start's cap from its tip in to the start row, then the end's from the end row out.
+		const tip = row(g, 'position', count);
+		const start = row(g, 'position', 0);
+		expect(row(g, 'position', count + CAP_ROWS - 1)).toEqual(start);
+		// Every column meets at the tip, a formation's width beyond the row's centre.
+		const off = (p: number[], c: number, q: number[]) =>
+			Math.hypot(p[c * 3] - q[2 * 3], p[c * 3 + 2] - q[2 * 3 + 2]);
+		for (let c = 0; c < COLS; c++)
+			expect(off(tip, c, start)).toBeCloseTo(FORMATION, 4);
+		const endTip = row(g, 'position', count + 2 * CAP_ROWS - 1);
+		const end = row(g, 'position', count - 1);
+		expect(off(endTip, 2, end)).toBeCloseTo(FORMATION, 4);
+		// Beyond the road, not back along it.
+		const next = row(g, 'position', 1);
+		expect(off(tip, 2, next)).toBeGreaterThan(off(start, 2, next));
+		// Painted as the end row is, metre for metre across.
+		expect(row(g, 'uv', count).filter((_, i) => i % 2 === 0)).toEqual(
+			row(g, 'uv', 0).filter((_, i) => i % 2 === 0),
+		);
+	});
+
+	it('is one place where its ends meet, whichever way it comes home', () => {
+		expect(endsMeet(outAndBack())).toBe(true);
+		const open = outAndBack();
+		expect(endsMeet({ ...open, x: open.x.map((v, k) => v + k) })).toBe(false);
 	});
 });

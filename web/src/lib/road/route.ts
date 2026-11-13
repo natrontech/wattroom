@@ -79,10 +79,17 @@ export type Route = {
 	shared?: Float64Array;
 	/**
 	 * The world's road only: the stretches, in metres along it, where it
-	 * crosses another pass of itself and is drawn as bare asphalt, a
-	 * crossroads (crossings.ts). Absent where the route never crosses itself.
+	 * meets another pass of itself at one height, a crossroads or a road
+	 * joining a road, each with the metres of the pass it meets and which of
+	 * the two it is (crossings.ts Meeting). Absent where it meets none.
 	 */
-	bare?: readonly (readonly [from: number, to: number])[];
+	bare?: readonly (readonly [
+		from: number,
+		to: number,
+		otherFrom: number,
+		otherTo: number,
+		as: number,
+	])[];
 };
 
 /** docs/SPEC.md: resample every 10 m, store every 20 m. */

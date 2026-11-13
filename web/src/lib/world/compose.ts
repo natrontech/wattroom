@@ -61,7 +61,15 @@ import type { Failure } from './ride-view';
 import type { World } from './world';
 import type { Rung } from './quality';
 
-export type CameraMode = Follow | 'orbit';
+/**
+ * The ride's cameras, the model on its table ('orbit'), and the route lab's
+ * own ('look'): the world as a ride draws it, seen from wherever you drag
+ * the eye round the place you stand at.
+ */
+export type CameraMode = Follow | 'orbit' | 'look';
+
+/** The look camera: where it opens, behind and above you, and how near and far the wheel takes it, and how far it keeps over the ground, metres. */
+const LOOK = { back: 45, up: 30, near: 4, far: 3000, floor: 1.5 };
 
 export type Hud = {
 	kmh: number;
@@ -260,10 +268,37 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	}
 	let progress: number | null = moment ? moment.p : null;
 	let controls: OrbitControls | null = null;
+	/** Which camera the controls are: the model's, or the look camera's, which keeps `stood` in view. */
+	let held: CameraMode | null = null;
+	const stood = new THREE.Vector3();
 
 	function applyMode() {
 		const orbit = mode === 'orbit';
 		stage?.setOrbit(orbit);
+		if (controls && held !== mode) {
+			controls.dispose();
+			controls = null;
+			rig.reset();
+		}
+		held = orbit || mode === 'look' ? mode : null;
+		if (mode === 'look' && !controls) {
+			// Open behind and above the place, as the overhead camera stands, further off.
+			const p = at(route, you.d);
+			stood.set(p.x, yOf(route, p.ele), p.z);
+			camera.position.set(
+				stood.x - Math.sin(p.heading) * LOOK.back,
+				stood.y + LOOK.up,
+				stood.z - Math.cos(p.heading) * LOOK.back,
+			);
+			camera.lookAt(stood);
+			controls = new OrbitControls(camera, dom ?? undefined);
+			controls.target.copy(stood);
+			controls.enableDamping = true;
+			controls.minDistance = LOOK.near;
+			controls.maxDistance = LOOK.far;
+			// Never down to the ground's own level, where the place hides behind the nearest tree.
+			controls.maxPolarAngle = Math.PI * 0.45;
+		}
 		if (orbit && !controls) {
 			// Open on the whole model, tilted like a diorama on a table.
 			const target = summitOf(route, world);
@@ -273,11 +308,6 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 			controls.target.copy(target);
 			controls.enableDamping = true;
 			controls.maxPolarAngle = Math.PI * 0.47;
-		}
-		if (!orbit && controls) {
-			controls.dispose();
-			controls = null;
-			rig.reset();
 		}
 	}
 
@@ -424,11 +454,25 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 		crew.drive(route, car, mode === 'orbit');
 		ghosts?.update(route, ghostsNow(real), dt, mode === 'orbit');
 		roadside?.update(you.d);
-		if (controls) controls.update();
-		else
+		if (controls) {
+			// The look camera goes where you go, as it stood to you: a place sought is the place looked at.
+			if (mode === 'look') {
+				camera.position.add(stood.subVectors(me, stood));
+				controls.target.add(stood);
+				stood.copy(me);
+			}
+			controls.update();
+			// Dragged low, the eye stays over the ground, as the ride's cameras do.
+			if (mode === 'look')
+				camera.position.y = Math.max(
+					camera.position.y,
+					yOf(route, world.heightAt(camera.position.x, camera.position.z)) +
+						LOOK.floor,
+				);
+		} else
 			rig.update(
 				camera,
-				mode === 'orbit' ? 'chase' : mode,
+				mode === 'orbit' || mode === 'look' ? 'chase' : mode,
 				you,
 				me,
 				real,
@@ -545,7 +589,8 @@ export function compose(opts: MountOptions, dom: HTMLElement | null) {
 	 * frame (#3699); a held moment, and a camera moved by hand, all at once.
 	 */
 	function look(whole = !!moment) {
-		if (!controls) stream.update(camera.position.x, camera.position.z);
+		// The model on its table is the whole corridor, built once; every other camera's ground streams in round its eye.
+		if (mode !== 'orbit') stream.update(camera.position.x, camera.position.z);
 		stage?.update(camera.position, whole);
 	}
 

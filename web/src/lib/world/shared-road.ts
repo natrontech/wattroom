@@ -49,6 +49,12 @@ export type SharedRoad = {
 	ele: Float64Array;
 	/** Per sample, how far it is drawn on an earlier pass: 1 on it, 0 its own, between while easing. */
 	shared: Float64Array;
+	/**
+	 * Where a later pass eases onto an earlier one or off it, a road joining
+	 * a road: the metres of the later pass easing, and the metres of the
+	 * earlier pass it meets there.
+	 */
+	joins: { from: number; to: number; onFrom: number; onTo: number }[];
 };
 
 /**
@@ -88,6 +94,7 @@ export function shareRoad(
 	const tx = new Float64Array(n);
 	const tz = new Float64Array(n);
 	const te = new Float64Array(n);
+	const tm = new Float64Array(n); // the metre of the earlier pass its point lies at
 	const on = new Uint8Array(n);
 	const dir = (s: number) => {
 		const dx = x[s + 1] - x[s];
@@ -111,7 +118,7 @@ export function shareRoad(
 		const qe = ele[s] + (ele[s + 1] - ele[s]) * t;
 		const d = Math.hypot(x[p] - qx, z[p] - qz);
 		if (d > WIDE_M || Math.abs(qe - ele[p]) > RISE_M) return null;
-		return { d, qx, qz, qe, cos };
+		return { d, qx, qz, qe, cos, m: (s + t) * step };
 	}
 	/** Keeps the nearer of sample `p`'s target and its point on segment `s`. */
 	function take(p: number, s: number) {
@@ -122,6 +129,7 @@ export function shareRoad(
 		tx[p] = q.qx;
 		tz[p] = q.qz;
 		te[p] = q.qe;
+		tm[p] = q.m;
 	}
 	for (let p = apart + 1; p < n; p++) {
 		const ci = Math.floor(x[p] / cell);
@@ -157,6 +165,7 @@ export function shareRoad(
 				tx[k] = kx;
 				tz[k] = kz;
 				te[k] = te[a] + (te[b] - te[a]) * f;
+				tm[k] = tm[a] + (tm[b] - tm[a]) * f;
 			}
 		p = q;
 	}
@@ -180,6 +189,17 @@ export function shareRoad(
 		z: Float64Array.from(z),
 		ele: Float64Array.from(ele),
 		shared: new Float64Array(n),
+		joins: [],
+	};
+	/** Samples `i` to `j` ease: the later pass's metres there, and the earlier pass's it lies along. */
+	const join = (i: number, j: number) => {
+		let onFrom = Infinity;
+		let onTo = -Infinity;
+		for (let p = i; p <= j; p++) {
+			onFrom = Math.min(onFrom, tm[p]);
+			onTo = Math.max(onTo, tm[p]);
+		}
+		out.joins.push({ from: i * step, to: j * step, onFrom, onTo });
 	};
 	const ease = (f: number) => f * f * (3 - 2 * f);
 	const blend = Math.max(1, Math.round(BLEND_M / step));
@@ -201,6 +221,8 @@ export function shareRoad(
 		const most = Math.floor((b - a) / 2);
 		const easeOn = rampOf(a, 1, most);
 		const easeOff = rampOf(b, -1, most);
+		join(a, a + easeOn);
+		if (b !== n - 1) join(b - easeOff, b);
 		for (let p = a; p <= b; p++) {
 			// A route that ends on the street ends on it.
 			const f = Math.min(

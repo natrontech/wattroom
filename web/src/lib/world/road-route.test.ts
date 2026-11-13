@@ -11,7 +11,7 @@ import { toRoute, type Route } from '#lib/road/route.ts';
 import type { Road } from '#lib/road/road.ts';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import { walk } from './place/stroke';
-import { closeWalk, routeOfRoad } from './road-route';
+import { closeHeights, closeWalk, routeOfRoad } from './road-route';
 
 /** A road's heights and turns become the route its world is built on (#3663). */
 describe('the route of a road', () => {
@@ -89,6 +89,41 @@ describe('a walked loop', () => {
 		const walked = routeOfRoad(alpineLoop());
 		expect(gap(walked)).toBeGreaterThan(1000);
 		expect(closes({ ...walked, loop: true })).toBe(false);
+	});
+});
+
+/**
+ * A loop's barometer drifts: a ride recorded 10 m higher home than out drew
+ * its last metre as a ramp into the bank over its first, the start arch
+ * buried in it. The drawn road ends at the height it began at.
+ */
+describe('a loop recorded higher home than out', () => {
+	it('is drawn level where its ends meet, its grades all but as ridden', async () => {
+		const { road } = await homeRoute(HOME_ROADS[0]);
+		const n = road.heights.length - 1;
+		const drifted: Road = {
+			...road,
+			heights: road.heights.map((h, i) => h + (10 * i) / n),
+		};
+		const was = routeOfRoad(road);
+		const drawn = routeOfRoad(drifted);
+		const last = drawn.ele.length - 1;
+		expect(drawn.ele[last]).toBeCloseTo(drawn.ele[0], 6);
+		// Half up at the start, half down at the end.
+		expect(drawn.ele[0] - was.ele[0]).toBeCloseTo(5, 1);
+		// The ride's own grades stay the file's.
+		expect(drawn.grade).toEqual(routeOfRoad(drifted, false).grade);
+		expect(drawn.length).toBe(road.length);
+	});
+
+	it('leaves heights that meet as they are', () => {
+		const ele = Float64Array.from([5, 7, 9, 7, 5]);
+		expect(closeHeights(ele)).toBe(ele);
+	});
+
+	it('leaves a road with two ends its climb', () => {
+		const climb = routeOfRoad(legsRoad([2000, 6]));
+		expect(climb.ele[climb.ele.length - 1] - climb.ele[0]).toBeGreaterThan(100);
 	});
 });
 
