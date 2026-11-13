@@ -23,6 +23,31 @@ export const ROAD_LIFT = 0.12;
 const SNOW_BANK_M = 0.9;
 const SNOW_EASE_M = 12;
 
+/** A road's galleries in metres along it (designed.ts), found once a road: under a roof no bank is ploughed up. */
+const roofs = new WeakMap<Route, [number, number][]>();
+function roofedOf(route: Route): [number, number][] {
+	let spans = roofs.get(route);
+	if (spans) return spans;
+	const metre = ([x, z]: [number, number]) => {
+		let best = 30;
+		let at = -1;
+		for (let i = 0; i < route.x.length; i++) {
+			const d = Math.hypot(route.x[i] - x, route.z[i] - z);
+			if (d < best) {
+				best = d;
+				at = i * route.step;
+			}
+		}
+		return at;
+	};
+	spans = (sceneOf(route.scene)?.galleries ?? []).flatMap(([a, b]) => {
+		const [from, to] = [metre(a), metre(b)].sort((p, q) => p - q);
+		return from < 0 ? [] : [[from, to] as [number, number]];
+	});
+	roofs.set(route, spans);
+	return spans;
+}
+
 export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
 
 export function terrain(
@@ -108,6 +133,7 @@ export function road(
 		shoulder > 0 ? [-SHOULDER_DROP, 0, 0, 0, -SHOULDER_DROP] : [0, 0, 0];
 	const cols = offs.length;
 	const snowline = sceneOf(route.scene)?.climate.snowline;
+	const roofed = snowline === undefined ? [] : roofedOf(route);
 	const [from, to] = opts.rows ?? [0, Infinity];
 	// A road that goes round is one strip round (#4534): rows before its first and past its last wrap, so its start line is lit, banked and walked as any other row.
 	const rows = ribbonRows(route, step);
@@ -148,7 +174,7 @@ export function road(
 		const tz = Math.cos(p.heading);
 		// In a designed road's snow the plough has thrown a bank up along both edges.
 		const banked =
-			snowline === undefined
+			snowline === undefined || roofed.some(([a, b]) => d >= a && d <= b)
 				? 0
 				: SNOW_BANK_M *
 					smoothstep(snowline - SNOW_EASE_M, snowline + SNOW_EASE_M, p.ele);

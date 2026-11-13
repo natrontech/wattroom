@@ -38,7 +38,8 @@ import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
 import { drawnRows } from './terrain/road-profile';
-import { sceneOf, type Water } from './designed';
+import { othersOf, sceneOf, type Water } from './designed';
+import { sideRoads } from './side-roads';
 
 export type World = {
 	/** The far skyline's seed: the backdrop is still drawn from the route. */
@@ -68,6 +69,8 @@ export type World = {
 	waterAt: (x: number, z: number) => number | null;
 	/** Where the road is carried over the ground, in metres along it: its bridges. */
 	bridges: [from: number, to: number][];
+	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges: drawn, never ridden. */
+	sides: { route: Route; bridges: [from: number, to: number][] }[];
 	/** Where the road runs under a gallery's roof, in metres along it. */
 	galleries: [from: number, to: number][];
 	/** The ground at (x, z) as the place has it, earthworks and all, without drawing it: what the road's rails are read off (scenery.ts). */
@@ -132,19 +135,34 @@ export function generate(
 	];
 	// A designed road's scene shapes the land (designed.ts), and where it drops away under the road, the road is carried over it.
 	const layout = sceneOf(route.scene);
-	const bridges = layout
-		? bridgesOf(
-				rows,
-				makeGround(roads, { salt, scene: layout }).natural,
-				makeGround(roads, { salt }).natural,
-			)
-		: [];
-	if (bridges.length > 0) {
-		const open = new Uint8Array(rows.length);
-		for (const [from, to] of bridges)
-			open.fill(1, Math.round(from / ROW_M), Math.round(to / ROW_M) + 1);
-		roads[0].open = open;
-	}
+	// The map's other roads, where they leave this one (side-roads.ts): the ground is shaped by them as by the road ridden.
+	const beside = sideRoads(route, othersOf(route.scene));
+	const sideRows = beside.map((side) => drawnRows(side));
+	sideRows.forEach((r, j) =>
+		roads.push({
+			key: `side:${j}`,
+			x: r.map((p) => p.x),
+			z: r.map((p) => p.z),
+			h: r.map((p) => p.ele),
+		}),
+	);
+	const cut = layout && makeGround(roads, { salt, scene: layout }).natural;
+	const uncut = layout && makeGround(roads, { salt }).natural;
+	const spansOf = (r: typeof rows, line: Line) => {
+		const spans = cut && uncut ? bridgesOf(r, cut, uncut) : [];
+		if (spans.length > 0) {
+			const open = new Uint8Array(r.length);
+			for (const [from, to] of spans)
+				open.fill(1, Math.round(from / ROW_M), Math.round(to / ROW_M) + 1);
+			line.open = open;
+		}
+		return spans;
+	};
+	const bridges = spansOf(rows, roads[0]);
+	const sides = beside.map((side, j) => ({
+		route: side,
+		bridges: spansOf(sideRows[j], roads[j + 1]),
+	}));
 	const ground = makeGround(roads, { salt, scene: layout });
 	// The scene as the ground laid it: its streams run where that ground falls.
 	const scene = ground.scene;
@@ -241,10 +259,12 @@ export function generate(
 		waters: scene?.waters ?? [],
 		waterAt: (x, z) => scene?.waterAt(x, z) ?? null,
 		bridges,
+		sides,
 		galleries: (scene?.galleries ?? []).flatMap(([a, b]) => {
 			const from = nearest(a[0], a[1]);
 			const to = nearest(b[0], b[1]);
-			if (!from || !to) return [];
+			// A gallery on another of the map's roads is not this road's.
+			if (!from || !to || from.d > 30 || to.d > 30) return [];
 			const span = [from.i * route.step, to.i * route.step].sort(
 				(p, q) => p - q,
 			);

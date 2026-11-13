@@ -16,7 +16,12 @@ import type { Road } from '#lib/road/road.ts';
 import { toRoute, type Route } from '#lib/road/route.ts';
 import { DESIGNS } from './designs';
 import { smoothstep } from './rand';
-import { designPoint, syntheticPoints, type Shape } from './synthetic';
+import {
+	designPoint,
+	syntheticPoints,
+	type Corner,
+	type Shape,
+} from './synthetic';
 
 /** A sheet of water: its level, metres above sea, and its outline in the world's frame. */
 export type Water = {
@@ -37,8 +42,10 @@ export type Climate = { snowline?: number; treeline?: number };
 
 /** A designed road's own names, in the order the road meets them: no two of WattRoom's roads share a pass or a village. Past the last, the generator's. */
 export type PlaceNames = {
-	passes?: readonly string[];
-	villages?: readonly string[];
+	/** Each pass where it stands, in the world's frame: a summit within 500 m of one takes its name. */
+	passes: { name: string; x: number; z: number }[];
+	/** Villages, by the 5 km tile each stands in: sixteen names, so no two tiles within 20 km share one. */
+	villages: readonly string[];
 };
 
 export type Scene = {
@@ -122,7 +129,14 @@ export type Designed = {
 	shape: Shape;
 	features: readonly Feature[];
 	climate?: Climate;
-	names?: PlaceNames;
+	names?: {
+		passes: readonly { name: string; at: Spot }[];
+		villages: readonly string[];
+	};
+	/** The map's other loops, by id: their roads are drawn where they leave this one. */
+	others?: readonly string[];
+	/** Roads no loop rides: a lane off to a farm, a road across the plateau, each from its first corner to its last. Drawn as the other loops' roads are. */
+	spurs?: readonly (readonly Corner[])[];
 	/** Galleries: each from one spot on the road to another. */
 	galleries?: readonly (readonly [Spot, Spot])[];
 };
@@ -475,10 +489,20 @@ function build(d: Designed): Built {
 	if (b) return b;
 	const points = syntheticPoints(d.shape);
 	const frame = frameOf(points);
-	// The design's map to the world's frame, exactly as the road's own points got there.
-	const world = ([x, y]: Spot): [number, number] => {
+	// The world's frame is the map's own, east and south of its origin, whichever loop is ridden: every loop on a map draws the same land in the same place, and each other's roads where they lie. The road's own points come centred on themselves (toRoute), so they are moved back onto the map.
+	const centred = (x: number, y: number): [number, number] => {
 		const p = designPoint(x, y);
 		return [(p.lon - frame.lon0) * frame.kx, -(p.lat - frame.lat0) * frame.kz];
+	};
+	const [ox, oz] = centred(0, 0);
+	const kx = (centred(1000, 0)[0] - ox) / 1000;
+	const kz = (centred(0, 1000)[1] - oz) / 1000;
+	const world = ([x, y]: Spot): [number, number] => [x, -y];
+	const drawn = toRoute(points);
+	const line: Route = {
+		...drawn,
+		x: drawn.x.map((x) => (x - ox) / kx),
+		z: drawn.z.map((z) => -(z - oz) / kz),
 	};
 	// Mountains first, water last: a peak's foot never stands in a lake, and a gorge is cut through whatever rose there.
 	const solid = d.features.filter(
@@ -508,14 +532,21 @@ function build(d: Designed): Built {
 		return null;
 	};
 	const climate = d.climate ?? {};
+	const names: PlaceNames = {
+		passes: (d.names?.passes ?? []).map((p) => {
+			const [x, z] = world(p.at);
+			return { name: p.name, x, z };
+		}),
+		villages: d.names?.villages ?? [],
+	};
 	const galleries = (d.galleries ?? []).map(
 		([a, b]): Scene['galleries'][number] => [world(a), world(b)],
 	);
-	const dry = sceneFrom(parts, covers, climate, d.names ?? {}, galleries);
+	const dry = sceneFrom(parts, covers, climate, names, galleries);
 	const streams = d.features.filter((f) => f.kind === 'stream');
 	const laid = new Map<string, Scene>();
 	b = {
-		line: toRoute(points),
+		line,
 		scene: {
 			...dry,
 			laid(key, ground) {
@@ -530,7 +561,7 @@ function build(d: Designed): Built {
 					[...parts, ...run],
 					covers,
 					climate,
-					d.names ?? {},
+					names,
 					galleries,
 				);
 				scene = {
@@ -568,6 +599,66 @@ export function designedFor(road: Road): Designed | undefined {
 
 /** A design's road on its own line: the samples the world draws it on. */
 export const designedLine = (d: Designed): Route => build(d).line;
+
+/** Metres between a spur's samples, as between a road's. */
+const SPUR_STEP_M = 10;
+
+/** A spur as a road's line: its corners rounded off, walked every 10 m, in the map's frame. Never ridden, so it has no road to send. */
+function spur(corners: readonly Corner[], like: Route): Route {
+	let line = corners.map((c) => [c.x, -c.y, c.ele]);
+	for (let pass = 0; pass < 3; pass++) {
+		const next = [line[0]];
+		for (let i = 0; i + 1 < line.length; i++) {
+			const [a, b] = [line[i], line[i + 1]];
+			next.push(
+				a.map((v, k) => v * 0.75 + b[k] * 0.25),
+				a.map((v, k) => v * 0.25 + b[k] * 0.75),
+			);
+		}
+		next.push(line[line.length - 1]);
+		line = next;
+	}
+	const out: number[][] = [line[0]];
+	let carry = 0;
+	for (let i = 1; i < line.length; i++) {
+		const [a, b] = [line[i - 1], line[i]];
+		const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+		let at = SPUR_STEP_M - carry;
+		for (; at <= len; at += SPUR_STEP_M)
+			out.push(a.map((v, k) => v + ((b[k] - v) * at) / len));
+		carry = len - (at - SPUR_STEP_M);
+	}
+	const ele = Float64Array.from(out, (p) => p[2]);
+	return {
+		...like,
+		name: 'spur',
+		step: SPUR_STEP_M,
+		length: (out.length - 1) * SPUR_STEP_M,
+		x: Float64Array.from(out, (p) => p[0]),
+		z: Float64Array.from(out, (p) => p[1]),
+		ele,
+		grade: ele.map((h, i) =>
+			i === 0 ? 0 : ((h - ele[i - 1]) / SPUR_STEP_M) * 100,
+		),
+		gain: 0,
+		loop: false,
+		climbs: [],
+	};
+}
+
+/** The map's other roads as a design's road meets them, each on its own line: its other loops, and its spurs. */
+export function othersOf(id: string | undefined): Route[] {
+	const d = DESIGNS.find((k) => k.id === id);
+	if (!d) return [];
+	const own = build(d).line;
+	return [
+		...(d.others ?? []).flatMap((o) => {
+			const other = DESIGNS.find((k) => k.id === o);
+			return other ? [build(other).line] : [];
+		}),
+		...(d.spurs ?? []).map((corners) => spur(corners, own)),
+	];
+}
 
 /** A design's scene, by its id: what the ground and its worker shape the land with, once the ground has laid its streams. */
 export function sceneOf(id: string | undefined): Layout | undefined {

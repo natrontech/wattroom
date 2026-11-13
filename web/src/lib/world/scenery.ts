@@ -207,7 +207,14 @@ export function roadworks(
 	groundAt: (x: number, z: number) => number,
 	skip: readonly (readonly [number, number])[],
 	galleries: readonly (readonly [number, number])[],
-	colors: { rail: string; post: string; stone: string },
+	colors: {
+		rail: string;
+		post: string;
+		stone: string;
+		/** A gallery's ribs and pillars, lighter than its wall, and the band painted along the wall. */
+		light: string;
+		band: string;
+	},
 ): THREE.BufferGeometry {
 	const pos: number[] = [];
 	const col: number[] = [];
@@ -232,6 +239,8 @@ export function roadworks(
 	const rail = new THREE.Color(colors.rail);
 	const post = new THREE.Color(colors.post);
 	const stone = new THREE.Color(colors.stone);
+	const light = new THREE.Color(colors.light);
+	const band = new THREE.Color(colors.band);
 	const frame = (d: number) => {
 		const p = at(route, d);
 		const lx = Math.cos(p.heading);
@@ -305,6 +314,8 @@ export function roadworks(
 		const top = GALLERY.clear + GALLERY.thick;
 		let roof: THREE.Vector3[] | null = null;
 		let wall: THREE.Vector3[] | null = null;
+		let last: { stripe: THREE.Vector3[]; kerbs: THREE.Vector3[][] } | null =
+			null;
 		for (let k = 0; k <= n; k++) {
 			const d = from + ((to - from) * k) / n;
 			const f = frame(d);
@@ -315,9 +326,36 @@ export function roadworks(
 				f.pt(-edge, GALLERY.clear),
 			];
 			const rear = ring(f, back * edge, -1, 0.6, GALLERY.clear + 1);
-			if (roof && wall) {
+			// The wall's face, a hand inside it: a painted band at hip height. And a kerb over each shoulder, wall to edge line: no verge under a roof, and no snow.
+			const face = back * (edge - 0.32);
+			const stripe = [f.pt(face, 0.9), f.pt(face, 1.35)];
+			const kerbs = [1, -1].map((side) => [
+				f.pt(side * (ROAD_W / 2 + 0.1), 0.07),
+				f.pt(side * edge, 0.07),
+			]);
+			if (roof && wall && last) {
 				skin(roof, slab, stone);
 				skin(wall, rear, stone);
+				quad(last.stripe[0], last.stripe[1], stripe[1], stripe[0], band);
+				kerbs.forEach((k, i) =>
+					quad(last!.kerbs[i][0], last!.kerbs[i][1], k[1], k[0], light),
+				);
+			}
+			last = { stripe, kerbs };
+			// A rib under the roof at every pillar, and a deeper one at each mouth.
+			const mouth = k === 0 || k === n;
+			if (mouth || k % Math.round(GALLERY.pillars / RAIL_STEP_M) === 0) {
+				const deep = mouth ? 0.7 : 0.4;
+				const rib = (g: Frame) => [
+					g.pt(edge + 0.05, GALLERY.clear - deep),
+					g.pt(edge + 0.05, GALLERY.clear + 0.02),
+					g.pt(-edge - 0.05, GALLERY.clear + 0.02),
+					g.pt(-edge - 0.05, GALLERY.clear - deep),
+				];
+				const [a, b] = [rib(frame(d - 0.3)), rib(frame(d + 0.3))];
+				skin(a, b, light);
+				quad(a[0], a[1], a[2], a[3], light);
+				quad(b[3], b[2], b[1], b[0], light);
 			}
 			if (k === 0 || k === n) quad(slab[0], slab[1], slab[2], slab[3], stone);
 			roof = slab;
@@ -327,7 +365,7 @@ export function roadworks(
 				skin(
 					ring(f, -back * edge, -1, 0.9, GALLERY.clear + 1),
 					ring(frame(d + 0.9), -back * edge, -1, 0.9, GALLERY.clear + 1),
-					stone,
+					light,
 				);
 		}
 	}

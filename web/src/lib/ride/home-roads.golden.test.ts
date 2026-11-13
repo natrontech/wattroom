@@ -32,7 +32,9 @@ describe('WattRoom’s roads in a session’s pickers', () => {
 	it('list under the ids the server rides them by, and read back by them', async () => {
 		const { wattroomRoads, homeRoad } = await import('./home-roads');
 		const rows = await wattroomRoads();
-		expect(rows.map((r) => r.id)).toEqual(HOME_ROADS.map((r) => r.routeId));
+		expect(rows.map((r) => r.id)).toEqual(
+			HOME_ROADS.filter((r) => r.listed !== false).map((r) => r.routeId),
+		);
 		for (const row of rows) expect(homeRoad(row.id)?.routeId).toBe(row.id);
 	});
 });

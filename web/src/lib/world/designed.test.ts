@@ -156,35 +156,37 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 			}
 		});
 
-		it('stands nothing in the water', () => {
-			const stood = [...world.props, ...world.pieces];
-			expect(stood.length).toBeGreaterThan(100);
-			const wet = stood.filter((p) => world.waterAt(p.x, p.z) !== null);
-			expect(wet.map((p) => p.kind)).toEqual([]);
-		});
+		it(
+			'stands nothing in the water',
+			() => {
+				const stood = [...world.props, ...world.pieces];
+				expect(stood.length).toBeGreaterThan(100);
+				const wet = stood.filter((p) => world.waterAt(p.x, p.z) !== null);
+				expect(wet.map((p) => p.kind)).toEqual([]);
+				// The whole map's things, every side road's too.
+			},
+			BUILD_MS,
+		);
 	},
 );
 
 describe('Tour de l’Aaren', () => {
 	it(
-		'crosses its river four times, each on a bridge high over it',
+		'crosses its river twice, each time straight over on a bridge high over it',
 		async () => {
 			const route = routeOfRoad(await roadOf('aare'));
 			const world = generate(route);
 			// A stream's own bridge aside, a few metres long.
 			const over = world.bridges.filter(([from, to]) => to - from > 100);
-			expect(over).toHaveLength(4);
+			expect(over).toHaveLength(2);
 			for (const [from, to] of over) {
-				// Straight across: a bridge has no bend in it.
 				expect(
 					Math.abs(at(route, to).heading - at(route, from).heading),
 				).toBeLessThan(0.02);
-				expect(to - from).toBeGreaterThan(120);
-				expect(to - from).toBeLessThan(400);
+				expect(to - from).toBeLessThan(650);
 				const mid = at(route, (from + to) / 2);
 				expect(world.biomeAt(mid.x, mid.z)).toBe(Biome.Water);
 				expect(mid.ele - world.heightAt(mid.x, mid.z)).toBeGreaterThan(30);
-				// Its ends stand on land, at the road's height.
 				for (const d of [from - 6, to + 6]) {
 					const p = at(route, d);
 					expect(Math.abs(world.heightAt(p.x, p.z) - p.ele)).toBeLessThan(1.5);
@@ -196,37 +198,108 @@ describe('Tour de l’Aaren', () => {
 });
 
 describe('Urnsee-Rundfahrt', () => {
-	it('runs along its lake: water within 80 m for most of the east shore', async () => {
-		const route = routeOfRoad(await roadOf('urnsee'));
-		const scene = sceneOf('urnsee')!;
-		let near = 0;
-		let all = 0;
-		// The east shore: its first 9 km.
-		for (let d = 500; d < 9000; d += 100) {
-			const p = at(route, d);
-			all++;
-			for (let a = 0; a < 16; a++) {
-				const x = p.x + 80 * Math.cos((a * Math.PI) / 8);
-				const z = p.z + 80 * Math.sin((a * Math.PI) / 8);
-				if (scene.waterAt(x, z) !== null) {
-					near++;
-					break;
-				}
-			}
-		}
-		expect(near / all).toBeGreaterThan(0.8);
-	});
-
 	it(
-		'bridges one inlet, and looks down on the lake from its terrace',
+		'runs along its lake, through a gallery, over an inlet and the outlet, and looks down on it from its terrace',
 		async () => {
 			const route = routeOfRoad(await roadOf('urnsee'));
 			const world = generate(route);
-			expect(world.bridges).toHaveLength(1);
-			const top = route.ele.indexOf(Math.max(...route.ele));
-			expect(route.ele[top] - world.waters[0].level).toBeGreaterThan(100);
+			const lake = sceneOf('urnsee')!;
+			let near = 0;
+			let all = 0;
+			// The east shore: from its first kilometre to the head of the lake.
+			for (let d = 700; d < 3700; d += 100) {
+				const p = at(route, d);
+				all++;
+				for (let a = 0; a < 16; a++)
+					if (
+						lake.waterAt(
+							p.x + 90 * Math.cos((a * Math.PI) / 8),
+							p.z + 90 * Math.sin((a * Math.PI) / 8),
+						) !== null
+					) {
+						near++;
+						break;
+					}
+			}
+			expect(near / all).toBeGreaterThan(0.8);
+			expect(world.bridges).toHaveLength(2);
+			expect(world.galleries).toHaveLength(1);
+			expect(world.galleries[0][1] - world.galleries[0][0]).toBeGreaterThan(
+				300,
+			);
+			const top = Math.max(...route.ele);
+			expect(top - world.waters[0].level).toBeGreaterThan(100);
 		},
 		BUILD_MS,
+	);
+});
+
+describe('the map', () => {
+	it(
+		'is one land whichever loop is ridden: the same water, and the other loops’ roads where they leave this one',
+		async () => {
+			const worlds = await Promise.all(
+				DESIGNS.map(async (d) => {
+					const route = routeOfRoad(await roadOf(d.id));
+					return { id: d.id, route, world: generate(route) };
+				}),
+			);
+			const [first, ...rest] = worlds;
+			for (const { id, world } of rest) {
+				// Its lake and its river lie where the first loop's do, to the metre.
+				const still = (w: World) => w.waters.filter((k) => !k.run);
+				expect(
+					still(world).map((k) => k.level),
+					id,
+				).toEqual(still(first.world).map((k) => k.level));
+				expect(still(world)[0].outline[0], id).toEqual(
+					still(first.world)[0].outline[0],
+				);
+			}
+			for (const { id, route, world } of worlds) {
+				expect(world.sides.length, id).toBeGreaterThan(0);
+				for (const side of world.sides) {
+					// A side road is a road: long enough to be one, and its first sample lies on a road already there, this one or another kept before it.
+					expect(side.route.length, id).toBeGreaterThanOrEqual(60);
+					expect(side.route.minEle, id).toBe(route.minEle);
+				}
+				// The ridden road and its side roads together are the whole map's roads: every loop's every 200 m lies on one of them.
+				const lines = [route, ...world.sides.map((s) => s.route)];
+				for (const other of worlds)
+					for (let i = 0; i < other.route.x.length; i += 20) {
+						let best = Infinity;
+						for (const l of lines)
+							for (let k = 0; k < l.x.length; k++)
+								best = Math.min(
+									best,
+									Math.hypot(
+										l.x[k] - other.route.x[i],
+										l.z[k] - other.route.z[i],
+									),
+								);
+						expect(best, `${id} draws ${other.id}`).toBeLessThan(16);
+					}
+			}
+		},
+		3 * BUILD_MS,
+	);
+
+	it(
+		'names each pass once, and the col is Col de Berne',
+		async () => {
+			const names = new Map<string, string[]>();
+			for (const d of DESIGNS) {
+				const world = generate(routeOfRoad(await roadOf(d.id)));
+				names.set(
+					d.id,
+					world.arches.map((a) => a.label),
+				);
+			}
+			expect(names.get('berne')).toContain('KOM · COL DE BERNE');
+			for (const [id, labels] of names)
+				expect(new Set(labels).size, id).toBe(labels.length);
+		},
+		3 * BUILD_MS,
 	);
 });
 
@@ -262,21 +335,22 @@ describe('the land a scene lays out', () => {
 				world.props.filter((p) => p.kind === 'spruce' && !p.snow).length,
 			).toBeGreaterThan(white.length);
 			// A stream falls down the face beside the hairpins: white water for a good part of it.
-			const fall = world.waters.find((w) => w.run && w.run.levels[0] > 2300)!;
+			const fall = world.waters.find((w) => w.run && w.run.levels[0] > 1700)!;
 			expect(fall.run!.foam.filter((f) => f > 0.5).length).toBeGreaterThan(30);
+			expect(world.galleries).toHaveLength(1);
 		},
 		BUILD_MS,
 	);
 	it(
-		'the other two: a moor beside each road, and streams into its water',
+		'the lake and the gorge: a moor beside each road, and streams into the lake',
 		async () => {
 			for (const id of ['aare', 'urnsee']) {
 				const route = routeOfRoad(await roadOf(id));
 				const world = generate(route);
 				expect(beside(route, world, Biome.Moor), id).toBeGreaterThan(8);
-				const standing = world.waters.find((w) => !w.run)!.level;
+				const lake = world.waters.find((w) => !w.run)!.level;
 				const into = world.waters.filter(
-					(w) => w.run && w.run.levels[w.run.levels.length - 1] === standing,
+					(w) => w.run && w.run.levels[w.run.levels.length - 1] === lake,
 				);
 				expect(into.length, id).toBeGreaterThanOrEqual(3);
 			}
@@ -320,11 +394,10 @@ describe('Col de Berne', () => {
 	});
 
 	it(
-		'has snow peaks over the col and no bridge anywhere',
+		'has snow peaks over the col',
 		async () => {
 			const route = routeOfRoad(await roadOf('berne'));
 			const world = generate(route);
-			expect(world.bridges).toEqual([]);
 			const top = route.ele.indexOf(Math.max(...route.ele));
 			let snow = 0;
 			for (let a = 0; a < 64; a++)

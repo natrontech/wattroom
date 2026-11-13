@@ -19,7 +19,15 @@ import { Biome } from './biome';
 import { sceneOf } from './designed';
 import { bridges, roadworks, waterSheets } from './scenery';
 import type { Piece } from './setpieces';
-import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
+import {
+	plinth,
+	road,
+	ROAD_LIFT,
+	roadMaterial,
+	ROAD_W,
+	terrain,
+	yOf,
+} from './geometry';
 import { lightsMaterial, lightsUniforms, OFF } from './lights';
 import { flat, type Sight } from './materials';
 import { LAMP_ARM } from './props';
@@ -86,6 +94,8 @@ export type Stage = {
 const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
 /** The ground is culled by cells this wide, not piece by piece (piece-pool.ts, #4566). */
 const GROUND_CELL_M = 960;
+/** A side road's ribbon lies this far under the ridden road's. */
+const SIDE_SINK = 0.05;
 const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
@@ -212,7 +222,15 @@ export function buildStage(
 		ROAD_ROOM,
 	);
 	group.add(tag('road', ribbon.mesh));
-	const pieces = roadPieces(route);
+	// The road ridden, and the map's other roads where they leave it (side-roads.ts): a hair lower, so where one meets the ridden road it lies under its asphalt.
+	const ribbons = [
+		{ of: route, lift: undefined as number | undefined },
+		// Each a hair under the last, so two side roads meeting at a junction never share a surface.
+		...world.sides.map((s, k) => ({
+			of: s.route,
+			lift: ROAD_LIFT - SIDE_SINK - 0.008 * (k % 6),
+		})),
+	].map((r, j) => ({ ...r, j, pieces: roadPieces(r.of) }));
 	let here: string | null = null;
 	function roads(eye: THREE.Vector3) {
 		const at = chunkId([
@@ -221,16 +239,22 @@ export function buildStage(
 		]);
 		if (at === here) return;
 		here = at;
-		pieces.forEach((p, k) => {
-			const key = String(k);
-			const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
-			if (d <= REACH.near && !ribbon.has(key))
-				ribbon.add(
-					key,
-					road(route, { width: ROAD_W, shoulder: SHOULDER, rows: p.rows }),
-				);
-			else if (d > REACH.near * LEAVE) ribbon.drop(key);
-		});
+		for (const { of, lift, j, pieces } of ribbons)
+			pieces.forEach((p, k) => {
+				const key = j === 0 ? String(k) : `${j}:${k}`;
+				const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
+				if (d <= REACH.near && !ribbon.has(key))
+					ribbon.add(
+						key,
+						road(of, {
+							width: ROAD_W,
+							shoulder: SHOULDER,
+							rows: p.rows,
+							lift,
+						}),
+					);
+				else if (d > REACH.near * LEAVE) ribbon.drop(key);
+			});
 	}
 
 	const overview = new THREE.Mesh(
@@ -246,7 +270,7 @@ export function buildStage(
 
 	const c = style.props;
 	// A designed road's scene (designed.ts): its water, and the bridges that carry the road over it.
-	if (world.waters.length > 0 || world.bridges.length > 0) {
+	if (world.scene !== undefined) {
 		const both = flat(sight);
 		both.side = THREE.DoubleSide;
 		if (world.waters.length > 0)
@@ -264,19 +288,20 @@ export function buildStage(
 					),
 				),
 			);
-		if (world.bridges.length > 0)
-			group.add(
-				tag(
-					'road',
-					new THREE.Mesh(
-						bridges(route, world.bridges, world.heightAt, {
-							deck: c.stone,
-							pier: c.stone,
-						}),
-						both,
+		for (const b of [{ route, bridges: world.bridges }, ...world.sides])
+			if (b.bridges.length > 0)
+				group.add(
+					tag(
+						'road',
+						new THREE.Mesh(
+							bridges(b.route, b.bridges, world.groundAt, {
+								deck: c.stone,
+								pier: c.stone,
+							}),
+							both,
+						),
 					),
-				),
-			);
+				);
 	}
 	// And what is built along it: rails where the land falls away, and its galleries.
 	if (world.scene !== undefined) {
@@ -287,9 +312,11 @@ export function buildStage(
 				'road',
 				new THREE.Mesh(
 					roadworks(route, world.groundAt, world.bridges, world.galleries, {
-						rail: c.snowpole,
-						post: c.stone,
+						rail: c.pole,
+						post: c.pole,
 						stone: c.stone,
+						light: c.wall,
+						band: c.hiking,
 					}),
 					both,
 				),

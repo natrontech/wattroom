@@ -34,6 +34,7 @@ var library = func() map[string]libraryRoad {
 		"7a77b0ad-0003-4000-8000-000000004248": "Col de Berne",
 		"7a77b0ad-0004-4000-8000-000000004248": "Tour de l’Aaren",
 		"7a77b0ad-0005-4000-8000-000000004248": "Urnsee-Rundfahrt",
+		"7a77b0ad-0006-4000-8000-000000004248": "Flèche du Lac",
 	} {
 		packed, err := libraryFiles.ReadFile("library/" + id + ".road")
 		if err != nil {

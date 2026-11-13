@@ -127,6 +127,7 @@ export function villageSites(place: Place): Village[] {
 				Biome.Meadow,
 		);
 	};
+	const own = ground.scene?.names.villages;
 	const out: Village[] = [];
 	for (const [tile, slots] of [...flats].sort(([a], [b]) =>
 		a < b ? -1 : a > b ? 1 : 0,
@@ -138,19 +139,15 @@ export function villageSites(place: Place): Village[] {
 		out.push({
 			x: p.x,
 			z: p.z,
-			name: VILLAGES[name(ti, tj) % VILLAGES.length],
+			// A designed map's villages take its own names, by their tile (designed.ts): sixteen, so no two within 20 km share one.
+			name: own?.length
+				? own[(((ti & 3) << 2) | (tj & 3)) % own.length]
+				: VILLAGES[name(ti, tj) % VILLAGES.length],
 			line: site.k,
 			s: site.slot * SITE_M,
 		});
 	}
 	// A designed road's villages take its own names, in the order the road meets them (designed.ts).
-	const own = ground.scene?.names.villages;
-	if (own)
-		[...out]
-			.sort((a, b) => a.line - b.line || a.s - b.s)
-			.forEach((v, i) => {
-				if (i < own.length) v.name = own[i];
-			});
 	return out;
 }
 

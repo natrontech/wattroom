@@ -20,7 +20,7 @@
 	import { workoutSections } from '#lib/nav/pages.ts';
 	import { routePrivacyLine } from '#lib/privacy-copy.ts';
 	import {
-		HOME_ROADS,
+		LISTED_ROADS,
 		homeRoad,
 		homeRow,
 		homeShape,
@@ -57,7 +57,7 @@
 	void load();
 
 	let homes = $state<StoredRoute[] | null>(null);
-	void Promise.all(HOME_ROADS.map(homeRow)).then((r) => (homes = r));
+	void Promise.all(LISTED_ROADS.map(homeRow)).then((r) => (homes = r));
 
 	// Every road, read once, for its time at your pace and its drawing. What
 	// was asked for is not state, so a road in flight is not asked for again.

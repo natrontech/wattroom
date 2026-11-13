@@ -545,14 +545,11 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		// A pass: where this way's climb tops out and the other way's does too.
 		if (dir < 0) continue;
 		const back = climbsOf(turnedRound(road)).map((cl) => road.length - cl.topM);
-		// Each pass has a name of its own: a designed road's (designed.ts), its highest first, or its tile's, and where two passes share a tile the later one's from a tile further on.
+		// Each pass has a name of its own: a designed map's where one stands within 500 m of the top (designed.ts), or its tile's, and where two passes share a tile the later one's from a tile further on.
 		const taken: string[] = [];
 		const own = c.ground.scene?.names.passes ?? [];
 		const tops = climbs.filter((cl) =>
 			back.some((t) => Math.abs(t - cl.topM) < 200),
-		);
-		const byHeight = [...tops].sort(
-			(a, b) => w.at(b.topM).h - w.at(a.topM).h || a.topM - b.topM,
 		);
 		for (const cl of tops) {
 			const s = cl.topM;
@@ -560,8 +557,8 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			let here = tileNames(p.x, p.z);
 			for (let far = 1; far < 8 && taken.includes(here.pass); far++)
 				here = tileNames(p.x + far * 7 * 5000, p.z);
-			const rank = byHeight.indexOf(cl);
-			if (rank < own.length) here = { ...here, pass: own[rank] };
+			const named = own.find((o) => Math.hypot(o.x - p.x, o.z - p.z) < 500);
+			if (named) here = { ...here, pass: named.name };
 			taken.push(here.pass);
 			// The arch stands across a straight, where its posts clear the road: the nearest within 120 m of the top.
 			const bend = (m: number) => {

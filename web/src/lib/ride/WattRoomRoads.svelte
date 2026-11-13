@@ -9,7 +9,7 @@
 	import RouteRow from '#lib/components/RouteRow.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import {
-		HOME_ROADS,
+		LISTED_ROADS,
 		homeRoadsMatching,
 		homeRow,
 		type HomeRoad,
@@ -33,7 +33,7 @@
 	} = $props();
 
 	let rows = $state<StoredRoute[] | null>(null);
-	void Promise.all(HOME_ROADS.map(homeRow)).then((r) => (rows = r));
+	void Promise.all(LISTED_ROADS.map(homeRow)).then((r) => (rows = r));
 
 	const shown = $derived(homeRoadsMatching(query));
 </script>

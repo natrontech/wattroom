@@ -22,6 +22,8 @@ export type HomeRoad = {
 	/** What is along it, in a line. */
 	story: string;
 	shape: () => Promise<Shape>;
+	/** False: still ridden by its id, offered by no list. */
+	listed?: boolean;
 };
 
 /**
@@ -48,6 +50,8 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		id: 'intro',
 		routeId: '7a77b0ad-0001-4000-8000-000000004248',
 		name: 'Pass loop',
+		// Col de Berne took its place: a session that rides it still finds it, no list offers it.
+		listed: false,
 		story:
 			'A valley, five hairpins with their mirrors, and a pass with its hut, flags and summit cross.',
 		shape: async () => (await import('#lib/world/synthetic.ts')).PASS_LOOP,
@@ -60,30 +64,38 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 			'Rolling farmland and villages, cows by the road, and two short steep ramps.',
 		shape: async () => ({ corners: VALLEY_LOOP, seed: 4248 }),
 	},
-	// The designed roads (world/designs.ts): each drawn with the land it runs through.
+	// The map (world/designs.ts): one land, and four loops through it from its village, by the time they take.
 	{
-		id: 'berne',
-		routeId: '7a77b0ad-0003-4000-8000-000000004248',
-		name: 'Col de Berne',
+		id: 'urnsee',
+		routeId: '7a77b0ad-0005-4000-8000-000000004248',
+		name: 'Urnsee-Rundfahrt',
 		story:
-			'Twenty-one hairpins up a south face to a notch between two snow peaks, and the long way down the north side.',
-		shape: () => designed('berne'),
+			'Half an hour round a mountain lake: under the cliffs of the east shore through a gallery, a bridge over an inlet, and a terrace high over the west.',
+		shape: () => designed('urnsee'),
 	},
 	{
 		id: 'aare',
 		routeId: '7a77b0ad-0004-4000-8000-000000004248',
 		name: 'Tour de l’Aaren',
 		story:
-			'A river in a gorge winds round a peninsula: four high bridges over it, and a steep ramp up a spur.',
+			'Forty minutes round the river’s gorge: over a spur, two high bridges, and the moor on the plateau.',
 		shape: () => designed('aare'),
 	},
 	{
-		id: 'urnsee',
-		routeId: '7a77b0ad-0005-4000-8000-000000004248',
-		name: 'Urnsee-Rundfahrt',
+		id: 'lac',
+		routeId: '7a77b0ad-0006-4000-8000-000000004248',
+		name: 'Flèche du Lac',
 		story:
-			'A long lake between mountains: a ledge under the cliffs of the east shore, a bridge over an inlet, and a terrace high over the west.',
-		shape: () => designed('urnsee'),
+			'An hour: the lake first, then the gorge, through the village between them.',
+		shape: () => designed('lac'),
+	},
+	{
+		id: 'berne',
+		routeId: '7a77b0ad-0003-4000-8000-000000004248',
+		name: 'Col de Berne',
+		story:
+			'Ninety minutes: twenty-one hairpins up into the snow to a notch between two peaks, down the north side past a tarn, and home along the lake.',
+		shape: () => designed('berne'),
 	},
 ];
 
@@ -94,14 +106,19 @@ async function designed(id: string): Promise<Shape> {
 }
 
 /** One of WattRoom's roads, by its own id or the id a session rides it under. */
+/** The roads a list offers. */
+export const LISTED_ROADS: readonly HomeRoad[] = HOME_ROADS.filter(
+	(r) => r.listed !== false,
+);
+
 export const homeRoad = (id: string) =>
 	HOME_ROADS.find((r) => r.id === id || r.routeId === id);
 
 /** The roads a search keeps: by name or by what is along it. */
 export function homeRoadsMatching(query: string): readonly HomeRoad[] {
 	const q = query.trim().toLowerCase();
-	if (!q) return HOME_ROADS;
-	return HOME_ROADS.filter(
+	if (!q) return LISTED_ROADS;
+	return LISTED_ROADS.filter(
 		(r) =>
 			r.name.toLowerCase().includes(q) || r.story.toLowerCase().includes(q),
 	);
@@ -176,6 +193,6 @@ export async function homeShape(
  * under the ids the server rides them by, ahead of the rider's own.
  */
 export async function wattroomRoads(): Promise<StoredRoute[]> {
-	const rows = await Promise.all(HOME_ROADS.map(homeRow));
-	return rows.map((row, i) => ({ ...row, id: HOME_ROADS[i].routeId }));
+	const rows = await Promise.all(LISTED_ROADS.map(homeRow));
+	return rows.map((row, i) => ({ ...row, id: LISTED_ROADS[i].routeId }));
 }
