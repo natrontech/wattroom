@@ -265,7 +265,10 @@ describe('the map', () => {
 				expect(world.sides.length, id).toBeGreaterThan(0);
 				for (const side of world.sides) {
 					// A side road is a road: long enough to be one, and its first sample lies on a road already there, this one or another kept before it.
-					expect(side.route.length, id).toBeGreaterThanOrEqual(40);
+					// (A roundabout's arm is 30 m by design.)
+					expect(side.route.length, id).toBeGreaterThanOrEqual(
+						side.square ? 30 : 40,
+					);
 					// Where it meets a road it ends at that road's edge, at that road's height, never inside it.
 					side.mouths.forEach((m, end) => {
 						if (!m) return;

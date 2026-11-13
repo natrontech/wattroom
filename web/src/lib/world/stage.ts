@@ -16,8 +16,8 @@ import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
-import { sceneOf } from './designed';
-import { bridges, roadworks, stops, waterSheets } from './scenery';
+import { roundaboutsOf, sceneOf } from './designed';
+import { bridges, roadworks, roundabouts, stops, waterSheets } from './scenery';
 import type { Piece } from './setpieces';
 import {
 	plinth,
@@ -233,7 +233,9 @@ export function buildStage(
 		...world.sides.map((s) => ({
 			of: s.route,
 			lift: ROAD_LIFT - SIDE_SINK,
-			caps: [!s.mouths[0], !s.mouths[1]] as const,
+			caps: s.square
+				? ([false, false] as const)
+				: ([!s.mouths[0], !s.mouths[1]] as const),
 		})),
 	].map((r, j) => ({ ...r, j, pieces: roadPieces(r.of) }));
 	let here: string | null = null;
@@ -329,6 +331,15 @@ export function buildStage(
 			),
 		);
 	}
+	// Its roundabouts: a statue on each island, and the signs before each arm.
+	const rounds = roundaboutsOf(route.scene);
+	if (rounds.length > 0)
+		group.add(
+			tag(
+				'dressing',
+				new THREE.Mesh(roundabouts(route, rounds, c), flat(sight)),
+			),
+		);
 	// Where a side road comes in square (side-roads.ts): its stop line, STOP and its sign, laid on its own surface.
 	if (world.sides.some((s) => s.mouths.some((m) => m))) {
 		const paint = flat(sight);

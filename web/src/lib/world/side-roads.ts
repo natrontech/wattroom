@@ -57,6 +57,8 @@ export type SideRoad = {
 	route: Route;
 	/** Its first end's mouth and its last's; null where it ends in the open, a lane's far end. */
 	mouths: [Mouth | null, Mouth | null];
+	/** Its ends are cut square, not rounded: a roundabout's arm, which a road runs on from. */
+	square?: boolean;
 };
 
 /** Metres from (x, z) to a road's line within `reach` metres either side of its metre `at`: a junction's own stretch of it. */
@@ -162,6 +164,7 @@ export function sideRoads(
 				scene: route.scene,
 			},
 			mouths: [null, null],
+			square: true,
 		});
 		keepAll(w, out.length);
 	}

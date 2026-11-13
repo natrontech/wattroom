@@ -38,7 +38,14 @@ import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
 import { drawnRows, FORMATION } from './terrain/road-profile';
-import { othersOf, ringsOf, sceneOf, type Water } from './designed';
+import {
+	ARM_M,
+	armsOf,
+	othersOf,
+	ringsOf,
+	sceneOf,
+	type Water,
+} from './designed';
 import {
 	END_M,
 	offRoad,
@@ -150,11 +157,12 @@ export function generate(
 	const layout = sceneOf(route.scene);
 	// The map's other roads, where they leave this one (side-roads.ts): the ground is shaped by them as by the road ridden.
 	const rings = ringsOf(route.scene);
-	const beside = sideRoads(route, othersOf(route.scene), rings);
+	const kept = [...rings, ...armsOf(route.scene)];
+	const beside = sideRoads(route, othersOf(route.scene), kept);
 	const sideRows = beside.map((side) => drawnRows(side.route));
 	sideRows.forEach((r, j) =>
 		roads.push({
-			key: j < rings.length ? `ring:${j}` : `side:${j}`,
+			key: j < kept.length ? `ring:${j}` : `side:${j}`,
 			x: r.map((p) => p.x),
 			z: r.map((p) => p.z),
 			h: r.map((p) => p.ele),
@@ -239,8 +247,16 @@ export function generate(
 			}
 		}),
 	);
-	// A roundabout: the road ridden runs on its ring, and is not drawn there. Its ribbon is hidden inside the ring's asphalt, its arms join the ring as any road joins another, and the ring is drawn whole.
+	// A roundabout: the road ridden runs on its ring and in on its arms, and is drawn on neither. Within reach of the ring its ribbon is hidden, and the ring and its straight arms (designed.ts armsOf) are drawn whole; further out its paint gives way to an arm's where the two overlap.
 	let hidden: Float64Array | null = null;
+	const joins = (r: Route, to: Route) =>
+		(r.meets ??= []).push({
+			from: 0,
+			to: r.length,
+			x: to.x,
+			z: to.z,
+			role: JOINS,
+		});
 	rings.forEach((_, j) => {
 		const ring = beside[j].route;
 		const n = ring.x.length - 1;
@@ -249,66 +265,52 @@ export function generate(
 			cx += ring.x[k] / n;
 			cz += ring.z[k] / n;
 		}
-		const cut = Math.hypot(ring.x[0] - cx, ring.z[0] - cz) + END_M;
+		const radius = Math.hypot(ring.x[0] - cx, ring.z[0] - cz);
+		const arms = beside
+			.slice(rings.length, kept.length)
+			.map((s) => s.route)
+			.filter((a) => Math.hypot(a.x[0] - cx, a.z[0] - cz) < radius + 1);
+		for (const arm of arms) {
+			joins(arm, ring);
+			// The ring gives its shoulder and dashes its edge where the arm comes in: read from the ring's edge out.
+			const from = Math.ceil(END_M / arm.step);
+			(ring.meets ??= []).push({
+				from: 0,
+				to: ring.length,
+				x: arm.x.slice(from),
+				z: arm.z.slice(from),
+				role: JOINED,
+			});
+		}
 		const off = (i: number) => Math.hypot(route.x[i] - cx, route.z[i] - cz);
 		const last = route.x.length - 1;
+		const reach = radius + ARM_M + RING_REACH_M;
 		for (let i = 0; i <= last; i++) {
-			if (off(i) >= cut + RING_REACH_M) continue;
+			if (off(i) >= reach) continue;
 			// One pass through the roundabout: its samples from here on that lie within reach of it.
 			let end = i;
-			while (end < last && off(end + 1) < cut + RING_REACH_M) end++;
-			meets.push({
-				from: i * route.step,
-				to: end * route.step,
-				x: ring.x,
-				z: ring.z,
-				role: JOINS,
-			});
-			// Its arms, in and out: each to where it enters the ring's asphalt.
-			let arm: [number[], number[]] = [[], []];
-			const close = () => {
-				if (arm[0].length > 1)
-					(ring.meets ??= []).push({
-						from: 0,
-						to: ring.length,
-						x: arm[0],
-						z: arm[1],
-						role: JOINED,
-					});
-				arm = [[], []];
-			};
-			const edge = (a: number, b: number) => {
-				const t = (cut - off(a)) / (off(b) - off(a) || 1);
-				arm[0].push(route.x[a] + (route.x[b] - route.x[a]) * t);
-				arm[1].push(route.z[a] + (route.z[b] - route.z[a]) * t);
-			};
-			for (let k = i; k <= end; k++) {
-				if (off(k) < cut) {
+			while (end < last && off(end + 1) < reach) end++;
+			for (const other of [ring, ...arms])
+				meets.push({
+					from: i * route.step,
+					to: end * route.step,
+					x: other.x,
+					z: other.z,
+					role: JOINS,
+				});
+			for (let k = i; k <= end; k++)
+				if (off(k) < radius + ARM_M - RING_LAP_M)
 					(hidden ??= new Float64Array(route.x.length))[k] = 1;
-					if (k > i && off(k - 1) >= cut) edge(k - 1, k);
-					close();
-				} else {
-					if (k > i && off(k - 1) < cut) edge(k - 1, k);
-					arm[0].push(route.x[k]);
-					arm[1].push(route.z[k]);
-				}
-			}
-			close();
 			i = end;
 		}
 	});
 	const shown = hidden as Float64Array | null;
+	if (shown && route.shared)
+		for (let i = 0; i < shown.length; i++)
+			shown[i] = Math.max(shown[i], route.shared[i]);
 	const ridden: Route =
 		meets.length > 0 || shown
-			? {
-					...route,
-					meets,
-					...(shown && {
-						shared: route.shared
-							? route.shared.map((w, i) => Math.max(w, shown[i]))
-							: shown,
-					}),
-				}
+			? { ...route, meets, ...(shown && { shared: shown }) }
 			: route;
 	const ground = makeGround(roads, { salt, scene: layout });
 	// The scene as the ground laid it: its streams run where that ground falls.
@@ -512,6 +514,8 @@ const JUNCTION_M = 30;
 const NODE_M = 20;
 /** Metres out from a roundabout's edge within which the road ridden's paint reads the ring. */
 const RING_REACH_M = 35;
+/** Metres of an arm's far end the road ridden is drawn over, so the two lap. */
+const RING_LAP_M = 12;
 /** Metres between the ground's rows of the road (drawnRows). */
 const ROW_M = 2;
 /** A road this far over the designed ground is carried, not banked up: an embankment that high is 12 m wide at its foot each side. */

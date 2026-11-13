@@ -57,8 +57,8 @@ function wind(
 const HUB: Corner = { x: 200, y: 300, ele: 1446, r: 0 };
 const HEAD: Corner = { x: 150, y: 4250, ele: 1441, r: 0 };
 
-/** A roundabout: the radius of its ring's centre line, how far out each arm runs straight at it, and the tightest an arm curves onto the ring or off it. */
-const RING = { r: 18, stub: 70, arm: 12 };
+/** A roundabout: the radius of its ring's centre line, how far out each arm runs straight at it, and the radius a line turns onto the ring or off it on: tight, so an arm is one straight road to the ring's edge, the same for the way in and the way out. */
+const RING = { r: 18, stub: 70, arm: 3 };
 
 /** A stretch between two nodes, wound, without the nodes themselves. */
 const stretch = (
@@ -514,6 +514,9 @@ const MAP = {
 		at: [node.x, node.y] as const,
 		r: RING.r,
 		ele: node.ele,
+		// The bearings its arms leave on, anticlockwise from east: each road through it adds its own (through), and the head of the lake has the spur north.
+		arms: node === HEAD ? [(118.6 * Math.PI) / 180] : ([] as number[]),
+		statue: node === HUB ? ('bicycle' as const) : ('cow' as const),
 	})),
 } satisfies Pick<
 	Designed,
@@ -638,7 +641,7 @@ const VALLEY_LAND: Feature[] = [
 
 /**
  * A road's way through a node's roundabout, from the corner it comes from
- * to the corner it leaves for: straight in on its arm, right onto the ring,
+ * to the corner it leaves for: straight in on its arm, sharp right onto the ring,
  * anticlockwise round it as traffic on the right goes, and right again off
  * it. The ring is the circle inscribed in the corners laid here, each
  * rounded on the ring's own radius, so every road through a node rides the
@@ -650,7 +653,14 @@ function through(node: Corner, from: Corner, to: Corner): Corner[] {
 	const b = Math.atan2(to.y - node.y, to.x - node.x);
 	const turn =
 		(((b - a) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) || 2 * Math.PI;
-	const sides = Math.ceil(turn / ((70 * Math.PI) / 180));
+	const ring = MAP.rings.find((r) => r.at[0] === node.x && r.at[1] === node.y);
+	for (const arm of [a, b])
+		if (
+			ring &&
+			!ring.arms.some((k) => Math.abs(Math.sin((k - arm) / 2)) < 0.03)
+		)
+			ring.arms.push(arm);
+	const sides = Math.ceil(turn / ((60 * Math.PI) / 180));
 	const each = turn / sides;
 	const out = RING.r / Math.cos(each / 2);
 	// An arm's own curve fits in half of the first side: the ring's rounding has the other half.
@@ -690,15 +700,15 @@ function round(...parts: (Corner[] | Corner)[]): Corner[] {
 
 /** The loops, each from the village and back: by the time they take, about 30, 40, 60 and 90 minutes. Each stretch is followed by the node it runs to. */
 export const DESIGNS: readonly Designed[] = [
-	loop('urnsee', 10693.33, 4340, round(SHORE, HEAD, TERRACE, HUB), [
+	loop('urnsee', 10695.26, 4340, round(SHORE, HEAD, TERRACE, HUB), [
 		'aare',
 		'berne',
 	]),
-	loop('aare', 11976.86, 4404, round(GORGE, HUB), ['urnsee', 'berne']),
-	loop('lac', 22670.32, 4406, round(SHORE, HEAD, TERRACE, HUB, GORGE, HUB), [
+	loop('aare', 11978.45, 4404, round(GORGE, HUB), ['urnsee', 'berne']),
+	loop('lac', 22672.97, 4406, round(SHORE, HEAD, TERRACE, HUB, GORGE, HUB), [
 		'berne',
 	]),
-	loop('berne', 30734.24, 2101, round(COL, HEAD, TERRACE, HUB), [
+	loop('berne', 30736.14, 2101, round(COL, HEAD, TERRACE, HUB), [
 		'urnsee',
 		'aare',
 	]),

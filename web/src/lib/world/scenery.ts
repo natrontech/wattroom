@@ -3,6 +3,9 @@
 // parapet either side and piers down to the ground. Pure data in, geometry
 // out, coloured by vertex so one flat material draws it in any look.
 import * as THREE from 'three';
+import { box, cyl, merge, tint } from './model';
+import { cow } from './props';
+import type { PropColors } from './styles';
 import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
 import type { Water } from './designed';
@@ -548,6 +551,145 @@ export function stops(
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
 	g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+	g.computeVertexNormals();
+	g.computeBoundingSphere();
+	return g;
+}
+
+/** A roundabout's signs stand this far out from its ring's centre line, on the right of each arm as it comes in. */
+const RING_SIGN = { out: 15, side: FORMATION + 0.8, up: 2.2 };
+
+/** A tube from `a` to `b`. */
+function tube(a: THREE.Vector3, b: THREE.Vector3, r: number) {
+	const dir = b.clone().sub(a);
+	const g = cyl(r, r, dir.length(), 6);
+	g.applyQuaternion(
+		new THREE.Quaternion().setFromUnitVectors(
+			new THREE.Vector3(0, 1, 0),
+			dir.clone().normalize(),
+		),
+	);
+	const mid = a.clone().add(b).multiplyScalar(0.5);
+	return g.translate(mid.x, mid.y, mid.z);
+}
+
+/** A bicycle in bronze, four times life size, on a stone plinth: the village's. */
+function bicycleStatue(c: PropColors) {
+	const v = (x: number, y: number) => new THREE.Vector3(x, y + 1.4, 0);
+	const [rear, front, seat, head, crank] = [
+		v(-2, 1.5),
+		v(2, 1.5),
+		v(-0.9, 3.9),
+		v(1.5, 3.9),
+		v(-0.2, 1.5),
+	];
+	const wheel = (at: THREE.Vector3) =>
+		new THREE.TorusGeometry(1.5, 0.13, 6, 22).translate(at.x, at.y, 0);
+	return merge([
+		tint(cyl(3.4, 3.8, 1.4, 12).translate(0, 0.7, 0), c.stone),
+		...[
+			wheel(rear),
+			wheel(front),
+			tube(rear, seat, 0.11),
+			tube(rear, crank, 0.11),
+			tube(crank, seat, 0.12),
+			tube(crank, head, 0.12),
+			tube(seat, head, 0.12),
+			tube(head, front, 0.11),
+			tube(seat, v(-1.0, 4.4), 0.1),
+			tube(v(-1.45, 4.4), v(-0.55, 4.4), 0.14),
+			tube(head, v(1.4, 4.6), 0.1),
+			tube(v(1.4, 4.6), v(2.0, 4.5), 0.1),
+		].map((g) => tint(g.toNonIndexed(), c.bell)),
+	]);
+}
+
+/** A cow three times life size on a stone plinth: the head of the lake's. */
+const cowStatue = (c: PropColors) =>
+	merge([
+		tint(cyl(3.4, 3.8, 1.4, 12).translate(0, 0.7, 0), c.stone),
+		cow(c).scale(3, 3, 3).translate(0, 1.4, 0),
+	]);
+
+/**
+ * The roundabout's signs, as they stand before one in Switzerland: on one
+ * post a give-way triangle, white in red and point down, over the blue
+ * disc with its three white arrows going round. Faces +z, its foot at the
+ * origin.
+ */
+function ringSign(c: PropColors) {
+	const face = (g: THREE.BufferGeometry, y: number, z: number, color: string) =>
+		tint(g.rotateX(Math.PI / 2).translate(0, y, z), color);
+	const y = RING_SIGN.up;
+	const arrows = [0, 1, 2].flatMap((k) => {
+		const a = (k * 2 * Math.PI) / 3;
+		const at = (g: THREE.BufferGeometry, turn: number, r: number) =>
+			tint(
+				g
+					.rotateZ(a + turn)
+					.translate(Math.cos(a + turn) * 0, 0, 0)
+					.translate(-Math.sin(a) * r, y + Math.cos(a) * r, 0.05),
+				c.wall,
+			);
+		// A bar along the circle, and a head at its anticlockwise end.
+		return [
+			at(box(0.26, 0.07, 0.02), 0, 0.2),
+			at(box(0.12, 0.16, 0.02).translate(-0.17, 0, 0), 0, 0.2),
+		];
+	});
+	return merge([
+		tint(
+			cyl(0.05, 0.05, y + 1.4, 6).translate(0, (y + 1.4) / 2 - 0.4, 0),
+			c.pole,
+		),
+		face(cyl(0.52, 0.52, 0.04, 3), y + 0.95, 0, c.warning),
+		face(cyl(0.3, 0.3, 0.04, 3), y + 0.95, 0.02, c.wall),
+		face(cyl(0.42, 0.42, 0.04, 18), y, 0, c.water),
+		...arrows,
+	]);
+}
+
+/**
+ * What dresses a roundabout (designed.ts roundaboutsOf): the statue on its
+ * island, and before each arm the signs a rider meets coming in.
+ */
+export function roundabouts(
+	route: Route,
+	rings: readonly {
+		x: number;
+		z: number;
+		r: number;
+		ele: number;
+		arms: readonly (readonly [number, number])[];
+		statue: 'bicycle' | 'cow';
+	}[],
+	c: PropColors,
+): THREE.BufferGeometry {
+	const parts: THREE.BufferGeometry[] = [];
+	for (const ring of rings) {
+		const y = yOf(route, ring.ele);
+		parts.push(
+			(ring.statue === 'bicycle' ? bicycleStatue(c) : cowStatue(c)).translate(
+				ring.x,
+				y,
+				ring.z,
+			),
+		);
+		for (const [dx, dz] of ring.arms) {
+			// Coming in, the rider's right is the arm's left as it leaves.
+			const out = ring.r + RING_SIGN.out;
+			parts.push(
+				ringSign(c)
+					.rotateY(Math.atan2(dx, dz))
+					.translate(
+						ring.x + dx * out + dz * RING_SIGN.side,
+						y,
+						ring.z + dz * out - dx * RING_SIGN.side,
+					),
+			);
+		}
+	}
+	const g = merge(parts);
 	g.computeVertexNormals();
 	g.computeBoundingSphere();
 	return g;

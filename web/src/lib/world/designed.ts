@@ -136,7 +136,15 @@ export type Designed = {
 	/** The map's other loops, by id: their roads are drawn where they leave this one. */
 	others?: readonly string[];
 	/** Its roundabouts: each a ring road round a node, which every road through the node rides and joins. */
-	rings?: readonly { at: Spot; r: number; ele: number }[];
+	rings?: readonly {
+		at: Spot;
+		r: number;
+		ele: number;
+		/** The bearings of its arms, radians anticlockwise from east. */
+		arms: number[];
+		/** What stands on its island. */
+		statue: 'bicycle' | 'cow';
+	}[];
 	/** Roads no loop rides: a lane off to a farm, a road across the plateau, each from its first corner to its last. Drawn as the other loops' roads are. */
 	spurs?: readonly (readonly Corner[])[];
 	/** Galleries: each from one spot on the road to another. */
@@ -656,6 +664,62 @@ function spur(corners: readonly Corner[], like: Route): Route {
 		climbs: [],
 	};
 }
+
+/** Metres a roundabout's arm is drawn as a road of its own, out from the ring's centre line. */
+export const ARM_M = 30;
+
+/**
+ * A design's roundabouts' arms, each a straight road from the ring out
+ * ARM_M: one road for the way in and the way out, whichever way a line
+ * sweeps onto the ring there. The lines through a roundabout turn onto it
+ * within a few metres, and a ribbon drawn on such a line bulges and folds;
+ * so near the ring the roads ridden and not ridden are hidden, and these
+ * stand for them.
+ */
+export function armsOf(id: string | undefined): Route[] {
+	const d = DESIGNS.find((k) => k.id === id);
+	if (!d?.rings) return [];
+	const like = build(d).line;
+	const n = ARM_M / 2;
+	return d.rings.flatMap((ring) =>
+		ring.arms.map((a) => {
+			const at = (k: number) => ring.r + 2 * k;
+			return {
+				...like,
+				name: 'arm',
+				step: 2,
+				length: ARM_M,
+				x: Float64Array.from(
+					{ length: n + 1 },
+					(_, k) => ring.at[0] + Math.cos(a) * at(k),
+				),
+				z: Float64Array.from(
+					{ length: n + 1 },
+					(_, k) => -(ring.at[1] + Math.sin(a) * at(k)),
+				),
+				ele: new Float64Array(n + 1).fill(ring.ele),
+				grade: new Float64Array(n + 1),
+				gain: 0,
+				loop: false,
+				level: true,
+				climbs: [],
+				shared: undefined,
+				meets: undefined,
+			};
+		}),
+	);
+}
+
+/** A design's roundabouts as the stage dresses them, in the world's frame: the centre, the ring's radius, the way each arm leaves (a unit vector), and its statue. */
+export const roundaboutsOf = (id: string | undefined) =>
+	(DESIGNS.find((k) => k.id === id)?.rings ?? []).map((ring) => ({
+		x: ring.at[0],
+		z: -ring.at[1],
+		r: ring.r,
+		ele: ring.ele,
+		arms: ring.arms.map((a): [number, number] => [Math.cos(a), -Math.sin(a)]),
+		statue: ring.statue,
+	}));
 
 /** A design's roundabouts, each as a road that goes round: a closed line, a point every 3 m or so. Never ridden as a road of its own. */
 export function ringsOf(id: string | undefined): Route[] {
