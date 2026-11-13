@@ -95,6 +95,10 @@ export type Route = {
 		x: ArrayLike<number>;
 		z: ArrayLike<number>;
 		role: number;
+		/** A side road running into the road it meets (JOINS at a mouth): that road's carriageway as a height over the plan, which it is seated on (world/road-surface.ts seatOf). */
+		onto?: (x: number, z: number) => number;
+		/** A junction's (JOINS or JOINED at a mouth): a point on the side road's own side of the road it meets. The side road's distance to that road's line is signed by it, negative past the line, where it is not drawn at all (world/crossings.ts SEATED, SEATED_ON). */
+		near?: readonly [x: number, z: number];
 	}[];
 	/**
 	 * The world's road only: the designed scene it is drawn in, by its id

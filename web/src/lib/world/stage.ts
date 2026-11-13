@@ -29,7 +29,6 @@ import type { Piece } from './setpieces';
 import {
 	plinth,
 	road,
-	ROAD_LIFT,
 	surfaceOf,
 	roadMaterial,
 	ROAD_W,
@@ -48,6 +47,7 @@ import { DIORAMA } from './pixel';
 import { spriteOwns } from './roadside-place';
 import { setLight, skyMaterial, terrainMaterial, type Style } from './styles';
 import { meshOf, REACH } from './terrain-mesh';
+import { liftOf } from './road-surface';
 import { endsMeet, SHOULDER } from './terrain/road-profile';
 import type { World } from './world';
 
@@ -102,22 +102,6 @@ export type Stage = {
 const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
 /** The ground is culled by cells this wide, not piece by piece (piece-pool.ts, #4566). */
 const GROUND_CELL_M = 960;
-/** A side road's ribbon lies this far under the ridden road's. */
-const SIDE_SINK = 0.01;
-
-/**
- * The lift a side road's ribbon is drawn with (geometry.ts road): a hair
- * under the ridden road's, so where one meets it it lies under its asphalt.
- * But a roundabout's arm lies a finger over the road ridden where that laps
- * it, and its ring a finger over the arm: the ring's asphalt and its edge,
- * dashed across the mouth, are drawn whole over the arm's flared start,
- * which the ring's shoulder gives way to.
- */
-export function sideLift(of: Route): number {
-	if (of.widen) return ROAD_LIFT + 0.01;
-	if (of.level && of.loop) return ROAD_LIFT + 0.02;
-	return ROAD_LIFT - SIDE_SINK;
-}
 const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
@@ -253,7 +237,7 @@ export function buildStage(
 		},
 		...world.sides.map((s) => ({
 			of: s.route,
-			lift: sideLift(s.route),
+			lift: liftOf(s.route, false) as number | undefined,
 			caps: s.square
 				? ([false, false] as const)
 				: ([!s.mouths[0], !s.mouths[1]] as const),
@@ -380,7 +364,7 @@ export function buildStage(
 							.filter((s) => s.route.widen)
 							.map((s) => ({
 								route: s.route,
-								surface: surfaceOf(s.route, sideLift(s.route)),
+								surface: surfaceOf(s.route, liftOf(s.route, false)),
 							})),
 						style.road.line,
 					),
@@ -399,7 +383,7 @@ export function buildStage(
 					stops(
 						world.sides.map((s) => ({
 							length: s.route.length,
-							surface: surfaceOf(s.route, sideLift(s.route)),
+							surface: surfaceOf(s.route, liftOf(s.route, false)),
 							mouths: s.mouths.map((m) =>
 								// Onto a roundabout nobody stops: no line, no STOP, no sign.
 								!m || (m.met > 0 && world.sides[m.met - 1].route.level)

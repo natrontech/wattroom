@@ -51,6 +51,7 @@ import {
 } from './designed';
 import { offRoad, sideRoads, type Mouth, type SideRoad } from './side-roads';
 import { JOINED, JOINS } from './crossings';
+import { carriagewayAt, liftOf } from './road-surface';
 
 export type World = {
 	/** The far skyline's seed: the backdrop is still drawn from the route. */
@@ -217,6 +218,9 @@ export function generate(
 					to,
 					...slice(other, at - 2 * JUNCTION_M, at + 2 * JUNCTION_M),
 					role: JOINS,
+					// Seated on that road's carriageway, and not drawn on it or past its line: signed from the way it comes in.
+					onto: carriagewayAt(other, liftOf(other, r === 0), at),
+					near: [m.x - m.tx * APPROACH_M, m.z - m.tz * APPROACH_M],
 				});
 				// The road joined reads the side road's line only as far as its mouth: past it the ribbon runs on under the asphalt, and read there it would open the far shoulder too.
 				const mine = slice(own, from, to);
@@ -240,6 +244,8 @@ export function generate(
 					x,
 					z,
 					role: JOINED,
+					// A junction's: the side road is seated on it, and their shoulders meet as one (crossings.ts SEATED_ON).
+					near: [m.x - m.tx * APPROACH_M, m.z - m.tz * APPROACH_M],
 				});
 			}
 		}),
@@ -580,6 +586,8 @@ const GALLERY_WALL = 0.3;
 const GALLERY_CLEAR = 1;
 /** Metres of each road, either side of a junction, whose paint reads the other road's line. */
 const JUNCTION_M = 30;
+/** Metres back from its mouth a point on a side road's own side of the road it meets lies. */
+const APPROACH_M = 6;
 /** A road passing within this of a mouth is part of its junction. */
 const NODE_M = 20;
 /** Metres out from a roundabout's edge within which the road ridden's paint reads the ring. */

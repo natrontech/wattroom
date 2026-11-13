@@ -391,12 +391,19 @@ const STOP_LETTERS = [
 export const STOP_LANE = { from: 0.45, to: ROAD_W / 2 - 0.25 - 0.4 };
 /** The painted STOP: the gap between letters, a cell's length along the lane (stretched, as road lettering is), and how far before the stop line it ends. Its cells' width is what the lane leaves. */
 const STOP_PAINT = { gap: 0.12, long: 0.32, before: 0.9 };
-/** The stop line: metres thick, and how far from the centre of the road met its near edge lies, clear of that road's shoulder. */
-export const STOP_LINE = { thick: 0.4, off: ROAD_W / 2 + 1.3 };
+/** The stop line: metres thick, and how far from the centre of the road met its near edge lies: at that road's carriageway edge, just past its edge line, along it however the side road comes in. */
+export const STOP_LINE = { thick: 0.4, off: ROAD_W / 2 };
 /** A side road stops where it comes in within 35° of square to the road it meets; shallower, it forks off it, and nobody stops at a fork. */
 export const SQUARE_COS = Math.cos((35 * Math.PI) / 180);
-/** The stop sign: its post's height, the disc's radius, and where it stands, back from the stop line and right of the centre. */
-const STOP_SIGN = { up: 2.3, r: 0.42, back: 1.5, out: FORMATION + 0.4 };
+/** The stop sign: its post's height, the disc's radius, where it stands right of the centre, and how far from the road met's centre at the least: by the stop line, past that road's formation and clear of its verge. */
+const STOP_SIGN = {
+	up: 2.3,
+	r: 0.42,
+	out: FORMATION + 0.4,
+	clear: FORMATION + 0.8,
+};
+/** Metres back from a side road's end its stop markings are looked for, at the most. */
+const MOUTH_REACH_M = 30;
 /** Paint lies this far over the road it is painted on. */
 const PAINT_LIFT = 0.015;
 
@@ -457,55 +464,77 @@ export function stops(
 				);
 				return new THREE.Vector3(p.x, p.y + up, p.z);
 			};
-			// A band across the lane from `b0` back to `b1`, cut every half metre across so it lies on a banked road.
-			const band = (b0: number, b1: number, r0: number, r1: number) => {
+			// The first metre back from its end at which the point `right` of its centre line lies `off` from the road met's centre line: a side road may come in askew or on a bend, and the road met may bend.
+			const backTo = (off: number, right: number) => {
+				const short = (back: number) => {
+					const p = spot(back, right);
+					return m.off(p.x, p.z) < off;
+				};
+				let a = 0;
+				while (a < MOUTH_REACH_M && short(a + 0.5)) a += 0.5;
+				if (!short(a)) return a;
+				let b = a + 0.5;
+				for (let k = 0; k < 12; k++) {
+					const mid = (a + b) / 2;
+					if (short(mid)) a = mid;
+					else b = mid;
+				}
+				return b;
+			};
+			// A band across the lane between two edges, each a metre back by its place across, cut every half metre across so it lies on a banked road.
+			const band = (
+				b0: (r: number) => number,
+				b1: (r: number) => number,
+				r0: number,
+				r1: number,
+			) => {
 				const n = Math.max(1, Math.ceil((r1 - r0) / 0.5));
 				for (let k = 0; k < n; k++) {
 					const a = r0 + ((r1 - r0) * k) / n;
 					const b = r0 + ((r1 - r0) * (k + 1)) / n;
-					quad([spot(b0, a), spot(b0, b), spot(b1, b), spot(b1, a)], line);
+					quad(
+						[spot(b0(a), a), spot(b0(b), b), spot(b1(b), b), spot(b1(a), a)],
+						line,
+					);
 				}
 			};
-			// The first place back from its end where the whole width of the lane is clear of the road it meets, measured to that road's own line: a side road may come in askew or on a bend.
-			let lineAt = 0;
-			while (
-				lineAt < 30 &&
-				[STOP_LANE.from - 0.3, STOP_LANE.to + 0.3].some((r) => {
-					const p = spot(lineAt, r);
-					return m.off(p.x, p.z) < STOP_LINE.off;
-				})
-			)
-				lineAt += 0.2;
+			// The stop line lies along the road met, its near edge on that road's carriageway edge, as a skewed junction is painted: across the lane, each end where the edge is.
+			const [r0, r1] = [STOP_LANE.from - 0.3, STOP_LANE.to + 0.3];
 			band(
-				lineAt,
-				lineAt + STOP_LINE.thick,
-				STOP_LANE.from - 0.3,
-				STOP_LANE.to + 0.3,
+				(r) => backTo(STOP_LINE.off, r),
+				(r) => backTo(STOP_LINE.off + STOP_LINE.thick, r),
+				r0,
+				r1,
 			);
-			// STOP, read by the rider coming in: its letters' heads towards the line, left to right across the lane.
+			// STOP behind it, square to the lane, read by the rider coming in: its letters' heads towards the line, left to right across the lane.
+			const lineBack = Math.max(
+				...[r0, (r0 + r1) / 2, r1].map((r) =>
+					backTo(STOP_LINE.off + STOP_LINE.thick, r),
+				),
+			);
 			const wide = STOP_LANE.to - STOP_LANE.from;
 			const cell = (wide - 3 * STOP_PAINT.gap) / 20;
-			const head = lineAt + STOP_LINE.thick + STOP_PAINT.before;
+			const head = lineBack + STOP_PAINT.before;
 			STOP_LETTERS.forEach((rows, letter) =>
 				rows.forEach((row, r) => {
 					for (let c = 0; c < 5; c++) {
 						if (row[c] !== '1') continue;
 						let to = c;
 						while (to + 1 < 5 && row[to + 1] === '1') to++;
-						const r0 =
+						const c0 =
 							STOP_LANE.from + letter * (5 * cell + STOP_PAINT.gap) + c * cell;
 						band(
-							head + r * STOP_PAINT.long,
-							head + (r + 1) * STOP_PAINT.long,
-							r0,
-							r0 + (to - c + 1) * cell,
+							() => head + r * STOP_PAINT.long,
+							() => head + (r + 1) * STOP_PAINT.long,
+							c0,
+							c0 + (to - c + 1) * cell,
 						);
 						c = to;
 					}
 				}),
 			);
-			// The sign: an eight-sided disc on a post, facing the rider coming in.
-			const at = lineAt + STOP_SIGN.back;
+			// The sign: an eight-sided disc on a post, facing the rider coming in, at the stop line where its corner leaves it room.
+			const at = Math.max(lineBack, backTo(STOP_SIGN.clear, STOP_SIGN.out));
 			const foot = spot(at, STOP_SIGN.out, -0.9);
 			const top = spot(at, STOP_SIGN.out, STOP_SIGN.up);
 			top.x = foot.x;

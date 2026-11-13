@@ -41,6 +41,19 @@ const JOINS_WITHIN_M = 4.8;
 export const CROSSES = 0;
 export const JOINS = 1;
 export const JOINED = -1;
+/** A side road running into the road it meets at a junction (Route.meets with `onto`): it joins, seated on that road (road-surface.ts), and its distance is signed, negative past that road's line. */
+export const SEATED = 2;
+/** And the road it meets there, which reads its line as JOINED does. */
+export const SEATED_ON = -2;
+/** The role a meeting is read as: a junction's own where it has a side to it (Route.meets `near`). */
+const roleOf = (o: { role: number; near?: unknown }) =>
+	!o.near
+		? o.role
+		: o.role === JOINS
+			? SEATED
+			: o.role === JOINED
+				? SEATED_ON
+				: o.role;
 
 /**
  * A stretch of the route, in metres along it, that meets another pass at one
@@ -132,27 +145,46 @@ export function meetingAt(
 	let best = CLEAR_M;
 	let as = CROSSES;
 	let joins = Infinity;
+	let joinsAs = JOINS;
+	let sign = 1;
 	for (const o of route.meets ?? []) {
 		if (dd < o.from || dd > o.to) continue;
-		for (let i = 0; i + 1 < o.x.length; i++) {
+		let near = Infinity;
+		let at = 0;
+		let past = false;
+		let mine = CLEAR_M;
+		const last = o.x.length - 2;
+		for (let i = 0; i <= last; i++) {
 			const sx = o.x[i + 1] - o.x[i];
 			const sz = o.z[i + 1] - o.z[i];
 			const px = x - o.x[i];
 			const pz = z - o.z[i];
-			const t = Math.min(
-				1,
-				Math.max(0, (px * sx + pz * sz) / (sx * sx + sz * sz || 1)),
-			);
+			const along = (px * sx + pz * sz) / (sx * sx + sz * sz || 1);
+			const t = Math.min(1, Math.max(0, along));
 			const off = Math.hypot(px - sx * t, pz - sz * t);
-			if (o.role === JOINS) joins = Math.min(joins, off);
-			if (off < best) {
-				best = off;
-				as = o.role;
+			if (off < near) {
+				near = off;
+				at = i;
+				past = (i === 0 && along < 0) || (i === last && along > 1);
 			}
+			mine = Math.min(mine, off);
+		}
+		// The road met, read past its end, is no road there: a side road running on from a roundabout's arm, end to end, is drawn on past it.
+		if (o.near && o.role === JOINS && past) continue;
+		if (mine < best) {
+			best = mine;
+			as = roleOf(o);
+		}
+		if (o.role === JOINS && near < joins) {
+			joins = near;
+			joinsAs = o.near ? SEATED : JOINS;
+			sign = o.near
+				? sideOf(o, at, x, z) * sideOf(o, nearestOf(o, ...o.near), ...o.near)
+				: 1;
 		}
 	}
 	// At a node a road both joins the roads before it and is joined by those after: inside an earlier road's formation it joins, whatever lies nearer.
-	if (joins < JOINS_WITHIN_M) return [joins, JOINS];
+	if (joins < JOINS_WITHIN_M) return [joins * sign, joinsAs];
 	if (!route.bare) return [best, as];
 	const last = route.x.length - 2;
 	for (const [from, to, otherFrom, otherTo, role] of route.bare) {
@@ -176,6 +208,44 @@ export function meetingAt(
 		}
 	}
 	return [best, as];
+}
+
+/** Which side of a line's segment `i` (x, z) lies: 1 left, −1 right. */
+function sideOf(
+	l: { x: ArrayLike<number>; z: ArrayLike<number> },
+	i: number,
+	x: number,
+	z: number,
+): number {
+	const sx = l.x[i + 1] - l.x[i];
+	const sz = l.z[i + 1] - l.z[i];
+	return (x - l.x[i]) * sz - (z - l.z[i]) * sx >= 0 ? 1 : -1;
+}
+
+/** A line's segment nearest (x, z). */
+function nearestOf(
+	l: { x: ArrayLike<number>; z: ArrayLike<number> },
+	x: number,
+	z: number,
+): number {
+	let best = Infinity;
+	let at = 0;
+	for (let i = 0; i + 1 < l.x.length; i++) {
+		const sx = l.x[i + 1] - l.x[i];
+		const sz = l.z[i + 1] - l.z[i];
+		const px = x - l.x[i];
+		const pz = z - l.z[i];
+		const t = Math.min(
+			1,
+			Math.max(0, (px * sx + pz * sz) / (sx * sx + sz * sz || 1)),
+		);
+		const off = Math.hypot(px - sx * t, pz - sz * t);
+		if (off < best) {
+			best = off;
+			at = i;
+		}
+	}
+	return at;
 }
 
 type Line = {

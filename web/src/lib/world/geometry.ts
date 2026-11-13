@@ -2,7 +2,7 @@
 // materials, so one world can be drawn in any art style.
 import * as THREE from 'three';
 import { Biome } from './biome';
-import { at, type RoutePoint } from '#lib/road/along.ts';
+import { type RoutePoint } from '#lib/road/along.ts';
 import { type Route } from '#lib/road/route.ts';
 import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
@@ -12,6 +12,7 @@ import { meetingAt } from './crossings';
 import { sceneOf } from './designed';
 import { smoothstep } from './rand';
 import { sharedAt } from './shared-road';
+import { flatAt, ROAD_LIFT, seatOf, yOf } from './road-surface';
 import { BANK_SPAN_M, banksOf, bendsOf } from './terrain/road-frame';
 import {
 	FORMATION,
@@ -20,9 +21,8 @@ import {
 	SHOULDER_DROP,
 } from './terrain/road-profile';
 
-export const EXAG = 1.2; // vertical exaggeration; the Alps read flat from a chase cam otherwise
 export { ROAD_W } from './terrain/road-profile';
-export const ROAD_LIFT = 0.12;
+export { EXAG, ROAD_LIFT, surfaceOf, yOf } from './road-surface';
 
 /** A ploughed bank's height over the asphalt at the formation's edge, and the metres of height either side of the snowline over which the snow comes in. */
 const SNOW_BANK_M = 0.9;
@@ -52,45 +52,6 @@ function roofedOf(route: Route): [number, number][] {
 	roofs.set(route, spans);
 	return spans;
 }
-
-/**
- * A road's drawn surface, as road() draws its ribbon with `lift`: the
- * height at metre `d`, `u` metres left of its centre line, banked as the
- * ribbon is. What is painted on a road is laid on this, never on a guess
- * at it: a metre along a grade or across a bank is centimetres of height.
- */
-export function surfaceOf(route: Route, lift = ROAD_LIFT) {
-	const rows = ribbonRows(route, 2);
-	const cx: number[] = [];
-	const cz: number[] = [];
-	for (let k = 0; k < rows.count; k++) {
-		const p = rows.row(k);
-		cx.push(p.x);
-		cz.push(p.z);
-	}
-	const banks = banksOf(cx, cz);
-	return (d: number, u: number) => {
-		const p = at(route, Math.min(Math.max(d, 0), route.length));
-		const k = Math.min(banks.length - 1, Math.max(0, Math.round(d / 2)));
-		const bank = route.level ? 0 : banks[k] * (1 - flatAt(route, d));
-		return {
-			x: p.x + Math.cos(p.heading) * u,
-			y: yOf(route, p.ele) + lift - u * Math.tan(bank),
-			z: p.z - Math.sin(p.heading) * u,
-		};
-	};
-}
-
-export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
-
-/** How far a road's bank is taken out at metre `d` (Route.flat): 1 drawn level across. */
-const flatAt = (route: Route, d: number) =>
-	route.flat
-		? sharedAt(
-				{ shared: route.flat, length: route.length, step: route.step },
-				d,
-			)
-		: 0;
 
 export function terrain(
 	route: Route,
@@ -201,6 +162,9 @@ export function road(
 	const hidden: boolean[] = [];
 	// Through a crossing, each vertex's metres off the pass it meets and which of the two it is (crossings.ts): the paint gives way to the other road's.
 	const bare: number[] = [];
+	// Where it runs into another road, its vertices seated on that road's carriageway (road-surface.ts), and its asphalt lit as that road's: by vertex, how much, and that plane's up.
+	const seat = seatOf(route);
+	const seated: number[] = [];
 	for (let r = first; r <= last; r++) {
 		const p = centre[r - first];
 		const d = rows.metre(r);
@@ -239,6 +203,13 @@ export function road(
 			// walk the column: never step backwards along the road (a degenerate triangle, not a bow-tie)
 			const q = prev[c];
 			if (q && (v.x - q.x) * tx + (v.z - q.z) * tz <= 0) v.copy(q);
+			const on = seat?.(d, v.x, v.z);
+			if (on) {
+				// Its own shoulder's drop kept: the two shoulders meet where the higher of them lies, a mitre round the corner.
+				const drop = drops[c] + (drops[c] < 0 ? banked : 0);
+				v.y += (on.y + drop - v.y) * on.w;
+				seated.push(on.w, ...on.up);
+			} else seated.push(0, 0, 1, 0);
 			prev[c] = v;
 			pos.push(v.x, v.y, v.z);
 			uv.push(offs[c], d);
@@ -247,6 +218,24 @@ export function road(
 	}
 	// The rows asked for, lit as the whole ribbon lights them.
 	const lit = normals(pos, sides, cols);
+	if (seat)
+		for (let i = 0; i < lit.length / 3; i++) {
+			const w = seated[i * 4];
+			const c = i % cols;
+			// The asphalt's own columns: a shoulder keeps the light of its own slope.
+			if (w <= 0 || c === 0 || c === cols - 1) continue;
+			const n = new THREE.Vector3(lit[i * 3], lit[i * 3 + 1], lit[i * 3 + 2])
+				.lerp(
+					new THREE.Vector3(
+						seated[i * 4 + 1],
+						seated[i * 4 + 2],
+						seated[i * 4 + 3],
+					),
+					w,
+				)
+				.normalize();
+			lit.splice(i * 3, 3, n.x, n.y, n.z);
+		}
 	const lo = Math.max(from, first);
 	const hi = Math.min(top, last);
 	const keep = (a: readonly number[], size: number) =>
@@ -519,10 +508,12 @@ export function roadMaterial(
 				float fo = max(fwidth(o), 1e-4);
 				float joins = step(0.5, vBare.y);
 				float joined = step(0.5, -vBare.y);
-				// A pass joining an earlier one is not drawn inside its asphalt, but for a hand's width at its edge: o is read off a line of 10 m chords, and where each ribbon stopped exactly at the other the ground showed between them.
-				if (joins > 0.5 && o < ${(ROAD_W / 2 - 0.1).toFixed(2)}) discard;
-				// Nor is its shoulder or verge drawn on the earlier one's formation: where it comes in along that road, a roundabout's arm, its shoulder lay across that road's far edge.
-				if (joins > 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${FORMATION.toFixed(2)}) discard;
+				// A side road at a junction (crossings.ts SEATED): its distance signed, negative past the line of the road it meets.
+				float seated = step(1.5, vBare.y);
+				// A pass joining an earlier one is not drawn inside its asphalt, but for a hand's width at its edge: o is read off a line of 10 m chords, and where each ribbon stopped exactly at the other the ground showed between them. A side road is not drawn past that road's line either.
+				if (joins > 0.5 && mix(o, vBare.x, seated) < ${(ROAD_W / 2 - 0.1).toFixed(2)}) discard;
+				// Nor is its shoulder or verge drawn on the earlier one's formation: where it comes in along that road, a roundabout's arm, its shoulder lay across that road's far edge. A side road seated on the road it meets keeps its shoulder there: the two shoulders meet where the higher lies, round the corner as one.
+				if (joins > 0.5 && seated < 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${FORMATION.toFixed(2)}) discard;
 				// And the pass joined draws no shoulder under the joining one's asphalt: two surfaces there, each lit by its own slope, drew as streaks.
 				if (joined > 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${(ROAD_W / 2 - 0.15).toFixed(2)}) discard;
 				float theirs = 1.0 - smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fo, o);
@@ -540,7 +531,9 @@ export function roadMaterial(
 				// And no verge of mine on its formation: a green wedge on its shoulder at each corner of a junction.
 				float theirForm = 1.0 - smoothstep(${FORMATION.toFixed(2)} - 0.5 * fo, ${FORMATION.toFixed(2)} + 0.5 * fo, o);
 				col = mix(col, uVerge, verge * (1.0 - theirEdge));
-				col = mix(col, uShoulder, verge * theirForm * (1.0 - theirEdge));
+				// At a junction the two shoulders meet where the higher lies, and each verge runs on to the other's: one L round the corner, nothing to recolour.
+				float atMouth = step(1.5, abs(vBare.y));
+				col = mix(col, uShoulder, verge * theirForm * (1.0 - theirEdge) * (1.0 - atMouth));
 				col = mix(col, uSnow, shoulder * smoothstep(uSnowY - ${SNOW_EASE_M.toFixed(1)}, uSnowY + ${SNOW_EASE_M.toFixed(1)}, vLampAt.y));
 				col = mix(col, uAsphalt, theirs * mix(1.0, shoulder, joined));
 				vec4 diffuseColor = vec4(col, opacity);`,

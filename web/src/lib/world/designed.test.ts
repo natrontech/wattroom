@@ -19,9 +19,9 @@ import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
 import { JOINED, JOINS, meetingAt } from './crossings';
 import { ROAD_LIFT, surfaceOf } from './geometry';
-import { giveWays, SQUARE_COS, stops } from './scenery';
+import { liftOf } from './road-surface';
+import { giveWays, SQUARE_COS, STOP_LANE, STOP_LINE, stops } from './scenery';
 import { sharedAt } from './shared-road';
-import { sideLift } from './stage';
 import { FORMATION, ROAD_W } from './terrain/road-profile';
 import { BUILD_MS } from './world.test-helper';
 
@@ -309,7 +309,7 @@ describe('the map', () => {
 	);
 
 	it(
-		'makes a junction of every mouth: the side road runs into the road it meets at its height, and what is painted on it lies on it, inside its lane, clear of the other road',
+		'makes a junction of every mouth: the side road runs into the road it meets at its height, and what is painted on it lies on it, inside its lane, its stop line along the other road’s carriageway edge',
 		async () => {
 			/** Metres from (x, z) to a road's line, and which side of it: positive left. */
 			const off = (r: Route, x: number, z: number) => {
@@ -384,6 +384,8 @@ describe('the map', () => {
 						const square = m.sx * m.tx + m.sz * m.tz;
 						// A fork has no stop; a square mouth has one.
 						expect(paint.count > 0, where).toBe(square >= SQUARE_COS);
+						/** Across the incoming lane, where the paint's near edge lies: right of the centre line, metres. */
+						const edge: number[] = [];
 						for (let i = 0; i < paint.count; i++) {
 							const [x, y, z] = [paint.getX(i), paint.getY(i), paint.getZ(i)];
 							const u = off(side.route, x, z);
@@ -425,11 +427,15 @@ describe('the map', () => {
 							const right = end === 0 ? u : -u;
 							expect(right, where).toBeGreaterThan(0.1);
 							expect(right, where).toBeLessThan(ROAD_W / 2 - 0.25);
-							// And clear of the road it meets: outside its painted shoulder.
-							expect(world.offJunction(m, x, z), where).toBeGreaterThan(
-								ROAD_W / 2 + 0.9,
-							);
+							// And on its own asphalt, never on the road it meets: from that road's carriageway edge back.
+							const toMet = world.offJunction(m, x, z);
+							expect(toMet, where).toBeGreaterThan(STOP_LINE.off - 0.02);
+							if (toMet < STOP_LINE.off + 0.02) edge.push(right);
 						}
+						if (paint.count === 0) return;
+						// The stop line's near edge lies on the road met's carriageway edge, along it, the whole width of the lane: not back from it, and not square to the side road where it comes in askew.
+						expect(Math.min(...edge), where).toBeLessThan(STOP_LANE.from);
+						expect(Math.max(...edge), where).toBeGreaterThan(STOP_LANE.to);
 					}),
 				);
 			}
@@ -860,7 +866,7 @@ describe('a roundabout', () => {
 			all.flatMap((ring) =>
 				ring.arms.map((arm) => ({
 					route: arm.route,
-					surface: surfaceOf(arm.route, sideLift(arm.route)),
+					surface: surfaceOf(arm.route, liftOf(arm.route, false)),
 				})),
 			),
 			'#fff',
@@ -907,7 +913,7 @@ describe('a roundabout', () => {
 									s.route.z[0] - (ring.z + v[1] * ring.r),
 								) < 0.5,
 						)!.route;
-						const armAt = surfaceOf(arm, sideLift(arm));
+						const armAt = surfaceOf(arm, liftOf(arm, false));
 						for (let m = 0; m <= ridden.length; m += 2) {
 							if (sharedAt(ridden, m) >= 1) continue;
 							const c = at(ridden, m);
