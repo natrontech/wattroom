@@ -29,7 +29,7 @@ import { DIORAMA } from './pixel';
 import { spriteOwns } from './roadside-place';
 import { setLight, skyMaterial, terrainMaterial, type Style } from './styles';
 import { meshOf, REACH } from './terrain-mesh';
-import { SHOULDER } from './terrain/road-profile';
+import { endsMeet, SHOULDER } from './terrain/road-profile';
 import type { World } from './world';
 
 /**
@@ -249,9 +249,17 @@ export function buildStage(
 	const boards = batchBoards(route, style);
 	group.add(tag('dressing', boards.root));
 	// The count-in's reveal lands here (#3087): its digit hangs on this banner.
-	group.add(tag('dressing', archOnRoad(route, 0, 'START', style), 'arch'));
+	// A road that ends where it began has one arch for both: two stood in each other, their banners through one another.
+	const home = finish && !route.loop && endsMeet(route);
+	group.add(
+		tag(
+			'dressing',
+			archOnRoad(route, 0, home ? 'START / FINISH' : 'START', style),
+			'arch',
+		),
+	);
 	// The road's end (#3623): the world's route is the road the way it is ridden, so the finish is its last metre. A loop has none.
-	if (finish && !route.loop)
+	if (finish && !route.loop && !home)
 		group.add(
 			tag('dressing', archOnRoad(route, route.length, 'FINISH', style), 'arch'),
 		);

@@ -27,40 +27,125 @@ export type Crossing = {
 	angle: number;
 };
 
-/** Metres either side of a square crossing a pass is bare: the other road's formation and a little. */
-const BARE_M = 6.5;
-/** A shallow crossing is bare for longer, to this at most. */
-const BARE_MAX_M = 30;
+/** Metres from the other pass's centre line beyond which a pass's paint is its own: past the other's formation. */
+export const CLEAR_M = 12;
+/** A shallow crossing reads the other pass for longer, to this at most either side. */
+const REACH_MAX_M = 80;
+
+/** A crossroads, both passes alike; a pass joining an earlier one, which gives way to it; and the earlier one it joins. */
+export const CROSSES = 0;
+export const JOINS = 1;
+export const JOINED = -1;
 
 /**
- * The stretches of the route drawn as bare asphalt: through a crossing no
- * pass paints its lines or lays its shoulder across the other, so the two
- * read as one crossroads. Each is the other road's width as this pass
- * crosses it, longer the shallower the angle.
+ * A stretch of the route, in metres along it, that meets another pass at one
+ * height, the metres of that pass it meets, and which of the two it is
+ * (CROSSES, JOINS, JOINED): where the road's paint gives way to the other
+ * road's (meetingAt).
  */
-export function bareStretches(
+export type Meeting = readonly [
+	from: number,
+	to: number,
+	otherFrom: number,
+	otherTo: number,
+	as: number,
+];
+
+/**
+ * Where the route's passes meet as roads do: every crossing at one height,
+ * each pass until the other is CLEAR_M off, longer the shallower the angle;
+ * and every stretch a later pass eases onto an earlier one or off it
+ * (shared-road.ts), a road joining a road.
+ */
+export function meetingsOf(
 	crossings: readonly Crossing[],
-): [from: number, to: number][] {
-	const out: [number, number][] = [];
+	joins: readonly {
+		from: number;
+		to: number;
+		onFrom: number;
+		onTo: number;
+	}[] = [],
+): Meeting[] {
+	const out: Meeting[] = [];
 	for (const c of crossings) {
 		if (Math.abs(c.rise) > LEVEL_UP_TO_M) continue;
 		const sin = Math.sin((Math.max(c.angle, 5) * Math.PI) / 180);
-		const reach = Math.min(BARE_MAX_M, BARE_M / sin);
-		out.push([c.a - reach, c.a + reach], [c.b - reach, c.b + reach]);
+		const reach = Math.min(REACH_MAX_M, CLEAR_M / sin);
+		const far = reach + 2 * CLEAR_M;
+		out.push(
+			[c.a - reach, c.a + reach, c.b - far, c.b + far, CROSSES],
+			[c.b - reach, c.b + reach, c.a - far, c.a + far, CROSSES],
+		);
+	}
+	for (const j of joins) {
+		out.push(
+			[
+				j.from - CLEAR_M,
+				j.to + CLEAR_M,
+				j.onFrom - CLEAR_M,
+				j.onTo + CLEAR_M,
+				JOINS,
+			],
+			// Only the stretch it eases over: further on it lies on the earlier pass, and is not drawn.
+			[j.onFrom - CLEAR_M, j.onTo + CLEAR_M, j.from, j.to, JOINED],
+		);
 	}
 	return out.sort((p, q) => p[0] - q[0]);
 }
 
-/** Whether the road at metre `d` is drawn bare, 1 or 0. */
-export function bareAt(
-	route: { bare?: readonly (readonly [number, number])[]; length: number },
+type Met = {
+	bare?: readonly Meeting[];
+	x: ArrayLike<number>;
+	z: ArrayLike<number>;
+	step: number;
+	length: number;
+};
+
+/**
+ * How far the point (x, z) of the road at metre `d` lies from the centre
+ * line of a pass it meets there, metres, CLEAR_M at the most, and which of
+ * the two it is; CLEAR_M where it meets none. Never signed by its side: a
+ * vertex beside one CLEAR_M off would draw the centre line between them. The
+ * road's paint reads it (geometry.ts). At a crossing, inside the other
+ * pass's asphalt a pass is asphalt, no line and no shoulder, and its lines
+ * stop at the other's shoulder: the two ribbons paint every spot they share
+ * alike, a crossroads whatever the angle. A pass joining an earlier one is
+ * not drawn inside its asphalt, and the earlier one keeps its paint: a road
+ * running into a road, never two ribbons through one another.
+ */
+export function meetingAt(
+	route: Met,
 	d: number,
-): number {
-	if (!route.bare) return 0;
+	x: number,
+	z: number,
+): [off: number, as: number] {
+	if (!route.bare) return [CLEAR_M, CROSSES];
 	const L = route.length;
 	const dd = d < 0 || d > L ? ((d % L) + L) % L : d;
-	for (const [from, to] of route.bare) if (dd >= from && dd <= to) return 1;
-	return 0;
+	let best = CLEAR_M;
+	let as = CROSSES;
+	const last = route.x.length - 2;
+	for (const [from, to, otherFrom, otherTo, role] of route.bare) {
+		if (dd < from || dd > to) continue;
+		const i0 = Math.max(0, Math.floor(otherFrom / route.step));
+		const i1 = Math.min(last, Math.ceil(otherTo / route.step) - 1);
+		for (let i = i0; i <= i1; i++) {
+			const sx = route.x[i + 1] - route.x[i];
+			const sz = route.z[i + 1] - route.z[i];
+			const px = x - route.x[i];
+			const pz = z - route.z[i];
+			const t = Math.min(
+				1,
+				Math.max(0, (px * sx + pz * sz) / (sx * sx + sz * sz || 1)),
+			);
+			const off = Math.hypot(px - sx * t, pz - sz * t);
+			if (off < best) {
+				best = off;
+				as = role;
+			}
+		}
+	}
+	return [best, as];
 }
 
 type Line = {
@@ -70,7 +155,12 @@ type Line = {
 	step: number;
 	length: number;
 	loop?: boolean;
+	/** Per sample, how far it is drawn on an earlier pass (shared-road.ts). */
+	shared?: ArrayLike<number>;
 };
+
+/** A pass drawn on an earlier one that meets a pass shallower than this, in degrees, lies along it. */
+const ALONG_DEG = 30;
 
 export function crossingsOf(route: Line): Crossing[] {
 	const { x, z, ele, step } = route;
@@ -108,13 +198,21 @@ export function crossingsOf(route: Line): Crossing[] {
 					const la = Math.hypot(x[i + 1] - x[i], z[i + 1] - z[i]);
 					const lb = Math.hypot(x[j + 1] - x[j], z[j + 1] - z[j]);
 					const cos = Math.min(1, Math.abs(dot) / (la * lb || 1));
+					const angle = (Math.acos(cos) * 180) / Math.PI;
+					// A pass drawn on an earlier one lies on its line, and the two lines touch all along it: one road, not a crossing a sample.
+					if (
+						route.shared &&
+						angle < ALONG_DEG &&
+						Math.max(route.shared[j], route.shared[j + 1]) > 0
+					)
+						continue;
 					out.push({
 						a: (i + t) * step,
 						b: (j + u) * step,
 						x: x[i] + (x[i + 1] - x[i]) * t,
 						z: z[i] + (z[i + 1] - z[i]) * t,
 						rise: hb - ha,
-						angle: (Math.acos(cos) * 180) / Math.PI,
+						angle,
 					});
 				}
 			}

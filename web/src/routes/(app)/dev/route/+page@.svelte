@@ -6,13 +6,23 @@
 	// kilometre on the route, never by a coordinate, so it can be pasted into
 	// an issue or to an AI (AGENTS.md: route geometry stays out of both).
 	import { page } from '$app/state';
-	import { parseRoute } from '#lib/road/parse.ts';
+	import { parseRoute, type TrackPoint } from '#lib/road/parse.ts';
 	import { toRoute, type Route } from '#lib/road/route.ts';
 	import { crossingsOf, type Crossing } from '#lib/world/crossings.ts';
 	import type { CameraMode } from '#lib/world/scene.ts';
 
 	const params = page.url.searchParams;
-	const CAMERAS: CameraMode[] = ['chase', 'heli', 'side', 'steady', 'orbit'];
+	// Look first: the place you stand at, from wherever you drag the eye. Orbit is the whole model on its table.
+	const CAMERAS: [CameraMode, string][] = [
+		['look', 'Look round'],
+		['chase', 'Chase'],
+		['heli', 'Overhead'],
+		['side', 'Side'],
+		['steady', 'Steady'],
+		['orbit', 'Whole model'],
+	];
+	const cameraOf = (name: string | null) =>
+		CAMERAS.find(([id]) => id === name)?.[0];
 	const SPEEDS = [36, 100, 300, 1000]; // km/h
 
 	let route = $state.raw<Route | null>(null);
@@ -20,11 +30,7 @@
 	let source = $state('');
 	let error = $state('');
 	let share = $state(params.get('share') !== '0');
-	let camera = $state<CameraMode>(
-		CAMERAS.includes(params.get('camera') as CameraMode)
-			? (params.get('camera') as CameraMode)
-			: 'chase',
-	);
+	let camera = $state<CameraMode>(cameraOf(params.get('camera')) ?? 'look');
 	let kmh = $state(100);
 	let playing = $state(false);
 	let m = $state(0);
@@ -58,6 +64,7 @@
 				: await file.text();
 			points = parseRoute(text).points;
 			source = 'your file';
+			picked = '';
 			m = 0;
 			await build();
 		} catch (err) {
@@ -65,21 +72,78 @@
 		}
 	}
 
+	/** Every road the app and its tests are built on, by what the lab calls it: WattRoom's own, the two eights, and the test tracks. */
+	type Made = {
+		id: string;
+		label: string;
+		points: () => Promise<TrackPoint[]>;
+	};
+	let made = $state.raw<Made[]>([]);
+	const roads = (async () => {
+		const [{ syntheticPoints }, { eight }, { HOME_ROADS }, fixtures] =
+			await Promise.all([
+				import('#lib/world/synthetic.ts'),
+				import('#lib/world/eight.ts'),
+				import('#lib/ride/home-roads.ts'),
+				import('#lib/road/fixtures.ts'),
+			]);
+		const slug = (name: string) =>
+			name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+		made = [
+			...HOME_ROADS.map((home) => ({
+				// 'loop' is the pass loop's name in a link an issue already holds.
+				id: home.id === 'intro' ? 'loop' : home.id,
+				label: home.name,
+				points: async () => syntheticPoints(await home.shape()),
+			})),
+			{
+				id: 'eight',
+				label: 'Eight, level',
+				points: async () => syntheticPoints(eight(0)),
+			},
+			{
+				id: 'bridge',
+				label: 'Eight, 8 m over',
+				points: async () => syntheticPoints(eight(8)),
+			},
+			...Object.entries(fixtures.FIXTURES).map(([label, track]) => ({
+				id: slug(label),
+				label,
+				points: async () => track(),
+			})),
+			{
+				id: 'out-and-back',
+				label: 'Out and back',
+				points: async () => fixtures.outAndBack(),
+			},
+			{
+				id: 'home-street',
+				label: 'Loop home along a street',
+				points: async () => fixtures.homeStreet(),
+			},
+			{
+				id: 'alpine',
+				label: 'Alpine loop',
+				points: async () => fixtures.alpineTrack(),
+			},
+		];
+		return made;
+	})();
+
 	async function shape(name: string) {
-		const [{ syntheticPoints }, { eight }] = await Promise.all([
-			import('#lib/world/synthetic.ts'),
-			import('#lib/world/eight.ts'),
-		]);
-		points =
-			name === 'eight'
-				? syntheticPoints(eight(0))
-				: name === 'bridge'
-					? syntheticPoints(eight(8))
-					: syntheticPoints();
-		source = name;
-		m = 0;
-		await build();
+		const road = (await roads).find((r) => r.id === name);
+		if (!road) return;
+		try {
+			points = await road.points();
+			source = road.label;
+			picked = road.id;
+			m = 0;
+			await build();
+		} catch (err) {
+			error = err instanceof Error ? err.message : String(err);
+		}
 	}
+	let picked = $state('');
 	if (params.get('shape')) void shape(params.get('shape')!);
 
 	function seek(to: number) {
@@ -271,7 +335,11 @@
 		else if (event.key === 'ArrowRight') seek(m + step);
 		else if (event.key === 'ArrowLeft') seek(m - step);
 		else if (event.key === 'c')
-			setCamera(CAMERAS[(CAMERAS.indexOf(camera) + 1) % CAMERAS.length]);
+			setCamera(
+				CAMERAS[
+					(CAMERAS.findIndex(([id]) => id === camera) + 1) % CAMERAS.length
+				][0],
+			);
 		else if (event.key === 'n' && crossings.length)
 			seek((crossings.find((c) => c.b - 50 > m + 1) ?? crossings[0]).b - 50);
 		else return;
@@ -323,7 +391,8 @@
 		<h1 class="font-display text-lg">Route lab</h1>
 		<p class="text-muted">
 			Dev machines only. Space plays, ← → move 50 m (Shift 500 m), C the camera,
-			N the next crossing.
+			N the next crossing. Look round: drag to turn, wheel to zoom, right-drag
+			to slide; click the plan to stand somewhere else.
 		</p>
 		<input
 			type="file"
@@ -331,14 +400,19 @@
 			class="input"
 			onchange={(e) => void pick(e.currentTarget.files?.[0])}
 		/>
-		<div class="flex flex-wrap gap-2">
-			<span class="eyebrow self-center">made up</span>
-			{#each [['loop', 'Pass loop'], ['eight', 'Eight, level'], ['bridge', 'Eight, 8 m over']] as [id, label] (id)}
-				<button class="btn btn-sm" onclick={() => void shape(id)}
-					>{label}</button
-				>
-			{/each}
-		</div>
+		<label class="flex items-center gap-2">
+			<span class="eyebrow shrink-0">made up</span>
+			<select
+				class="input min-w-0 flex-1"
+				value={picked}
+				onchange={(e) => void shape(e.currentTarget.value)}
+			>
+				<option value="" disabled>Pick a road</option>
+				{#each made as road (road.id)}
+					<option value={road.id}>{road.label}</option>
+				{/each}
+			</select>
+		</label>
 		{#if error}<p class="text-danger" role="alert">{error}</p>{/if}
 
 		{#if route && box && here}
@@ -376,14 +450,14 @@
 				<span class="text-muted">km/h</span>
 			</div>
 			<div class="flex flex-wrap gap-2">
-				{#each CAMERAS as c (c)}
+				{#each CAMERAS as [id, label] (id)}
 					<button
 						class="btn btn-sm"
-						class:btn-primary={camera === c}
-						aria-pressed={camera === c}
-						onclick={() => setCamera(c)}
+						class:btn-primary={camera === id}
+						aria-pressed={camera === id}
+						onclick={() => setCamera(id)}
 					>
-						{c}
+						{label}
 					</button>
 				{/each}
 			</div>

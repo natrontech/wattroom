@@ -66,6 +66,20 @@ export function ringOf(route: Route): boolean {
 	return Math.abs(wrapAngle(leaves - came)) < Math.PI / 4;
 }
 
+/** Metres apart, at most, the road's two ends are one place: an arch's posts and its banner's shade. */
+const HOME_M = 30;
+
+/**
+ * Whether the road ends where it began, whichever way it comes home: a
+ * loop ridden once, or out and back along one street. Its start arch and
+ * its finish arch stood in each other there, their banners through one
+ * another; one arch stands for both (stage.ts).
+ */
+export function endsMeet(route: Route): boolean {
+	const n = route.x.length - 1;
+	return Math.hypot(route.x[n] - route.x[0], route.z[n] - route.z[0]) < HOME_M;
+}
+
 /**
  * The ribbon's rows (#4534), `step` metres apart from the start: the road's
  * line, except that a road that goes round (ringOf) is one strip round. Its

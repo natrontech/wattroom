@@ -8,7 +8,7 @@ import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
 import type { World } from './world';
-import { bareAt } from './crossings';
+import { meetingAt } from './crossings';
 import { sharedAt } from './shared-road';
 import { BANK_SPAN_M, banksOf, bendsOf } from './terrain/road-frame';
 import { ribbonRows, ROAD_W, SHOULDER_DROP } from './terrain/road-profile';
@@ -111,7 +111,7 @@ export function road(
 	const uv: number[] = [];
 	const prev: THREE.Vector3[] = [];
 	const hidden: boolean[] = [];
-	// Through a crossing the ribbon is bare asphalt, no lines and no shoulder (crossings.ts).
+	// Through a crossing, each vertex's metres off the pass it meets and which of the two it is (crossings.ts): the paint gives way to the other road's.
 	const bare: number[] = [];
 	for (let r = first; r <= last; r++) {
 		const p = centre[r - first];
@@ -143,52 +143,109 @@ export function road(
 			prev[c] = v;
 			pos.push(v.x, v.y, v.z);
 			uv.push(offs[c], d);
-			bare.push(bareAt(route, d));
+			bare.push(...meetingAt(route, d, v.x, v.z));
 		}
 	}
-	const whole = strip(pos, uv, cols, hidden);
-	whole.setAttribute('bare', new THREE.Float32BufferAttribute(bare, 1));
-	whole.setAttribute(
-		'normal',
-		new THREE.Float32BufferAttribute(normals(pos, sides, cols), 3),
-	);
 	// The rows asked for, lit as the whole ribbon lights them.
+	const lit = normals(pos, sides, cols);
 	const lo = Math.max(from, first);
 	const hi = Math.min(top, last);
-	if (lo === first && hi === last) {
-		whole.computeBoundingSphere();
-		return whole;
+	const keep = (a: readonly number[], size: number) =>
+		a.slice((lo - first) * cols * size, (hi - first + 1) * cols * size);
+	const out = {
+		pos: keep(pos, 3),
+		uv: keep(uv, 2),
+		bare: keep(bare, 2),
+		normal: keep(lit, 3),
+		hidden: hidden.slice(lo - first, hi - first + 1),
+	};
+	// A road with two ends is rounded off at each (endCap), where it is drawn there: rows of their own after the road's, so a row keeps its number.
+	const cuts: number[] = [];
+	if (!rows.ring && shoulder > 0) {
+		const count = out.hidden.length;
+		if (lo === 0 && !out.hidden[0])
+			endCap(out, cuts, cols, half + shoulder, 0, 1);
+		if (hi === end && !out.hidden[count - 1])
+			endCap(out, cuts, cols, half + shoulder, count - 1, count - 2);
 	}
-	const keep = (a: THREE.BufferAttribute) =>
-		Array.from(
-			a.array.slice(
-				(lo - first) * cols * a.itemSize,
-				(hi - first + 1) * cols * a.itemSize,
-			),
-		);
-	const piece = strip(
-		keep(whole.attributes.position as THREE.BufferAttribute),
-		keep(whole.attributes.uv as THREE.BufferAttribute),
-		cols,
-		hidden.slice(lo - first, hi - first + 1),
-	);
-	piece.setAttribute(
-		'bare',
-		new THREE.Float32BufferAttribute(
-			keep(whole.attributes.bare as THREE.BufferAttribute),
-			1,
-		),
-	);
-	piece.setAttribute(
-		'normal',
-		new THREE.Float32BufferAttribute(
-			keep(whole.attributes.normal as THREE.BufferAttribute),
-			3,
-		),
-	);
-	whole.dispose();
-	piece.computeBoundingSphere();
-	return piece;
+	const g = strip(out.pos, out.uv, cols, out.hidden, cuts);
+	g.setAttribute('bare', new THREE.Float32BufferAttribute(out.bare, 2));
+	g.setAttribute('normal', new THREE.Float32BufferAttribute(out.normal, 3));
+	g.computeBoundingSphere();
+	return g;
+}
+
+/** Rows a road's rounded end is drawn in, the end row's own again among them. */
+export const CAP_ROWS = 7;
+
+/**
+ * A road's end, rounded off: the road used to stop at a square cut, its
+ * asphalt and both shoulders sawn through where the first metre began. The
+ * end row `at` is drawn again beyond itself, drawn in toward its centre along
+ * a half circle of the formation's radius, which the ground is already
+ * levelled to there (ground.ts heightAt: within the formation of the road's
+ * nearest point). Each row keeps the end row's metres across, so the edge
+ * line and the shoulder run round the end and meet. `inner` is the row
+ * inside the end: the cap runs on from it. Its rows follow the strip's, cut
+ * off from them (`cuts`: no quad after that row).
+ */
+function endCap(
+	g: {
+		pos: number[];
+		uv: number[];
+		bare: number[];
+		normal: number[];
+		hidden: boolean[];
+	},
+	cuts: number[],
+	cols: number,
+	radius: number,
+	at: number,
+	inner: number,
+) {
+	if (inner < 0 || inner >= g.hidden.length) return;
+	const row = (a: number[], size: number, r = at) =>
+		a.slice(r * cols * size, (r + 1) * cols * size);
+	const edge = row(g.pos, 3);
+	const mid = ((cols - 1) / 2) * 3;
+	// Outward along the road: from the row inside the end to the end.
+	const before = row(g.pos, 3, inner);
+	let ox = edge[mid] - before[mid];
+	let oz = edge[mid + 2] - before[mid + 2];
+	const len = Math.hypot(ox, oz);
+	if (len < 1e-6) return;
+	ox /= len;
+	oz /= len;
+	const uvs = row(g.uv, 2);
+	const along = at > inner ? 1 : -1;
+	const capRows: number[][] = [];
+	for (let k = 0; k < CAP_ROWS; k++) {
+		const a = (k / (CAP_ROWS - 1)) * (Math.PI / 2);
+		const reach = radius * Math.sin(a);
+		const pos: number[] = [];
+		const uv: number[] = [];
+		for (let c = 0; c < cols; c++) {
+			pos.push(
+				edge[mid] + (edge[c * 3] - edge[mid]) * Math.cos(a) + ox * reach,
+				edge[c * 3 + 1],
+				edge[mid + 2] +
+					(edge[c * 3 + 2] - edge[mid + 2]) * Math.cos(a) +
+					oz * reach,
+			);
+			uv.push(uvs[c * 2], uvs[c * 2 + 1] + along * reach);
+		}
+		capRows.push([...pos, ...uv]);
+	}
+	// A strip's rows run the road's way: the start's cap from its tip in.
+	if (along < 0) capRows.reverse();
+	cuts.push(g.hidden.length - 1);
+	for (const r of capRows) {
+		g.pos.push(...r.slice(0, cols * 3));
+		g.uv.push(...r.slice(cols * 3));
+		g.bare.push(...row(g.bare, 2));
+		g.normal.push(...row(g.normal, 3));
+		g.hidden.push(false);
+	}
 }
 
 /** Rows a piece walks in from, so its columns step as the whole ribbon's do through a hairpin. */
@@ -248,12 +305,18 @@ function normals(
 	return out;
 }
 
-/** Quads between rows; none between two `hidden` rows. */
-function strip(pos: number[], uv: number[], cols: number, hidden: boolean[]) {
+/** Quads between rows; none between two `hidden` rows, nor after a row in `cuts`. */
+function strip(
+	pos: number[],
+	uv: number[],
+	cols: number,
+	hidden: boolean[],
+	cuts: readonly number[] = [],
+) {
 	const rows = pos.length / 3 / cols;
 	const idx: number[] = [];
 	for (let r = 0; r < rows - 1; r++) {
-		if (hidden[r] && hidden[r + 1]) continue;
+		if ((hidden[r] && hidden[r + 1]) || cuts.includes(r)) continue;
 		for (let c = 0; c < cols - 1; c++) {
 			const a = r * cols + c;
 			idx.push(a, a + 1, a + cols, a + 1, a + cols + 1, a + cols); // columns run left → right: counter-clockwise from above
@@ -295,7 +358,7 @@ export function roadMaterial(
 		s.vertexShader = s.vertexShader
 			.replace(
 				'#include <common>',
-				'#include <common>\nattribute float bare;\nvarying float vBare;\nvarying vec2 vRoad;\nvarying vec3 vLampAt;',
+				'#include <common>\nattribute vec2 bare;\nvarying vec2 vBare;\nvarying vec2 vRoad;\nvarying vec3 vLampAt;',
 			)
 			.replace(
 				'#include <begin_vertex>',
@@ -313,7 +376,7 @@ export function roadMaterial(
 				'#include <common>',
 				`#include <common>
 				varying vec2 vRoad;
-				varying float vBare;
+				varying vec2 vBare;
 				varying vec3 vLampAt;
 				${POOL}
 				uniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge; uniform vec3 uShoulder;
@@ -334,11 +397,21 @@ export function roadMaterial(
 				float centre = paint(abs(u), ${CENTRE_HALF.toFixed(3)}, fw) * dash;
 				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fw, abs(u));
 				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fw, abs(u));
-				float line = max(edge, centre);
+				// Where it meets another pass (crossings.ts): o metres off that pass's centre line, and which of the two it is.
+				float o = abs(vBare.x);
+				float fo = max(fwidth(o), 1e-4);
+				float joins = step(0.5, vBare.y);
+				float joined = step(0.5, -vBare.y);
+				// A pass joining an earlier one is not drawn inside its asphalt.
+				if (joins > 0.5 && o < ${(ROAD_W / 2).toFixed(2)}) discard;
+				float theirs = 1.0 - smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fo, o);
+				float theirEdge = 1.0 - smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fo, o);
+				// Its formation takes my lines and its shoulder my verge, its asphalt everything; the pass joined keeps its paint, and gives only its shoulder.
+				float line = max(edge, centre) * (1.0 - theirEdge * (1.0 - joined));
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
 				col = mix(col, uLine, line * (1.0 - shoulder));
-				col = mix(col, uVerge, verge);
-				col = mix(col, uAsphalt, step(0.5, vBare)); // a crossing: bare asphalt, edge to edge
+				col = mix(col, uVerge, verge * (1.0 - theirEdge));
+				col = mix(col, uAsphalt, theirs * mix(1.0, shoulder, joined));
 				vec4 diffuseColor = vec4(col, opacity);`,
 			)
 			.replace(
