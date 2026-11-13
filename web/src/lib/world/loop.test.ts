@@ -54,6 +54,22 @@ describe('the pacer', () => {
 		expect(pattern(60, 60, 1.5)).toBe(every(2, 60));
 	});
 
+	it('finds 60 Hz again after a slow first frame taught it 30', () => {
+		// The page is busy while the world mounts: the first delta the pacer
+		// may measure spans two vsyncs. Every frame then drew, none measured,
+		// and the ride ran at 60 fps for as long as it moved.
+		const pacer = createPacer();
+		const step = 1000 / 60;
+		let now = 0;
+		pacer.tick(now);
+		pacer.tick((now += step));
+		pacer.tick((now += 2 * step));
+		let drawn = 0;
+		for (let i = 0; i < 120; i++) if (pacer.tick((now += step))) drawn++;
+		expect(pacer.stats().hz).toBeCloseTo(60, 0);
+		expect(drawn).toBeLessThanOrEqual(62);
+	});
+
 	it('misses nothing while the display keeps up', () => {
 		const pacer = createPacer();
 		for (let i = 0; i < 600; i++) pacer.tick((i * 1000) / 144);
