@@ -183,7 +183,7 @@ describe('Col de Berne', () => {
 	);
 
 	it('keeps the chase and the overhead camera under its vault, over the road', () => {
-		const [from, to] = world.tunnels[0];
+		const to = world.tunnels[0][1];
 		const camera = new THREE.PerspectiveCamera();
 		const rig = makeRig(route, world);
 		const you = new THREE.Vector3();
