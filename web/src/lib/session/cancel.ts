@@ -13,6 +13,14 @@ import type { Workout } from '#lib/workout/types.ts';
 
 type Shared = ChannelContext['shared'];
 
+/** When this screen last cancelled a session: its own toast has the Undo. */
+let cancelledHere = 0;
+const OWN_CANCEL_MS = 5000;
+
+/** This screen just cancelled the session, so it says so itself (#4562). */
+export const cancelledOnThisScreen = (now = Date.now()): boolean =>
+	now - cancelledHere < OWN_CANCEL_MS;
+
 /**
  * How a cancelled session opens again (#4562): its plan started again,
  * which the cancel gave back; a Ride together; or the same pick on the same
@@ -58,6 +66,7 @@ export function cancelSession(
 ): void {
 	const crew = channel.address.crew;
 	const again = reopener(crew, channel.shared);
+	cancelledHere = Date.now();
 	channel.control('end');
 	toasts.push('Session cancelled.', {
 		undo: again

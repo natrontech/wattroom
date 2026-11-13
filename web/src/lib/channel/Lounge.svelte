@@ -15,6 +15,7 @@
 	import AnnouncementStrip from '#lib/announce/AnnouncementStrip.svelte';
 	import MarkedIn from '#lib/announce/MarkedIn.svelte';
 	import LoungeSession from '#lib/channel/LoungeSession.svelte';
+	import LoungeCrewSessions from '#lib/channel/LoungeCrewSessions.svelte';
 	import CountdownScreen from '#lib/session/CountdownScreen.svelte';
 	import PlanCard from '#lib/session/PlanCard.svelte';
 	import StartLine from '#lib/session/StartLine.svelte';
@@ -304,8 +305,14 @@
 {/snippet}
 
 {#snippet notices()}
-	<!-- A session someone here just started, with its Join (docs/SESSIONS.md). -->
-	<SessionCallout />
+	<!-- A session someone here just started, with its Join (docs/SESSIONS.md).
+	     The owner and admins see every one of the crew's sessions instead,
+	     with End (#4562): one left running holds nothing else to end it by. -->
+	{#if channel.canManage}
+		<LoungeCrewSessions />
+	{:else}
+		<SessionCallout />
+	{/if}
 	<!-- The crew's announcement, above everything (#2408), and only while
 	     no session runs: mid-session the Lounge is tiles, the sprint and the
 	     stage, and a notice about next Thursday pushing them down is the

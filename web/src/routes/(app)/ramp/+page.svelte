@@ -63,7 +63,7 @@
 		</p>
 		<div class="panel mt-8 max-w-2xl p-8 text-center">
 			<p class="text-sm">
-				Takes {RAMP_TAKES}, and the last two are unpleasant.
+				Takes {RAMP_TAKES}. The last two minutes of the test are unpleasant.
 			</p>
 			<p class="text-muted mx-auto mt-2 max-w-md text-xs leading-relaxed">
 				Ride each minute at the number shown. When you can't hold it any more,
