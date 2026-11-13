@@ -17,6 +17,31 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.33] - 2026-11-13
+
+### Added
+
+- When a ramp test ends, the trainer eases you into a 10-minute cool-down while you read your new FTP. End ride stops it whenever you like. (#4583)
+
+### Changed
+
+- The 3D world needs about a third of the processor time per frame it did on slower computers, so rides stay smooth where they used to stutter. (#4578)
+- On a slower computer the 3D world could draw twice the frames it needs for a whole ride; it now holds 30 a second and leaves the rest of the CPU alone. (#4571)
+
+### Fixed
+
+- The crew's owner and admins can end or cancel a session from the voice channel, also on a phone. The ramp test says it ends with a 10-minute cool-down. (#4586)
+- Cancel session now has an Undo. Whoever planned a session can cancel it before it starts, and a cancelled planned session goes back on the calendar. (#4585)
+- Settings → Controllers is one table of what each key and Zwift Click button does. New keys: D opens ride details, B goes back to RIDE, N switches to the next view. (#4584)
+- Starting a session has one button. Ride together, where everyone rides their own and sees each other, is now the first choice in its picker. (#4582)
+- A session that was picked but not yet started can now be cancelled by its coach, or by the crew's owner or an admin, so it no longer holds the voice channel. (#4581)
+- The Join the ride card above your ride in a voice channel is no longer cut off at the bottom. (#4580)
+- Coaching a session in a narrow window, End stays on screen; Sprint, Pause and Hand off move under More when there is no room. (#4579)
+- On a phone, a voice channel's buttons are full size and the lounge's extras sit under one More button. (#4577)
+- End ride stays on screen at every window size; ride controls that don't fit are under a More button instead of scrolled out of sight. (#4575)
+- The ride setup shows your trainer and Start first; heart rate, power meter, cadence and shifter pair from one row beneath. (#4574)
+- A route that crosses itself, like a figure of eight, now meets at a clean crossroads in the 3D world instead of one road cutting through the other. (#4573)
+
 ## [2026.11.32] - 2026-11-12
 
 ### Added
@@ -4552,7 +4577,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.32...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.33...HEAD
+[2026.11.33]: https://github.com/natrontech/wattroom/compare/2026.11.32...2026.11.33
 [2026.11.32]: https://github.com/natrontech/wattroom/compare/2026.11.31...2026.11.32
 [2026.11.31]: https://github.com/natrontech/wattroom/compare/2026.11.30...2026.11.31
 [2026.11.30]: https://github.com/natrontech/wattroom/compare/2026.11.29...2026.11.30
