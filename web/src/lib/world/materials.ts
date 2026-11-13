@@ -103,6 +103,8 @@ const UNDERSIDE = /* glsl */ `
 export const SNOWED_BY = 256;
 /** A vertex colour brighter than this is that mark. */
 const SNOWED_OVER = 4;
+/** What a lamp's colours are multiplied by (structures.ts, a tunnel's): under nought, so the material reads it as a mark and draws the face its own colour, lit or not. Only a `lit` material reads it. */
+export const LIT = -1;
 
 /**
  * The dressing's material (ADR-0092): its models' colours, flat per face,
@@ -116,6 +118,8 @@ export function flat(
 		fade?: boolean;
 		/** A tree's darkest and lightest green, foot to tip: where it stands in snow, its tip is white and its skirts keep their green under a dusting. None: snowed all over. */
 		snow?: { lo: string; hi: string };
+		/** Faces marked LIT are drawn their own colour, a tunnel's lamps: flat, never a glow. */
+		lit?: boolean;
 	} = {},
 ): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial({
@@ -159,6 +163,13 @@ export function flat(
 			.replace(
 				'#include <opaque_fragment>',
 				`if (snowed) outgoingLight = mix(outgoingLight, vec3(0.8, 0.83, 0.96), 0.5 * snowOn);
+				${
+					opts.lit
+						? `#ifdef USE_COLOR
+					if (vColor.r < 0.0) outgoingLight = vColor.rgb / ${LIT.toFixed(1)};
+				#endif`
+						: ''
+				}
 				#include <opaque_fragment>`,
 			);
 		if (!opts.wind && !opts.fade) return;
@@ -196,6 +207,6 @@ export function flat(
 				);
 	};
 	m.customProgramCacheKey = () =>
-		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}${opts.snow ? `${opts.snow.lo}${opts.snow.hi}` : ''}`;
+		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}${opts.lit ? 'l' : ''}${opts.snow ? `${opts.snow.lo}${opts.snow.hi}` : ''}`;
 	return m;
 }
