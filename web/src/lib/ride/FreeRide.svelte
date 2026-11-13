@@ -55,6 +55,13 @@
 	// Riding the session instead: the trainer follows it, so the controls
 	// here would set nothing.
 	const riding = $derived(!!session && channel.you.inSession);
+	// A card stands over the riding surface: a session to join, or a ride
+	// that failed to save. The surface bleeds to the page's edges, and over
+	// its top one too only when nothing stands there: bled up under a card, it
+	// covered the card's bottom edge (#4561).
+	const above = $derived(
+		!!conn?.ownRide.error || riding || !!session || !!crewSession,
+	);
 	// Your ghost on your own road, raced alone — never in a session (#3615,
 	// ADR-0068), and only from the road's start: never after riding in at a
 	// mate's metre (#3117).
@@ -227,7 +234,9 @@
 			{foot}
 			onflag={() => flags.recorder.flag()}
 			ontv={() => (tv = true)}
-			worldClass="-mx-4 -my-6 sm:-mx-8 sm:-my-8"
+			worldClass={above
+				? '-mx-4 -mb-6 sm:-mx-8 sm:-mb-8'
+				: '-mx-4 -my-6 sm:-mx-8 sm:-my-8'}
 			mates={() => mates}
 			together={conn.live.tick?.state.together
 				? (conn.live.tick.everestTogether ?? 0)
