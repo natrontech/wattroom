@@ -31,6 +31,8 @@ export const GIVE_WAY: readonly string[] = [
 	'resume',
 	'skip',
 	'view',
+	// A session's coach: the sprint, pause and hand-off, after everything else.
+	'coach',
 ];
 
 export interface BarControl {
@@ -41,10 +43,10 @@ export interface BarControl {
 	width: number;
 }
 
-/** A control nobody named goes after every named one but the view switch. */
+/** A control nobody named goes after every named one but the view switch and the coach's. */
 function rank(id: string): number {
 	const at = GIVE_WAY.indexOf(id);
-	return at < 0 ? GIVE_WAY.length - 1.5 : at;
+	return at < 0 ? GIVE_WAY.indexOf('view') - 0.5 : at;
 }
 
 /**

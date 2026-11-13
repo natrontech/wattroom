@@ -154,9 +154,12 @@
 			><Square size={13} /> Stop the countdown</button
 		>
 	{:else}
+		<!-- Two boxes (#4567): the bar keeps End on screen at every width, and
+		     the coach's other controls go under its More when the row is short.
+		     One box held all four, and a phone's bar cut End off. -->
 		<div
-			data-ride-control="end"
-			class="border-muted/20 flex gap-1 rounded border p-0.5"
+			data-ride-control="coach"
+			class="border-muted/20 flex gap-1 rounded border p-0.5 empty:hidden"
 		>
 			{#if running && !channel.game}
 				<!-- Not in a game (#2597): it keeps its own clock and runs its
@@ -211,6 +214,11 @@
 					><Crown size={compact ? 18 : 14} />{#if !compact}Hand off{/if}</button
 				>
 			{/if}
+		</div>
+		<div
+			data-ride-control="end"
+			class="border-muted/20 flex gap-1 rounded border p-0.5"
+		>
 			<button
 				onclick={endSession}
 				{@attach tooltip(compact ? 'End the session' : null)}
