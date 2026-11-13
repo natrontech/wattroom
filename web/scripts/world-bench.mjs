@@ -64,6 +64,8 @@ const RATES = (process.env.BENCH_RATES ?? '1 4').split(/\s+/).map(Number);
 const CAMS = Number(process.env.BENCH_CAMS ?? 0);
 /** BENCH_PROFILE=1: a CPU profile of 10 s of each run, its busiest functions printed. */
 const PROFILE = process.env.BENCH_PROFILE === '1';
+/** BENCH_QUERY: more of /dev/perf's world case's query, as `road=berne&at=8200` (a designed loop, a metre on it). */
+const QUERY = process.env.BENCH_QUERY ?? '';
 /**
  * BENCH_GL=gpu draws on this machine's own GPU instead (headless Chromium
  * reaches it: Metal on macOS), for numbers that are a real screen's rather
@@ -195,7 +197,9 @@ async function joinCams(browser, n, voice) {
 /** Opens the scene; returns how to read its world. */
 async function open(page, scene, voice) {
 	if (scene === 'world') {
-		await page.goto(`${BASE}/dev/perf?case=world${LIGHT ? '&light=1' : ''}`);
+		await page.goto(
+			`${BASE}/dev/perf?case=world${LIGHT ? '&light=1' : ''}${QUERY ? `&${QUERY}` : ''}`,
+		);
 		return 'perfWorld';
 	}
 	if (scene === 'ride') {
@@ -440,7 +444,7 @@ try {
 
 const r0 = results[0];
 const PLACES = {
-	world: '/dev/perf?case=world',
+	world: `/dev/perf?case=world${QUERY ? `&${QUERY}` : ''}`,
 	ride: '/ride, Pass loop, simulated trainer',
 	voice: `voice channel in voice${CAMS ? ` with ${CAMS} cameras` : ''}, Pass loop, simulated trainer`,
 	'voice-standing': `voice channel in voice${CAMS ? ` with ${CAMS} cameras` : ''}, Pass loop, no trainer`,
