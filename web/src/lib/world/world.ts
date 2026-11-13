@@ -37,7 +37,13 @@ import { createPlacer } from './props/placer';
 import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
-import { drawnRows, FORMATION, ROAD_W, SHOULDER } from './terrain/road-profile';
+import {
+	drawnRows,
+	FORMATION,
+	GRAVEL_W,
+	ROAD_W,
+	SHOULDER,
+} from './terrain/road-profile';
 import {
 	ARM_M,
 	armsOf,
@@ -81,8 +87,11 @@ export type World = {
 	waterAt: (x: number, z: number) => number | null;
 	/** Where the road is carried over the ground, in metres along it: its bridges. */
 	bridges: [from: number, to: number][];
-	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges: drawn, never ridden. */
-	sides: (SideRoad & { bridges: [from: number, to: number][] })[];
+	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges and tunnels: drawn, never ridden. */
+	sides: (SideRoad & {
+		bridges: [from: number, to: number][];
+		tunnels: [from: number, to: number][];
+	})[];
 	/** The road ridden as its ribbon is drawn: with the roads that join it (Route.meets), and hidden where it runs on a roundabout's ring. */
 	ridden: Route;
 	/** Metres from (x, z) to the nearest of the roads a mouth's junction is made of (Mouth.near). */
@@ -91,6 +100,8 @@ export type World = {
 	roofedAt: (x: number, z: number, reach?: number) => boolean;
 	/** Where the road runs under a gallery's roof, in metres along it. */
 	galleries: [from: number, to: number][];
+	/** Where the road runs through a tunnel, portal to portal, in metres along it: the ground stands whole over it (designed.ts tunnels). */
+	tunnels: [from: number, to: number][];
 	/** The ground at (x, z) as the place has it, earthworks and all, without drawing it: what the road's rails are read off (scenery.ts). */
 	groundAt: (x: number, z: number) => number;
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
@@ -156,14 +167,25 @@ export function generate(
 	// The map's other roads, where they leave this one (side-roads.ts): the ground is shaped by them as by the road ridden.
 	const rings = ringsOf(route.scene);
 	const kept = [...rings, ...armsOf(route.scene)];
-	const beside = sideRoads(route, othersOf(route.scene), kept);
+	const others = othersOf(route.scene);
+	if (layout) drape(route, others, salt, layout);
+	const beside = sideRoads(route, others, kept).map((side) =>
+		side.route.gravel ? { ...side, route: apron(side) } : side,
+	);
 	const sideRows = beside.map((side) => drawnRows(side.route));
 	sideRows.forEach((r, j) =>
 		roads.push({
-			key: j < kept.length ? `ring:${j}` : `side:${j}`,
+			// A gravel lane's line is a lane's: the ground is shaped by it, and nothing is signed along it (setpieces.ts).
+			key:
+				j < kept.length
+					? `ring:${j}`
+					: beside[j].route.gravel
+						? `lane:${j}`
+						: `side:${j}`,
 			x: r.map((p) => p.x),
 			z: r.map((p) => p.z),
 			h: r.map((p) => p.ele),
+			...(beside[j].route.gravel && { light: true }),
 		}),
 	);
 	const cut = layout && makeGround(roads, { salt, scene: layout }).natural;
@@ -179,10 +201,43 @@ export function generate(
 		return spans;
 	};
 	const bridges = spansOf(rows, roads[0]);
+	// Through a tunnel the ground knows no road: the hill stands whole over it, and its line is cut at each portal (bored).
+	const tunnelsOf = (r: typeof rows) =>
+		(layout?.tunnels ?? []).flatMap(([a, b]) => {
+			const ia = nearestRow(r, a);
+			const ib = nearestRow(r, b);
+			if (ia < 0 || ib < 0) return [];
+			const span = [ia * ROW_M, ib * ROW_M].sort((p, q) => p - q);
+			return [[span[0], span[1]] as [number, number]];
+		});
+	const tunnels = tunnelsOf(rows);
 	const sides = beside.map((side, j) => ({
 		...side,
 		bridges: spansOf(sideRows[j], roads[j + 1]),
+		tunnels: tunnelsOf(sideRows[j]),
 	}));
+	const bored = [tunnels, ...sides.map((s) => s.tunnels)];
+	// The hill over a tunnel is drawn as finely as the ground beside a road: it stands over the portals.
+	const hills: Line[] = bored.flatMap((spans, j) =>
+		spans.map(([a, b], k) => {
+			const r = (j === 0 ? rows : sideRows[j - 1]).slice(
+				Math.floor(a / ROW_M),
+				Math.ceil(b / ROW_M) + 1,
+			);
+			return {
+				key: `tunnel:${j}:${k}`,
+				x: r.map((p) => p.x),
+				z: r.map((p) => p.z),
+				h: r.map((p) => p.ele),
+			};
+		}),
+	);
+	if (bored.some((t) => t.length > 0))
+		roads.splice(
+			0,
+			roads.length,
+			...roads.flatMap((l, j) => bore(l, bored[j])),
+		);
 	// At each mouth the two roads' paint reads the other's line (crossings.ts): the side road joins, the road met is joined.
 	const meets: NonNullable<Route['meets']> = [];
 	const slice = (r: Route, from: number, to: number) => {
@@ -359,14 +414,12 @@ export function generate(
 	let cover: ReturnType<typeof corridor> | null = null;
 	const chunks = () => (cover ??= corridor(ground.lines, margin)).chunks;
 	// The place's levels, not the corridor's: a streamed chunk is the one the props stood on.
+	// Fine along the streams, and along every shore: an island or a headland's tip drawn coarse stood out of its water.
 	const level = placeLevel(
-		ground.lines,
+		[...ground.lines, ...hills],
 		(scene?.waters ?? [])
-			.filter((w) => w.run)
-			.map((w) => ({
-				x: w.outline.map((p) => p[0]),
-				z: w.outline.map((p) => p[1]),
-			})),
+			.flatMap((w) => [w.outline, ...(w.islands ?? [])])
+			.map((o) => ({ x: o.map((p) => p[0]), z: o.map((p) => p[1]) })),
 	);
 	const land = landUse(ground.noise, scene);
 	const terrain = createTerrain(ground, level, land);
@@ -501,6 +554,7 @@ export function generate(
 				),
 			),
 		galleries,
+		tunnels,
 		roofedAt,
 		groundAt: ground.heightAt,
 		tile: tiles.tile,
@@ -651,6 +705,167 @@ export function bridgesOf(
 		}
 	}
 	return out;
+}
+
+/** A row of a road's line within TUNNEL_SNAP_M of a spot, the nearest: −1 where none is. */
+function nearestRow(
+	rows: readonly { x: number; z: number }[],
+	[x, z]: readonly [number, number],
+): number {
+	let best = TUNNEL_SNAP_M;
+	let at = -1;
+	for (let k = 0; k < rows.length; k++) {
+		const d = Math.hypot(rows[k].x - x, rows[k].z - z);
+		if (d < best) {
+			best = d;
+			at = k;
+		}
+	}
+	return at;
+}
+/** A tunnel's portal lies within this of the road. */
+const TUNNEL_SNAP_M = 30;
+/** Metres short of each portal the ground's line of the road stops: the formation it levels and the bench before its cutting reach to the portal, and the hill rises from there. */
+const PORTAL_M = 8;
+
+/**
+ * A road's line for the ground with its tunnels taken out: the line up to
+ * each portal, and on from it, as lines of their own. Inside, no
+ * earthwork, no shelf and no verge: the hill the tunnel is bored through.
+ */
+function bore(line: Line, spans: readonly [number, number][]): Line[] {
+	if (spans.length === 0) return [line];
+	const n = line.x.length;
+	const keep = new Uint8Array(n).fill(1);
+	for (const [a, b] of spans)
+		keep.fill(
+			0,
+			Math.max(0, Math.floor((a - PORTAL_M) / ROW_M)),
+			Math.min(n, Math.ceil((b + PORTAL_M) / ROW_M) + 1),
+		);
+	const out: Line[] = [];
+	let from = -1;
+	for (let k = 0; k <= n; k++) {
+		if (k < n && keep[k]) {
+			if (from < 0) from = k;
+			continue;
+		}
+		if (from >= 0 && k - from >= 2) {
+			const cut = <T extends ArrayLike<number>>(v: T) =>
+				Array.prototype.slice.call(v, from, k) as number[];
+			out.push({
+				key: out.length === 0 ? line.key : `${line.key}~${out.length}`,
+				x: cut(line.x),
+				z: cut(line.z),
+				h: cut(line.h),
+				...(line.open && { open: Uint8Array.from(cut(line.open)) }),
+				...(line.light && { light: true }),
+			});
+		}
+		from = -1;
+	}
+	return out;
+}
+
+/** A gravel lane's apron: where it meets a road it is drawn as wide as one, narrowing to its own width over these metres from its mouth. */
+const APRON = { full: 4, to: 18 };
+
+/**
+ * A gravel lane with an apron at each mouth (geometry.ts ribbonOf): a farm
+ * track's paved mouth, as wide as a road's formation, so the road it joins
+ * gives up its shoulder under it and the two are one surface.
+ */
+function apron(side: SideRoad): Route {
+	const r = side.route;
+	const flare = ROAD_W / GRAVEL_W - 1;
+	const at = (m: number) =>
+		1 + flare * (1 - smoothstep(APRON.full, APRON.to, m));
+	const [a, b] = side.mouths;
+	return {
+		...r,
+		widen: (d) => Math.max(a ? at(d) : 1, b ? at(r.length - d) : 1),
+	};
+}
+
+/** Metres between a gravel lane's samples its heights are smoothed over, either way. */
+const LANE_EASE = 5;
+/** A lane over running water wider than a sample stands this far over it, on a bridge. */
+const LANE_OVER_M = 5;
+
+/**
+ * A gravel lane's heights (designed.ts Lane): the ground's under it as the
+ * map's other roads shape it, smoothed, so a farm track lies on its field
+ * and a forest road on its hillside. Over a river it is lifted onto a
+ * bridge, eased up to it and down from it.
+ */
+function drape(
+	route: Route,
+	others: Route[],
+	salt: Salt,
+	scene: NonNullable<ReturnType<typeof sceneOf>>,
+) {
+	const lanes = others.filter((o) => o.gravel);
+	if (lanes.length === 0) return;
+	const lineOf = (r: Route, key: string): Line => ({
+		key,
+		x: r.x,
+		z: r.z,
+		h: r.ele,
+	});
+	const ground = makeGround(
+		[
+			lineOf(route, 'route'),
+			...others.flatMap((o, k) => (o.gravel ? [] : [lineOf(o, `o:${k}`)])),
+		],
+		{ salt, scene },
+	);
+	const water = ground.scene ?? scene;
+	for (const lane of lanes) {
+		const n = lane.x.length;
+		const raw = Array.from(lane.x, (x, i) => ground.heightAt(x, lane.z[i]));
+		const ele = raw.map((_, i) => {
+			let sum = 0;
+			let count = 0;
+			for (
+				let k = Math.max(0, i - LANE_EASE);
+				k <= Math.min(n - 1, i + LANE_EASE);
+				k++
+			) {
+				sum += raw[k];
+				count++;
+			}
+			return sum / count;
+		});
+		// Over a river: a run of wet samples, lifted onto a deck and eased to it.
+		const wet = Array.from(lane.x, (x, i) => water.waterAt(x, lane.z[i]));
+		for (let i = 0; i < n; i++) {
+			if (wet[i] === null) continue;
+			let j = i;
+			while (j + 1 < n && wet[j + 1] !== null) j++;
+			if (j > i) {
+				const deck =
+					Math.max(...wet.slice(i, j + 1).map((w) => w!)) + LANE_OVER_M;
+				for (
+					let k = Math.max(0, i - 2 * LANE_EASE);
+					k <= Math.min(n - 1, j + 2 * LANE_EASE);
+					k++
+				) {
+					const t =
+						k < i
+							? 1 - (i - k) / (2 * LANE_EASE)
+							: k > j
+								? 1 - (k - j) / (2 * LANE_EASE)
+								: 1;
+					const w = t * t * (3 - 2 * t);
+					ele[k] = Math.max(ele[k], ele[k] + (deck - ele[k]) * w);
+				}
+			}
+			i = j;
+		}
+		lane.ele.set(ele);
+		for (let i = 1; i < n; i++)
+			lane.grade[i] = ((ele[i] - ele[i - 1]) / lane.step) * 100;
+	}
 }
 
 /**

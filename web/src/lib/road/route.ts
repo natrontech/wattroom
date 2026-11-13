@@ -89,6 +89,8 @@ export type Route = {
 	flat?: Float64Array;
 	/** The world's road only: how many times its own width it is drawn at metre `d`. A roundabout's arm flares where it meets the ring (world/designed.ts). */
 	widen?: (d: number) => number;
+	/** The world's road only: a gravel lane (world/designed.ts Lane), narrow, with no paint, no stop and no sign. */
+	gravel?: boolean;
 	meets?: {
 		from: number;
 		to: number;

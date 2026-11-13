@@ -240,7 +240,12 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		// nearest point exactly. Those are tighter by under 2 m at 60 m, so they let go by
 		// that much between 40 and 60 m before they drop out: no vertex leaves while it binds.
 		const letGo = (d: number) => 2 * smoothstep(40, EARTHWORKS_M, d);
-		index.thinWithin(x, z, CONE_M, (vh, d, g) => cone(vh, d, 0, g));
+		index.thinWithin(
+			x,
+			z,
+			CONE_M,
+			(vh, d, g) => (index.light[g] && d > EARTHWORKS_M) || cone(vh, d, 0, g),
+		);
 		index.within(x, z, EARTHWORKS_M, (vh, d, g) => cone(vh, d, letGo(d), g));
 		if (hit) cone(hit.h, hit.d, letGo(hit.d));
 		const ground = natural(x, z);

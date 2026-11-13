@@ -15,6 +15,8 @@ export type Line = {
 	h: ArrayLike<number>;
 	/** Per vertex, 1 where the road is carried over the ground, a bridge: it shapes no earthworks there. Absent: none. */
 	open?: ArrayLike<number>;
+	/** A gravel lane's (designed.ts Lane): its cut and fill bound the ground only within its own earthworks, not hundreds of metres down a hillside. */
+	light?: boolean;
 };
 
 export type Hit = {
@@ -48,6 +50,7 @@ export function canonical(lines: readonly Line[]): Line[] {
 				z: back(l.z),
 				h: back(l.h),
 				...(l.open && { open: Uint8Array.from(l.open).reverse() }),
+				...(l.light && { light: true }),
 			};
 		});
 }
@@ -92,8 +95,11 @@ export function indexLines(lines: readonly Line[]) {
 	const lineOf = new Int32Array(N);
 	/** A vertex carried over the ground (Line.open). */
 	const open = new Uint8Array(N);
+	/** A vertex of a light line (Line.light). */
+	const light = new Uint8Array(N);
 	lines.forEach((l, k) => {
 		if (l.open) open.set(Uint8Array.from(l.open), starts[k]);
+		if (l.light) light.fill(1, starts[k], starts[k + 1]);
 		for (let i = 0; i < l.x.length; i++) {
 			x[starts[k] + i] = l.x[i];
 			z[starts[k] + i] = l.z[i];
@@ -336,6 +342,7 @@ export function indexLines(lines: readonly Line[]) {
 		h,
 		last,
 		open,
+		light,
 	};
 }
 

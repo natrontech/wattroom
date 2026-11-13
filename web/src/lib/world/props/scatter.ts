@@ -100,7 +100,10 @@ export function villageSites(place: Place): Village[] {
 	const strokes = ground.lines.map((l) => hashOf(l.key));
 	type Slot = { key: number; k: number; slot: number };
 	const flats = new Map<string, Slot[]>();
+	// A village stands on a road, never on a gravel lane (world.ts).
+	const lane = ground.lines.map((l) => l.key.startsWith('lane'));
 	walks.forEach((w, k) => {
+		if (lane[k]) return;
 		// Steep 10 m steps counted once along the stroke: a slot is flat when its kilometre holds none.
 		const steps = Math.floor(w.length / 10) + 1;
 		const steep = new Int32Array(steps + 1);
@@ -147,9 +150,29 @@ export function villageSites(place: Place): Village[] {
 			s: site.slot * SITE_M,
 		});
 	}
+	// A designed map's hamlets stand where it draws them (designed.ts), on the road nearest each, at one of its slots: a village's houses are keyed by its slot.
+	for (const h of ground.scene?.names.hamlets ?? []) {
+		let best = DRAWN_M;
+		let site: Village | null = null;
+		walks.forEach((w, k) => {
+			if (lane[k]) return;
+			for (let s = 0; s <= w.length; s += SITE_M) {
+				const p = w.at(s);
+				const d = Math.hypot(p.x - h.x, p.z - h.z);
+				if (d < best) {
+					best = d;
+					site = { x: p.x, z: p.z, name: h.name, line: k, s };
+				}
+			}
+		});
+		if (site) out.push(site);
+	}
 	// A designed road's villages take its own names, in the order the road meets them (designed.ts).
 	return out;
 }
+
+/** A designed hamlet stands on a road within this of where it is drawn: a slot is 200 m. */
+const DRAWN_M = 160;
 
 /** What one tile of a place might stand beside its roads: the candidates its tile is settled from (tiles.ts). */
 export function scatter(place: Place, placer: Placer, villages: Village[]) {

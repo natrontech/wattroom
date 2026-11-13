@@ -40,7 +40,7 @@ export const liftOf = (route: Route, ridden: boolean) =>
 		? ROAD_LIFT
 		: ROAD_LIFT -
 			SIDE_SINK +
-			(route.widen ? ARM_RISE : 0) +
+			(route.widen && !route.gravel ? ARM_RISE : 0) +
 			(route.level && route.loop ? RING_RISE : 0);
 
 export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
