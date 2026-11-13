@@ -29,6 +29,7 @@
 	class="border-muted/20 flex shrink-0 rounded-lg border"
 	role="group"
 	aria-label="what you set"
+	data-ride-control="mode"
 >
 	{#each modes as each (each.id)}
 		<button

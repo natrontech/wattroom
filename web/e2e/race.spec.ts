@@ -1,4 +1,5 @@
 import { expect, test, voicePath } from './crew';
+import { pressInBar } from './bar';
 
 /**
  * Two riders race to the line and the closing card places both (#3779,
@@ -91,7 +92,7 @@ test('two riders race to the line and both are placed', async ({
 				.click({ timeout: 15_000 });
 		}
 
-		await a.getByRole('button', { name: 'Start a session' }).click();
+		await pressInBar(a, 'Start a session');
 		await a.getByRole('button', { name: 'Roads', exact: true }).click();
 		await a
 			.getByRole('list', { name: 'your routes' })

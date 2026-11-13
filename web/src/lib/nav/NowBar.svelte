@@ -7,6 +7,7 @@
 	// too. It replaced the channel's right column (Shell Rethink): who is here
 	// is the stage's tiles and the sidebar's voice rows, the jukebox and the
 	// cheers open above this bar.
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { nowPanel } from '#lib/nav/now-panel.svelte.ts';
 	import { rideBar } from '#lib/nav/ride-bar.svelte.ts';
@@ -15,7 +16,14 @@
 	import AwayLeave from '#lib/nav/AwayLeave.svelte';
 	import VoiceControls from '#lib/nav/VoiceControls.svelte';
 	import { account, voiceUp } from '#lib/account.svelte.ts';
-	import { contextMenu, openMenu } from '#lib/context-menu.svelte.ts';
+	import {
+		contextMenu,
+		menu,
+		openMenu,
+		type MenuItem,
+	} from '#lib/context-menu.svelte.ts';
+	import { fitControls, KEPT } from '#lib/ride/bar-fit.ts';
+	import { CONTROLS, type RideControl } from '#lib/ride/ride-controls.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
@@ -25,6 +33,7 @@
 	import Bike from '@lucide/svelte/icons/bike';
 	import Radio from '@lucide/svelte/icons/radio';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Music from '@lucide/svelte/icons/music';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
@@ -120,6 +129,144 @@
 		};
 	}
 
+	// The ride's row never scrolls (docs/spec/riding.md): what it has no room
+	// for is hidden where it stands, still mounted so its keys and the phone
+	// remote's offers keep working, and listed under More. Measured, not
+	// guessed from the viewport: the room the row gets depends on what else
+	// the bar holds.
+	let tucked = $state.raw<HTMLElement[]>([]);
+	let moreButton = $state<HTMLElement | null>(null);
+	const TUCKED = 'data-bar-tucked';
+
+	/** The row's controls: its boxes, through the `contents` wrappers. */
+	function controlsIn(row: HTMLElement): HTMLElement[] {
+		const found: HTMLElement[] = [];
+		const walk = (parent: Element) => {
+			for (const el of parent.children) {
+				if (!(el instanceof HTMLElement) || el === moreButton) continue;
+				const display = getComputedStyle(el).display;
+				if (display === 'contents') walk(el);
+				// Words with nothing to press (a notice) are not the bar's to move.
+				else if (display !== 'none' && el.matches('button, a, :has(button)'))
+					found.push(el);
+			}
+		};
+		walk(row);
+		return found;
+	}
+
+	// The kept controls alone do not fit beside the call's: the ride's row
+	// takes a line of its own above them.
+	let stacked = $state(false);
+
+	function fitRow(row: HTMLElement) {
+		const bar = row.parentElement as HTMLElement;
+		let frame = 0;
+		const fit = () => {
+			frame = 0;
+			const style = getComputedStyle(bar);
+			const inner =
+				bar.clientWidth -
+				parseFloat(style.paddingLeft) -
+				parseFloat(style.paddingRight);
+			// What the bar's other things leave on one line. They keep their
+			// width whatever the row holds, so this never chases itself.
+			const others = [...bar.children].filter(
+				(el): el is HTMLElement => el instanceof HTMLElement && el !== row,
+			);
+			const beside =
+				inner -
+				others.reduce((sum, el) => sum + el.offsetWidth, 0) -
+				others.length * parseFloat(style.columnGap || '0');
+			const gap = parseFloat(getComputedStyle(row).columnGap || '0');
+			// A hidden control keeps its box (out of the flow), so it measures.
+			const controls = controlsIn(row).map((el, at) => ({
+				el,
+				key: String(at),
+				id: el.dataset.rideControl ?? '',
+				width: el.offsetWidth,
+			}));
+			const kept = controls.filter((c) => KEPT.has(c.id));
+			const needs =
+				kept.reduce((sum, c) => sum + c.width + gap, -gap) +
+				(controls.length > kept.length ? 44 + gap : 0);
+			const stack = others.length > 0 && needs > beside;
+			const { more } = fitControls(stack ? inner : beside, controls, { gap });
+			const gone = more.map((key) => controls[Number(key)].el);
+			if (stack !== stacked) stacked = stack;
+			if (
+				gone.length === tucked.length &&
+				gone.every((el, i) => el === tucked[i])
+			)
+				return;
+			for (const el of tucked) el.removeAttribute(TUCKED);
+			for (const el of gone) el.setAttribute(TUCKED, '');
+			tucked = gone;
+		};
+		const ask = () => (frame ||= requestAnimationFrame(fit));
+		const resized = new ResizeObserver(ask);
+		resized.observe(bar);
+		// Controls come and go with the ride and the call, and their words
+		// change width. Attributes are not watched: hiding a control is one.
+		const changed = new MutationObserver(ask);
+		changed.observe(bar, {
+			childList: true,
+			subtree: true,
+			characterData: true,
+		});
+		// Not this attachment's dependencies: it fits, it does not follow.
+		untrack(fit);
+		return () => {
+			cancelAnimationFrame(frame);
+			resized.disconnect();
+			changed.disconnect();
+			untrack(() => {
+				for (const el of tucked) el.removeAttribute(TUCKED);
+				tucked = [];
+				stacked = false;
+			});
+		};
+	}
+
+	/** One row per hidden control; a switch's segments are a row each. */
+	function moreItems(): MenuItem[] {
+		const name = (el: HTMLElement) =>
+			el.getAttribute('aria-label') ||
+			el.title ||
+			el.textContent?.replace(/\s+/g, ' ').trim() ||
+			'';
+		return tucked.flatMap((box) => {
+			const buttons = box.matches('button, a')
+				? [box]
+				: [...box.querySelectorAll<HTMLElement>('button')];
+			return buttons.map((button) => {
+				const label = name(button);
+				const off = (button as HTMLButtonElement).disabled === true;
+				return {
+					label: label.charAt(0).toUpperCase() + label.slice(1),
+					icon: CONTROLS[button.dataset.rideControl as RideControl]?.icon,
+					disabled: off,
+					hint: off
+						? (button.dataset.hint ?? button.title) || undefined
+						: button.getAttribute('aria-pressed') === 'true'
+							? 'on'
+							: undefined,
+					onSelect: () => {
+						button.click();
+						// A control that opens a menu of its own opens it here: it
+						// has no place on screen to open from.
+						if (menu.items.length && moreButton) {
+							const at = moreButton.getBoundingClientRect();
+							menu.x = at.right;
+							menu.y = at.top;
+							menu.anchor = moreButton;
+						}
+					},
+				};
+			});
+		});
+	}
+
 	const ICON =
 		'grid h-11 w-11 shrink-0 place-items-center rounded hover:bg-ink/5';
 </script>
@@ -172,7 +319,9 @@
 
 		<!-- 4rem, the sidebar foot's height, so the two top borders meet. -->
 		<div
-			class="border-ink/10 bg-surface flex h-[calc(4rem+var(--safe-bottom))] items-center gap-1 border-t px-2 pb-(--safe-bottom) md:gap-2 md:px-3"
+			class="border-ink/10 bg-surface flex items-center gap-1 border-t px-2 md:gap-2 md:px-3 {stacked
+				? 'flex-wrap gap-y-1 pt-1.5 pb-[calc(0.375rem+var(--safe-bottom))]'
+				: 'h-[calc(4rem+var(--safe-bottom))] pb-(--safe-bottom)'}"
 		>
 			{#if riding}
 				<!-- The ride hides the sidebar at every width; this is the way back
@@ -190,9 +339,9 @@
 			     drawer still leads back. -->
 			{#if place}<a
 					href={place.address.home}
-					class="hover:bg-ink/5 flex min-w-0 shrink-[8] items-center gap-2 rounded px-2 py-1 {rideBar.on
-						? 'max-sm:hidden'
-						: ''}"
+					class="hover:bg-ink/5 flex min-w-0 items-center gap-2 rounded px-2 py-1 {rideBar.on
+						? 'max-w-48 shrink-0 max-lg:h-11 max-lg:w-11 max-lg:justify-center max-lg:px-0 max-sm:hidden'
+						: 'shrink-[8]'}"
 					title="Back to {place.address.name}"
 					aria-label="Back to the voice channel {place.address.name}"
 					onclick={(event) => {
@@ -206,7 +355,7 @@
 						size={16}
 						class="shrink-0 {inVoice ? 'text-ok' : 'text-muted'}"
 					/>
-					<span class="min-w-0">
+					<span class="min-w-0 {rideBar.on ? 'max-lg:sr-only' : ''}">
 						<span class="block truncate text-sm font-medium"
 							>{place.address.name}</span
 						>
@@ -237,14 +386,31 @@
 			{/if}
 
 			{#if rideBar.on}
-				<!-- One row of 44 px controls, the riding surface's (rideBar); a
-				     phone scrolls it sideways. -->
+				<!-- One row of 44 px controls, the riding surface's (rideBar). It
+				     takes the room the bar has left and never scrolls: End last,
+				     and what does not fit under More before it (fitRow). -->
 				<div
 					bind:this={rideBar.target}
+					{@attach fitRow}
 					data-testid="ride-controls"
-					style="scrollbar-width:none"
-					class="flex min-w-0 flex-auto items-center gap-1.5 overflow-x-auto [&_.btn]:px-2.5 [&_.btn]:text-base [&_button]:shrink-0"
-				></div>
+					class="relative flex min-w-0 items-center gap-1.5 overflow-hidden [&_.btn]:min-w-11 [&_.btn]:px-2.5 [&_.btn]:text-base [&_[data-bar-tucked]]:invisible! [&_[data-bar-tucked]]:absolute! [&_[data-ride-control=end]]:order-2 [&_[data-ride-control]]:shrink-0 [&_button]:shrink-0 {stacked
+						? 'order-first basis-full'
+						: 'flex-[1_1_0]'}"
+				>
+					{#if tucked.length}
+						<button
+							bind:this={moreButton}
+							onclick={(event) => {
+								const box = event.currentTarget.getBoundingClientRect();
+								openMenu(moreItems(), box.right, box.top, event.currentTarget);
+							}}
+							aria-label="More ride controls"
+							aria-haspopup="menu"
+							class="btn btn-secondary order-1 h-11 w-11 p-0!"
+							><Ellipsis size={20} /></button
+						>
+					{/if}
+				</div>
 			{/if}
 
 			{#if place}<div class="ml-auto flex shrink-0 items-center gap-1">
@@ -294,7 +460,7 @@
 							onclick={() => toggle('music')}
 							aria-expanded={nowPanel.open === 'music'}
 							aria-haspopup="dialog"
-							class="hover:bg-ink/5 flex h-11 max-w-56 min-w-0 shrink items-center gap-2 rounded px-2 text-sm {rideBar.on
+							class="hover:bg-ink/5 flex h-11 max-w-56 min-w-11 shrink items-center justify-center gap-2 rounded px-2 text-sm {rideBar.on
 								? 'max-sm:hidden [@media(max-height:30rem)]:hidden'
 								: ''} {nowPanel.open === 'music'
 								? 'text-ink bg-ink/5'

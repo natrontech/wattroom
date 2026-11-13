@@ -79,8 +79,10 @@
 
 <div class="contents">
 	{#if countIn}
-		<button onclick={countIn.cancel} class="btn btn-secondary btn-ride"
-			>Cancel</button
+		<button
+			onclick={countIn.cancel}
+			data-ride-control="cancel"
+			class="btn btn-secondary btn-ride">Cancel</button
 		>
 	{:else}
 		{#if open}
@@ -102,10 +104,8 @@
 				onBias={(step) => session.nudgeBias(step)}
 			/>
 		{/if}
-		<!-- A phone's bar keeps the trim, Skip and End in view. -->
-		{#if onflag}<span class="contents max-md:hidden"
-				><FlagButton {onflag} sends="after" /></span
-			>{/if}
+		<!-- What the bar has no room for goes under its More (bar-fit.ts). -->
+		{#if onflag}<FlagButton {onflag} sends="after" />{/if}
 		<ViewSwitch {world} {drawn} road={!!session.road} />
 		{#if session.road}
 			<RideControlButton
@@ -113,38 +113,28 @@
 				onclick={() => askCamera()}
 				disabled={!drawn}
 				hint={NEEDS_3D}
-				class="max-md:hidden"
 			/>
 			<RideControlButton
 				control="photo"
 				onclick={() => askPhoto()}
 				disabled={!drawn || !worldPicture.canTake}
 				hint={drawn ? PHOTOS_FULL : NEEDS_3D}
-				class="max-md:hidden"
 			/>
 		{/if}
 		{#if ontv}
-			<!-- A phone has no TV to send to, and its bar keeps End in view. -->
-			<RideControlButton
-				control="tv"
-				onclick={ontv}
-				offer="tv"
-				class="max-md:hidden"
-			/>
+			<RideControlButton control="tv" onclick={ontv} offer="tv" />
 		{/if}
 		{#if clock.pausable}
 			<RideControlButton
 				control={clock.paused ? 'resume' : 'pause'}
 				onclick={() => (clock.paused ? session.resume() : session.pause())}
 				pressed={clock.paused}
-				class="max-md:hidden"
 			/>
 		{/if}
 		{#if !session.road?.pinned && !open}
 			<RideControlButton
 				control="extend"
 				onclick={() => session.extend(EXTEND_SECONDS)}
-				class="max-md:hidden"
 			/>
 			<RideControlButton
 				control="skip"
@@ -156,12 +146,14 @@
 		{#if onchange}
 			<button
 				onclick={onchange}
-				class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
+				data-ride-control="change"
+				class="btn btn-secondary btn-ride whitespace-nowrap"
 				>Change workout</button
 			>
 		{/if}
 		<button
 			onclick={endRide}
+			data-ride-control="end"
 			class="btn btn-secondary btn-ride whitespace-nowrap">End ride</button
 		>
 	{/if}

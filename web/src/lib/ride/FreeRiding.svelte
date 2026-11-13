@@ -341,6 +341,7 @@
 		<button
 			onclick={() => free.nudge(-1)}
 			disabled={atMin}
+			data-ride-control="trim"
 			class="btn btn-secondary btn-ride"
 			aria-label={inWatts ? 'fewer watts' : 'lower grade'}
 			{@attach tooltip(inWatts ? 'Fewer watts' : 'Lower grade')}
@@ -349,6 +350,7 @@
 		<button
 			onclick={() => free.nudge(1)}
 			disabled={atMax}
+			data-ride-control="trim"
 			class="btn btn-secondary btn-ride"
 			aria-label={inWatts ? 'more watts' : 'steeper grade'}
 			{@attach tooltip(inWatts ? 'More watts' : 'Steeper grade')}
@@ -373,7 +375,8 @@
 				openMenu(pacerItems(), box.left, box.top, event.currentTarget);
 			}}
 			aria-haspopup="menu"
-			class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
+			data-ride-control="pacer"
+			class="btn btn-secondary btn-ride whitespace-nowrap"
 			>{pacer.category ? `Pacer ${pacer.category}` : 'Ride with a pacer'}
 			<ChevronDown size={16} /></button
 		>
@@ -382,17 +385,14 @@
 		<!-- Climb repeats (#3193): SIM only, so not offered in Watts. -->
 		<button
 			onclick={() => free.setRepeats(!free.repeats)}
-			class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
+			data-ride-control="repeats"
+			class="btn btn-secondary btn-ride whitespace-nowrap"
 			>{free.repeats ? 'Stop repeats' : 'Climb repeats'}</button
 		>
 	{/if}
-	<!-- A phone's bar keeps the mode, the shifter and End in view. -->
-	{#if onflag}<span class="contents max-md:hidden"
-			><FlagButton onflag={flag} sends="after" /></span
-		>{/if}
-	<span class="contents max-md:hidden"
-		><ViewSwitch {world} drawn={inWorld} road={!!road} /></span
-	>
+	<!-- What the bar has no room for goes under its More (bar-fit.ts). -->
+	{#if onflag}<FlagButton onflag={flag} sends="after" />{/if}
+	<ViewSwitch {world} drawn={inWorld} road={!!road} />
 	{#if road}
 		<!-- The ride's controls, as the phone remote draws them (ride-controls.ts). -->
 		<RideControlButton
@@ -401,7 +401,6 @@
 			disabled={!inWorld}
 			hint={NEEDS_3D}
 			box="icon-btn-lg"
-			class="max-md:hidden"
 		/>
 		<RideControlButton
 			control="photo"
@@ -409,7 +408,6 @@
 			disabled={!inWorld || !worldPicture.canTake}
 			hint={inWorld ? PHOTOS_FULL : NEEDS_3D}
 			box="icon-btn-lg"
-			class="max-md:hidden"
 		/>
 	{/if}
 	{#if ontv}
@@ -418,7 +416,6 @@
 			onclick={ontv}
 			offer="tv"
 			box="icon-btn-lg"
-			class="max-md:hidden"
 		/>
 	{/if}
 	{#if onend}
@@ -427,6 +424,7 @@
 		<button
 			onclick={onend}
 			disabled={ending}
+			data-ride-control="end"
 			class="btn btn-secondary btn-ride whitespace-nowrap">End ride</button
 		>
 	{/if}
@@ -447,7 +445,7 @@
 						openMenu(rampItems(), box.left, box.top, event.currentTarget);
 					}}
 					aria-haspopup="menu"
-					class="btn btn-secondary btn-ride whitespace-nowrap max-md:hidden"
+					class="btn btn-secondary btn-ride whitespace-nowrap"
 					>Warm up or cool down <ChevronDown size={16} /></button
 				>
 			{/if}

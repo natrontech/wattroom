@@ -97,8 +97,10 @@
 	{#each mates as mate (mate.id)}
 		{@const jump = mate.name ? rideWith(mate, free) : null}
 		{#if jump}
-			<button onclick={jump} class="btn btn-secondary btn-ride"
-				>Ride with {mate.name}</button
+			<button
+				onclick={jump}
+				data-ride-control="ride-with"
+				class="btn btn-secondary btn-ride">Ride with {mate.name}</button
 			>
 		{/if}
 	{/each}
@@ -113,6 +115,7 @@
 			onclick={() => channel.openPicker('ride')}
 			aria-label="Ride a workout"
 			title="Ride a workout"
+			data-ride-control="workout"
 			class="btn btn-secondary btn-ride"
 			><ChartColumn size={18} /><span class="max-2xl:hidden"
 				>Ride a workout</span

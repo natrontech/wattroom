@@ -79,6 +79,7 @@ Navigation never ends a session or a call. Opening another voice channel moves t
 - Voice, Away and Leave are the call's. On a desk they sit under your name in the sidebar's foot. Riding or on a phone the sidebar is out of reach, so they sit in the bar.
 - **Ride** opens the device's free ride. Its arrow lists, for the crew you are looking at: **Start a session**, **Ride together**, then one row per live session ("Join Tempo · 3 riding").
 - On a session: the ride's controls from the ride HUD (#4386), plus **Leave session**. The coach also gets Pause and End.
+- The ride's row never scrolls: End ride and Leave stay on screen at every width, and what does not fit is under **More** (docs/spec/riding.md, #4567).
 - Off any crew page, Start a session uses the crew of your call, else the last crew you opened.
 
 ## Sidebar
