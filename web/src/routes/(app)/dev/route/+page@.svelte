@@ -181,7 +181,11 @@
 		}
 	}
 	let picked = $state('');
-	if (params.get('shape')) void shape(params.get('shape')!);
+	// `m` stands the lab that far along it: a link to a spot, or a script's shot of one.
+	if (params.get('shape'))
+		void shape(params.get('shape')!).then(() =>
+			seek(Number(params.get('m') ?? 0)),
+		);
 
 	function seek(to: number) {
 		if (!route) return;
