@@ -468,24 +468,19 @@ const MAP = {
 			{ x: -1150, y: -3060, ele: 1456, r: 0 },
 			{ x: -900, y: -3900, ele: 1470, r: 0 },
 		],
-		// Off the valley road under the climb, out through the dry valley.
+		// Off the valley road under the climb, square to it, then out through the dry valley: a road leaving another at a shallow angle runs beside it and reads as a mistake.
 		[
 			{ x: 2000, y: -1100, ele: 1485, r: 0 },
-			{ x: 2500, y: -2100, ele: 1478, r: 0 },
-			{ x: 3300, y: -2700, ele: 1492, r: 0 },
-			{ x: 4200, y: -2600, ele: 1510, r: 0 },
+			{ x: 1750, y: -1400, ele: 1480, r: 0 },
+			{ x: 1900, y: -2000, ele: 1476, r: 0 },
+			{ x: 2700, y: -2600, ele: 1488, r: 0 },
+			{ x: 3700, y: -2700, ele: 1505, r: 0 },
 		],
 		// North from the head of the lake, up the side valley.
 		[
 			{ x: 150, y: 4250, ele: 1441, r: 0 },
 			{ x: -150, y: 4800, ele: 1462, r: 0 },
 			{ x: -100, y: 5400, ele: 1500, r: 0 },
-		],
-		// The village's lane down to the foot of the lake.
-		[
-			{ x: -250, y: 620, ele: 1440, r: 0 },
-			{ x: -30, y: 480, ele: 1443, r: 0 },
-			{ x: 200, y: 300, ele: 1446, r: 0 },
 		],
 		// A farm lane north off the valley road, square to it: a road leaving another at a shallow angle runs beside it for a kilometre.
 		[

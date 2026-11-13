@@ -18,7 +18,6 @@ import { archOnRoad } from './furniture';
 import { Biome } from './biome';
 import { sceneOf } from './designed';
 import { bridges, junctions, roadworks, waterSheets } from './scenery';
-import { MOUTH_M } from './side-roads';
 import type { Piece } from './setpieces';
 import {
 	plinth,
@@ -338,19 +337,12 @@ export function buildStage(
 			tag(
 				'road',
 				new THREE.Mesh(
-					junctions(
-						route,
-						mouths,
-						// To the met road's edge line, and a hand past it.
-						MOUTH_M - ROAD_W / 2 + 0.4,
-						ROAD_LIFT + 0.03,
-						{
-							asphalt: style.road.asphalt,
-							line: style.road.line,
-							sign: c.warning,
-							post: c.pole,
-						},
-					),
+					junctions(route, mouths, ROAD_LIFT + 0.03, {
+						asphalt: style.road.asphalt,
+						line: style.road.line,
+						sign: c.warning,
+						post: c.pole,
+					}),
 					both,
 				),
 			),

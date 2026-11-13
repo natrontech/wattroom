@@ -385,11 +385,15 @@ const STOP_LETTERS = [
 	['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
 ];
 /** The painted STOP: a cell's width across the lane and its length along it (stretched, as road lettering is), the gap between letters, and how far short of the stop line it ends. */
-const STOP_PAINT = { cell: 0.11, long: 0.36, gap: 0.22, before: 0.7 };
+const STOP_PAINT = { cell: 0.14, long: 0.45, gap: 0.08, before: 1.0 };
 /** The stop line: metres thick, and how far from the side road's end it lies, on the junction's apron. */
 const STOP_LINE = { thick: 0.5, at: 0.5 };
-/** The apron: asphalt from this far back up the side road to the met road's edge line, flaring by `flare` either side. */
-const APRON = { back: 1.2, flare: 2.2, lift: 0.03 };
+/** The apron: asphalt from this far back up the side road to past the met road's edge line, its corners rounded on a radius of `round`. */
+const APRON = { back: 1.2, round: 3.5, lift: 0.03 };
+/** A side road stops where it comes in within 35° of square to the road it meets; shallower, it forks off it, and nobody stops at a fork. */
+const SQUARE_COS = Math.cos((35 * Math.PI) / 180);
+/** Across a mouth the met road's edge line is dashed: metres of paint and of gap, and its width. */
+const MOUTH_DASH = { on: 0.6, off: 0.6, wide: 0.3 };
 /** The stop sign: its post's height, the disc's radius, and where it stands, back from the mouth and out from the centre. */
 const STOP_SIGN = { up: 2.3, r: 0.42, back: 3.5, out: FORMATION + 0.4 };
 
@@ -407,9 +411,11 @@ export function junctions(
 		z: number;
 		tx: number;
 		tz: number;
+		sx: number;
+		sz: number;
+		d: number;
 		h: number;
 	}[],
-	metFrom: number,
 	lift: number,
 	colors: { asphalt: string; line: string; sign: string; post: string },
 ): THREE.BufferGeometry {
@@ -426,26 +432,92 @@ export function junctions(
 		}
 	};
 	for (const m of mouths) {
-		// Along the side road into the junction, and to the right of that: the lane a rider comes in on.
-		const [rx, rz] = [-m.tz, m.tx];
 		const y = yOf(route, m.h) + lift;
-		const at = (along: number, right: number, dy = 0) =>
+		const paint = APRON.lift;
+		// The met road's frame at the mouth: `t` across to its centre, `w` along it. Its asphalt's edge, its edge line and how far the junction's asphalt reaches, just past that line, each as metres across from the mouth.
+		const [wx, wz] = [-m.tz, m.tx];
+		const square = m.sx * m.tx + m.sz * m.tz;
+		const forks = square < SQUARE_COS;
+		const [qx, qz] = [-m.sz, m.sx];
+		const kerb = m.d - ROAD_W / 2;
+		const edgeAt = m.d - (ROAD_W / 2 - 0.25);
+		const reach = edgeAt + 0.3;
+		const met = (acrossT: number, alongW: number, dy = 0) =>
 			new THREE.Vector3(
-				m.x + m.tx * along + rx * right,
+				m.x + m.tx * acrossT + wx * alongW,
 				y + dy,
-				m.z + m.tz * along + rz * right,
+				m.z + m.tz * acrossT + wz * alongW,
 			);
-		const half = ROAD_W / 2 + 0.9;
+		// Where each edge of the side road's asphalt meets the met road's: carried on the way it runs where it comes in square, straight across where it forks off.
+		const sides = [-ROAD_W / 2, ROAD_W / 2]
+			.map((side) => {
+				const cx = qx * side;
+				const cz = qz * side;
+				const k = forks
+					? 0
+					: (kerb - (cx * m.tx + cz * m.tz)) / Math.max(square, 0.3);
+				return {
+					back: new THREE.Vector3(
+						m.x + cx - m.sx * APRON.back,
+						y,
+						m.z + cz - m.sz * APRON.back,
+					),
+					w: (cx + m.sx * k) * wx + (cz + m.sz * k) * wz,
+				};
+			})
+			.sort((a, b) => a.w - b.w);
+		const [w0, w1] = [sides[0].w, sides[1].w];
+		// One surface: the side road's asphalt carried on over the met road's shoulder and edge line.
 		quad(
-			[
-				at(-APRON.back, -half),
-				at(-APRON.back, half),
-				at(metFrom, half + APRON.flare),
-				at(metFrom, -half - APRON.flare),
-			],
+			[sides[0].back, sides[1].back, met(reach, w1), met(reach, w0)],
 			asphalt,
 		);
-		const paint = APRON.lift;
+		// Its corners rounded, as a junction's kerbs are: a quarter circle from the side road's edge round to the met road's.
+		if (!forks)
+			[
+				[w0, -1],
+				[w1, 1],
+			].forEach(([w, out]) => {
+				const corner = met(kerb, w);
+				const R = APRON.round;
+				const arc = (k: number) => {
+					const a = (k / 8) * (Math.PI / 2);
+					const along = -R + R * Math.sin(a);
+					const across = out * (R - R * Math.cos(a));
+					return new THREE.Vector3(
+						corner.x + m.sx * along + wx * across,
+						y,
+						corner.z + m.sz * along + wz * across,
+					);
+				};
+				for (let k = 0; k < 8; k++)
+					for (const p of [corner, arc(k), arc(k + 1)]) {
+						pos.push(p.x, p.y, p.z);
+						col.push(asphalt.r, asphalt.g, asphalt.b);
+					}
+			});
+		// The met road's edge line, dashed across the mouth, where its solid line was.
+		for (let d = w0 + 0.4; d < w1 - 0.2; d += MOUTH_DASH.on + MOUTH_DASH.off) {
+			const to = Math.min(d + MOUTH_DASH.on, w1);
+			quad(
+				[
+					met(edgeAt - MOUTH_DASH.wide / 2, d, paint),
+					met(edgeAt - MOUTH_DASH.wide / 2, to, paint),
+					met(edgeAt + MOUTH_DASH.wide / 2, to, paint),
+					met(edgeAt + MOUTH_DASH.wide / 2, d, paint),
+				],
+				line,
+			);
+		}
+		if (square < SQUARE_COS) continue;
+		// Along the side road into the junction, and to the right of that: the lane a rider comes in on.
+		const [rx, rz] = [-m.sz, m.sx];
+		const at = (along: number, right: number, dy = 0) =>
+			new THREE.Vector3(
+				m.x + m.sx * along + rx * right,
+				y + dy,
+				m.z + m.sz * along + rz * right,
+			);
 		quad(
 			[
 				at(STOP_LINE.at, 0.15, paint),
@@ -457,7 +529,7 @@ export function junctions(
 		);
 		// STOP, read by the rider coming in: its letters' feet towards them, left to right across their lane.
 		const wide = 4 * 5 * STOP_PAINT.cell + 3 * STOP_PAINT.gap;
-		const left = (ROAD_W / 2 - wide) / 2 + 0.1;
+		const left = (ROAD_W / 2 - wide) / 2 + 0.05;
 		const top = STOP_LINE.at - STOP_PAINT.before;
 		STOP_LETTERS.forEach((rows, letter) =>
 			rows.forEach((row, r) => {
@@ -503,7 +575,7 @@ export function junctions(
 		] as const) {
 			const centre = head
 				.clone()
-				.add(new THREE.Vector3(-m.tx * (0.03 + off), 0, -m.tz * (0.03 + off)));
+				.add(new THREE.Vector3(-m.sx * (0.03 + off), 0, -m.sz * (0.03 + off)));
 			const rim = Array.from({ length: 8 }, (_, k) => {
 				const a = ((k + 0.5) * Math.PI) / 4;
 				return centre

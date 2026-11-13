@@ -33,6 +33,11 @@ export type Mouth = {
 	/** Unit, from the side road's end to the road met. */
 	tx: number;
 	tz: number;
+	/** Metres from the side road's end to the centre of the road met. */
+	d: number;
+	/** Unit, the way the side road runs into the junction. */
+	sx: number;
+	sz: number;
 	h: number;
 };
 export type SideRoad = {
@@ -116,6 +121,8 @@ export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
 					const hit = nearest(p.x, p.z);
 					if (hit && hit.d <= MOUTH_M) {
 						const d = hit.d || 1;
+						const q = at(other, at0 - dir * 2);
+						const run = Math.hypot(p.x - q.x, p.z - q.z) || 1;
 						return [
 							at0,
 							{
@@ -123,6 +130,9 @@ export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
 								z: p.z,
 								tx: (hit.x - p.x) / d,
 								tz: (hit.z - p.z) / d,
+								d: hit.d,
+								sx: (p.x - q.x) / run,
+								sz: (p.z - q.z) / run,
 								h: hit.h,
 							},
 						];

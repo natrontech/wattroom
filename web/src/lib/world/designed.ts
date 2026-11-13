@@ -602,10 +602,19 @@ export const designedLine = (d: Designed): Route => build(d).line;
 
 /** Metres between a spur's samples, as between a road's. */
 const SPUR_STEP_M = 10;
+const SPUR_LEAD_M = 25;
 
 /** A spur as a road's line: its corners rounded off, walked every 10 m, in the map's frame. Never ridden, so it has no road to send. */
 function spur(corners: readonly Corner[], like: Route): Route {
 	let line = corners.map((c) => [c.x, -c.y, c.ele]);
+	// A spur starts on a road's corner as it was drawn, and the road, rounded and wound, runs a few metres off that: the spur starts SPUR_LEAD_M short of it, on its own line, so it crosses the road wherever it lies and is cut at its edge (side-roads.ts drops the stub left on the far side).
+	const [first, next] = line;
+	const run = Math.hypot(next[0] - first[0], next[1] - first[1]) || 1;
+	line.unshift([
+		first[0] - ((next[0] - first[0]) / run) * SPUR_LEAD_M,
+		first[1] - ((next[1] - first[1]) / run) * SPUR_LEAD_M,
+		first[2],
+	]);
 	for (let pass = 0; pass < 3; pass++) {
 		const next = [line[0]];
 		for (let i = 0; i + 1 < line.length; i++) {
