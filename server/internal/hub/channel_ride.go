@@ -301,7 +301,10 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 	// A countdown stopped before it started (#2605) says so on the timeline,
 	// named while the session still carries its workout: its "starting" line
 	// would otherwise stand there with nothing after it.
-	stopping := c.Action == "end" && rm.session.state(now).Phase == "countdown"
+	// A pick cancelled before its count-in says the same (#4562): the start
+	// line and its "setting up" line vanish for everyone who saw them.
+	was := rm.session.state(now).Phase
+	stopping := c.Action == "end" && (was == "countdown" || (was == "idle" && rm.session.open()))
 	stopped := rm.session.workoutName
 	// The session answers first: a start the phase refuses — a stale coach
 	// tab, two coaches racing the countdown — used to wipe the running

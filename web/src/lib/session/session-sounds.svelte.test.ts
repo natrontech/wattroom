@@ -42,6 +42,30 @@ function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
 // The sprint and the rider's own guard announce themselves from the shell
 // (#1412), so a rider on any place hears them.
 describe('createSessionSounds', () => {
+	// A session cancelled before it ran (#4562) says so to everyone; one
+	// that ran and ended has its fanfare and no second cue.
+	it('says a cancelled session, and not an ended one', async () => {
+		heard.cues.length = 0;
+		let coach = $state<string | undefined>('u2');
+		let phase = $state('idle');
+		const stop = $effect.root(() => {
+			createSessionSounds(quiet({ coach: () => coach, phase: () => phase }));
+		});
+		await tick();
+		coach = undefined;
+		await tick();
+		expect(heard.cues).toEqual(['block']);
+		coach = 'u2';
+		phase = 'running';
+		await tick();
+		heard.cues.length = 0;
+		phase = 'done';
+		coach = undefined;
+		await tick();
+		expect(heard.cues).toEqual(['fanfare']);
+		stop();
+	});
+
 	// The wheel (#3265): in and out of shelter, and a rider going by close,
 	// on the side they went by. Over the line the wheel lets go silently.
 	it('says the wheel and who goes by', async () => {
