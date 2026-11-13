@@ -163,10 +163,9 @@ export function road(
 	const cuts: number[] = [];
 	if (!rows.ring && shoulder > 0) {
 		const count = out.hidden.length;
-		if (lo === 0 && !out.hidden[0])
-			endCap(out, cuts, cols, half + shoulder, 0, 1);
+		if (lo === 0 && !out.hidden[0]) endCap(out, cuts, cols, drops, 0, 1);
 		if (hi === end && !out.hidden[count - 1])
-			endCap(out, cuts, cols, half + shoulder, count - 1, count - 2);
+			endCap(out, cuts, cols, drops, count - 1, count - 2);
 	}
 	const g = strip(out.pos, out.uv, cols, out.hidden, cuts);
 	g.setAttribute('bare', new THREE.Float32BufferAttribute(out.bare, 2));
@@ -175,19 +174,21 @@ export function road(
 	return g;
 }
 
-/** Rows a road's rounded end is drawn in, the end row's own again among them. */
-export const CAP_ROWS = 7;
+/** Rows a road's rounded end is drawn in, the end row's own again among them: a tenth of a quarter turn each. */
+export const CAP_ROWS = 10;
 
 /**
  * A road's end, rounded off: the road used to stop at a square cut, its
  * asphalt and both shoulders sawn through where the first metre began. The
- * end row `at` is drawn again beyond itself, drawn in toward its centre along
- * a half circle of the formation's radius, which the ground is already
- * levelled to there (ground.ts heightAt: within the formation of the road's
- * nearest point). Each row keeps the end row's metres across, so the edge
- * line and the shoulder run round the end and meet. `inner` is the row
- * inside the end: the cap runs on from it. Its rows follow the strip's, cut
- * off from them (`cuts`: no quad after that row).
+ * end row `at` is swept round its own centre, a quarter turn from each side
+ * to meet beyond it: every column keeps its distance from the centre, so the
+ * edge line and the shoulder run round the end as half circles, each as
+ * wide as along the road. The ground is already levelled there (ground.ts
+ * heightAt: within the formation of the road's nearest point). The row's
+ * bank eases out round the turn and each column keeps its drop, so the two
+ * sides meet at one height. `inner` is the row inside the end: the cap runs
+ * on from it. Its rows follow the strip's, cut off from them (`cuts`: no
+ * quad after that row).
  */
 function endCap(
 	g: {
@@ -199,7 +200,7 @@ function endCap(
 	},
 	cuts: number[],
 	cols: number,
-	radius: number,
+	drops: readonly number[],
 	at: number,
 	inner: number,
 ) {
@@ -208,29 +209,35 @@ function endCap(
 		a.slice(r * cols * size, (r + 1) * cols * size);
 	const edge = row(g.pos, 3);
 	const mid = ((cols - 1) / 2) * 3;
-	// Outward along the road: from the row inside the end to the end.
-	const before = row(g.pos, 3, inner);
-	let ox = edge[mid] - before[mid];
-	let oz = edge[mid + 2] - before[mid + 2];
-	const len = Math.hypot(ox, oz);
+	// Outward: square to the row, on the side away from the row inside the end.
+	const last = (cols - 1) * 3;
+	const ax = edge[last] - edge[0];
+	const az = edge[last + 2] - edge[2];
+	const len = Math.hypot(ax, az);
 	if (len < 1e-6) return;
-	ox /= len;
-	oz /= len;
+	const before = row(g.pos, 3, inner);
+	const away =
+		-az * (edge[mid] - before[mid]) + ax * (edge[mid + 2] - before[mid + 2]) < 0
+			? -1
+			: 1;
+	const ox = (-az / len) * away;
+	const oz = (ax / len) * away;
 	const uvs = row(g.uv, 2);
 	const along = at > inner ? 1 : -1;
 	const capRows: number[][] = [];
 	for (let k = 0; k < CAP_ROWS; k++) {
 		const a = (k / (CAP_ROWS - 1)) * (Math.PI / 2);
-		const reach = radius * Math.sin(a);
 		const pos: number[] = [];
 		const uv: number[] = [];
 		for (let c = 0; c < cols; c++) {
+			const dx = edge[c * 3] - edge[mid];
+			const dz = edge[c * 3 + 2] - edge[mid + 2];
+			const reach = Math.hypot(dx, dz) * Math.sin(a);
+			const banked = edge[c * 3 + 1] - edge[mid + 1] - drops[c];
 			pos.push(
-				edge[mid] + (edge[c * 3] - edge[mid]) * Math.cos(a) + ox * reach,
-				edge[c * 3 + 1],
-				edge[mid + 2] +
-					(edge[c * 3 + 2] - edge[mid + 2]) * Math.cos(a) +
-					oz * reach,
+				edge[mid] + dx * Math.cos(a) + ox * reach,
+				edge[mid + 1] + drops[c] + banked * Math.cos(a),
+				edge[mid + 2] + dz * Math.cos(a) + oz * reach,
 			);
 			uv.push(uvs[c * 2], uvs[c * 2 + 1] + along * reach);
 		}
@@ -334,6 +341,10 @@ const EDGE_HALF = 0.06;
 const CENTRE_HALF = 0.055;
 const DASH_M = 3;
 const DASH_EVERY_M = 12;
+/** The edge line across the mouth of a joining road: a dash and a gap in this many metres. */
+const MOUTH_EVERY_M = 2;
+/** And how near the joining road's centre line an edge line is dashed: nearer than the far edge line ever is, 0.35 m short of the asphalt's half width. */
+const MOUTH_WITHIN_M = ROAD_W / 2 - 0.6;
 
 /**
  * The road as paint on the ribbon (#3674, ADR-0092): flat asphalt, flat
@@ -402,10 +413,18 @@ export function roadMaterial(
 				float fo = max(fwidth(o), 1e-4);
 				float joins = step(0.5, vBare.y);
 				float joined = step(0.5, -vBare.y);
-				// A pass joining an earlier one is not drawn inside its asphalt.
-				if (joins > 0.5 && o < ${(ROAD_W / 2).toFixed(2)}) discard;
+				// A pass joining an earlier one is not drawn inside its asphalt, but for a hand's width at its edge: o is read off a line of 10 m chords, and where each ribbon stopped exactly at the other the ground showed between them.
+				if (joins > 0.5 && o < ${(ROAD_W / 2 - 0.1).toFixed(2)}) discard;
+				// And the pass joined draws no shoulder under the joining one's asphalt: two surfaces there, each lit by its own slope, drew as streaks.
+				if (joined > 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${(ROAD_W / 2 - 0.15).toFixed(2)}) discard;
 				float theirs = 1.0 - smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fo, o);
 				float theirEdge = 1.0 - smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fo, o);
+				// Across the mouth of a road joining it, the pass joined dashes its edge line, a metre on and a metre off: the line runs on, and the road beside it is seen to be another.
+				float mouthAt = abs(mod(s, ${MOUTH_EVERY_M.toFixed(1)}) - ${(MOUTH_EVERY_M / 2).toFixed(1)});
+				float mouthDash = mix(paint(mouthAt, ${(MOUTH_EVERY_M / 4).toFixed(2)}, fs), 0.5, smoothstep(0.15, 0.5, fs / ${MOUTH_EVERY_M.toFixed(1)}));
+				// Only the edge the other road lies beyond: its centre line is ${MOUTH_WITHIN_M.toFixed(1)} m from my edge line at the most, and from my far edge never.
+				float mouth = 1.0 - smoothstep(${MOUTH_WITHIN_M.toFixed(2)} - 0.5 * fo, ${MOUTH_WITHIN_M.toFixed(2)} + 0.5 * fo, o);
+				edge *= mix(1.0, mouthDash, joined * mouth);
 				// Its formation takes my lines and its shoulder my verge, its asphalt everything; the pass joined keeps its paint, and gives only its shoulder.
 				float line = max(edge, centre) * (1.0 - theirEdge * (1.0 - joined));
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);

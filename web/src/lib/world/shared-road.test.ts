@@ -133,7 +133,14 @@ describe('a street ridden out and back', () => {
 			);
 		for (const { rows: r } of roadPieces(street)) {
 			const piece = road(street, { shoulder: SHOULDER, rows: r });
-			expect(rows(piece, 0, r[1] - r[0])).toEqual(rows(whole, r[0], r[1]));
+			// To a tenth of a millimetre: a bank reads the road's length so far, summed from where the piece walks in, and its last bit can round a float the other way.
+			const drawn = rows(piece, 0, r[1] - r[0]);
+			const want = rows(whole, r[0], r[1]);
+			expect(drawn.length).toBe(want.length);
+			let worst = 0;
+			for (let i = 0; i < want.length; i++)
+				worst = Math.max(worst, Math.abs(drawn[i] - want[i]));
+			expect(worst).toBeLessThan(1e-4);
 		}
 	});
 });

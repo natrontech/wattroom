@@ -5,12 +5,15 @@ import {
 	alpineLoop,
 	HAIRPINS,
 	hairpinClimb,
+	hairpinPass,
 	legsRoad,
+	switchback,
 } from '#lib/road/fixtures.ts';
 import { toRoute, type Route } from '#lib/road/route.ts';
 import type { Road } from '#lib/road/road.ts';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import { walk } from './place/stroke';
+import { endsMeet } from './terrain/road-profile';
 import { closeHeights, closeWalk, routeOfRoad } from './road-route';
 
 /** A road's heights and turns become the route its world is built on (#3663). */
@@ -119,6 +122,31 @@ describe('a loop recorded higher home than out', () => {
 	it('leaves heights that meet as they are', () => {
 		const ele = Float64Array.from([5, 7, 9, 7, 5]);
 		expect(closeHeights(ele)).toBe(ele);
+	});
+
+	it('keeps a hairpin its two ends: the upper leg ends beside the start, high over it', () => {
+		// A kilometre out, a 9 m hairpin, a kilometre back 18 m beside the way out: within 1 % of its length, and 120 m up.
+		const climb = routeOfRoad(toRoute(switchback()).road);
+		const n = climb.x.length - 1;
+		expect(
+			Math.hypot(climb.x[n] - climb.x[0], climb.z[n] - climb.z[0]),
+		).toBeGreaterThan(8);
+		expect(endsMeet(climb)).toBe(false);
+		expect(climb.ele[n] - climb.ele[0]).toBeGreaterThan(100);
+	});
+
+	it('lays a hairpin climb on a hillside: no two legs steeper apart than the slope', () => {
+		// hairpinPass: 8 % up a 35 % slope, its legs parting from each hairpin.
+		const pass = routeOfRoad(toRoute(hairpinPass()).road);
+		let steepest = 0;
+		for (let i = 0; i < pass.x.length; i += 5)
+			for (let j = i + 30; j < pass.x.length; j += 5) {
+				const apart = Math.hypot(pass.x[j] - pass.x[i], pass.z[j] - pass.z[i]);
+				if (apart > 150) continue;
+				steepest = Math.max(steepest, (pass.ele[j] - pass.ele[i]) / apart);
+			}
+		expect(steepest).toBeGreaterThan(0.2);
+		expect(steepest).toBeLessThan(0.45);
 	});
 
 	it('leaves a road with two ends its climb', () => {

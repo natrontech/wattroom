@@ -117,7 +117,7 @@ describe('a road with two ends', () => {
 		);
 	});
 
-	it('rounds each end off: the edge and the shoulder run round it to a point a formation beyond', () => {
+	it('rounds each end off: the edge and the shoulder run round it as half circles', () => {
 		const route = outAndBack();
 		const g = road(route, { shoulder: SHOULDER });
 		const count = rowCount(route);
@@ -125,17 +125,32 @@ describe('a road with two ends', () => {
 		const tip = row(g, 'position', count);
 		const start = row(g, 'position', 0);
 		expect(row(g, 'position', count + CAP_ROWS - 1)).toEqual(start);
-		// Every column meets at the tip, a formation's width beyond the row's centre.
 		const off = (p: number[], c: number, q: number[]) =>
 			Math.hypot(p[c * 3] - q[2 * 3], p[c * 3 + 2] - q[2 * 3 + 2]);
-		for (let c = 0; c < COLS; c++)
-			expect(off(tip, c, start)).toBeCloseTo(FORMATION, 4);
-		const endTip = row(g, 'position', count + 2 * CAP_ROWS - 1);
-		const end = row(g, 'position', count - 1);
-		expect(off(endTip, 2, end)).toBeCloseTo(FORMATION, 4);
+		// Every row of the cap keeps each column as far from the centre as the start row has it.
+		for (let k = 0; k < CAP_ROWS; k++)
+			for (let c = 0; c < COLS; c++)
+				expect(off(row(g, 'position', count + k), c, start)).toBeCloseTo(
+					off(start, c, start),
+					4,
+				);
+		// At the tip the two sides meet, each column on its twin, at one height.
+		for (const [l, r] of [
+			[0, 4],
+			[1, 3],
+		]) {
+			expect(off(tip, l, start)).toBeGreaterThan(3);
+			for (const k of [0, 1, 2])
+				expect(tip[l * 3 + k]).toBeCloseTo(tip[r * 3 + k], 4);
+		}
+		expect(off(tip, 0, start)).toBeCloseTo(off(start, 0, start), 4);
 		// Beyond the road, not back along it.
 		const next = row(g, 'position', 1);
-		expect(off(tip, 2, next)).toBeGreaterThan(off(start, 2, next));
+		expect(off(tip, 0, next)).toBeGreaterThan(off(start, 2, next));
+		const endTip = row(g, 'position', count + 2 * CAP_ROWS - 1);
+		const end = row(g, 'position', count - 1);
+		expect(off(endTip, 4, end)).toBeCloseTo(off(end, 4, end), 4);
+		expect(off(end, 4, end)).toBeGreaterThan(FORMATION - 0.2);
 		// Painted as the end row is, metre for metre across.
 		expect(row(g, 'uv', count).filter((_, i) => i % 2 === 0)).toEqual(
 			row(g, 'uv', 0).filter((_, i) => i % 2 === 0),
