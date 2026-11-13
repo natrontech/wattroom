@@ -467,6 +467,13 @@ const MAP = {
 			[3080, 955],
 		],
 	],
+	// Provisional: a tunnel through the spur the north valley's road cuts deepest into, by the tarn.
+	tunnels: [
+		[
+			[976, 4937],
+			[678, 4976],
+		],
+	],
 	// Roads no loop rides, so the land is not one road wide: each leaves a loop's road at a junction or crosses it.
 	spurs: [
 		// South out of the gorge loop, down the river's valley.
@@ -520,7 +527,7 @@ const MAP = {
 	})),
 } satisfies Pick<
 	Designed,
-	'features' | 'climate' | 'names' | 'galleries' | 'spurs' | 'rings'
+	'features' | 'climate' | 'names' | 'galleries' | 'tunnels' | 'spurs' | 'rings'
 >;
 
 const loop = (

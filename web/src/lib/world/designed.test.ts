@@ -82,6 +82,9 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 			const scene = sceneOf(id)!;
 			const onBridge = (d: number) =>
 				world.bridges.some(([a, b]) => d >= a && d <= b);
+			// A tunnel's hill stands over it, and the ground drawn into its portal's cutting leans on the hill.
+			const inTunnel = (d: number) =>
+				world.tunnels.some(([a, b]) => d >= a - 12 && d <= b + 12);
 			for (let d = 0; d <= route.length; d += 20) {
 				const p = at(route, d);
 				const wet = scene.waterAt(p.x, p.z);
@@ -90,8 +93,8 @@ describe.each(DESIGNS.map((d) => [d.id, d] as const))(
 					expect(onBridge(d), `${d} m is over water`).toBe(true);
 					expect(p.ele - wet, `${d} m over the water`).toBeGreaterThan(4);
 				}
-				// Off a bridge the ground is the road's own shelf: no mountain over it, no hole under it.
-				if (!onBridge(d))
+				// Off a bridge the ground is the road's own shelf: no mountain over it, no hole under it, but in a tunnel.
+				if (!onBridge(d) && !inTunnel(d))
 					expect(
 						Math.abs(world.heightAt(p.x, p.z) - p.ele),
 						`${d} m`,
@@ -235,7 +238,8 @@ describe('Urnsee-Rundfahrt', () => {
 					}
 			}
 			expect(near / all).toBeGreaterThan(0.8);
-			expect(world.bridges).toHaveLength(2);
+			// A stream's short bridge aside.
+			expect(world.bridges.filter(([a, b]) => b - a > 40)).toHaveLength(2);
 			expect(world.galleries).toHaveLength(1);
 			expect(world.galleries[0][1] - world.galleries[0][0]).toBeGreaterThan(
 				300,
@@ -452,11 +456,16 @@ describe('the map', () => {
 				const route = routeOfRoad(await roadOf(d.id));
 				const world = generate(route);
 				const roads = [
-					{ name: 'ridden', r: route, spans: world.bridges },
+					// A tunnel's hill stands over it: that is the tunnel.
+					{
+						name: 'ridden',
+						r: route,
+						spans: [...world.bridges, ...world.tunnels],
+					},
 					...world.sides.map((side, k) => ({
 						name: `side road ${k}`,
 						r: side.route,
-						spans: side.bridges,
+						spans: [...side.bridges, ...side.tunnels],
 					})),
 				];
 				for (const { name, r, spans } of roads)
