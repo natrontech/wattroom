@@ -94,6 +94,8 @@ export type Style = {
 	imhof: { valley: string; peak: string } | null; // relief-map shading instead of bands
 	road: { asphalt: string; line: string; verge: string; shoulder?: string }; // no shoulder: the verge runs to the asphalt
 	props: PropColors;
+	/** Lakes, rivers and streams (water.ts), shallows to deep and the foam at their edge: none, made from `props.water`. */
+	water?: { deep: string; mid: string; shallow: string; foam: string };
 	kit: RiderKit;
 	zones: readonly string[]; // Z1–Z7: the flat ring under each rider
 	trail: string | null; // the one glow: your live power leaves light

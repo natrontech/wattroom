@@ -432,6 +432,11 @@
 	--world-prop-pole: #9a9aa2;
 	--world-prop-hiking: #b29d5a;
 	--world-prop-water: #5aa0c8;
+	/* Lakes, rivers and streams (water.ts): deep to the shallows, and the foam at the waterline. */
+	--world-water-deep: #234f78;
+	--world-water: #3b78a6;
+	--world-water-shallow: #5aa3ad;
+	--world-water-foam: #c9dbe6;
 	--world-prop-snowpole: #ff7a1a;
 	/* A Swiss danger sign's red, turned toward orange past every watt's band (O13, #4240). */
 	--world-prop-warning: #c05a2c;
@@ -462,6 +467,10 @@
 	--world-px-sky-light: #e6e0ff;
 	--world-px-sky-shade: #4a3f8a;
 	--world-px-biome-water: #2c6fb4;
+	--world-px-water-deep: #2f5fb8;
+	--world-px-water: #3f8fd2;
+	--world-px-water-shallow: #5cc6cf;
+	--world-px-water-foam: #f4f2ff;
 	--world-px-biome-meadow: #4fb377;
 	--world-px-biome-forest: #2a8568;
 	--world-px-biome-alpine: #7f9a62;

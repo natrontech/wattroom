@@ -1,6 +1,6 @@
-// A designed road's scene as the stage draws it (designed.ts): its standing
-// water as flat sheets, and its bridges, the deck under the ribbon, a
-// parapet either side and piers down to the ground. Pure data in, geometry
+// A designed road's scene as the stage draws it (designed.ts): its bridges,
+// the deck under the ribbon, a parapet either side and piers down to the
+// ground (its water is water.ts's). Pure data in, geometry
 // out, coloured by vertex so one flat material draws it in any look.
 import * as THREE from 'three';
 import { box, cyl, merge, tint } from './model';
@@ -8,65 +8,9 @@ import { cow } from './props';
 import type { PropColors } from './styles';
 import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
-import { ringSignAt, type Water } from './designed';
+import { ringSignAt } from './designed';
 import { yOf } from './geometry';
 import { FORMATION, ROAD_W } from './terrain/road-profile';
-
-/** Sheets of water, each at its level: the lake's bed and the river's lie under them. */
-export function waterSheets(
-	route: Route,
-	waters: readonly Water[],
-	color: string,
-	/** White water: a stream's where it falls. */
-	white: string,
-): THREE.BufferGeometry {
-	const tint = new THREE.Color(color);
-	const foam = new THREE.Color(white);
-	const pos: number[] = [];
-	const col: number[] = [];
-	for (const w of waters) {
-		if (w.run) {
-			// Running water: a strip down its course, each cross-section at its own level, white where it falls.
-			const n = w.run.levels.length;
-			const last = w.outline.length - 1;
-			const corner = (i: number, right: boolean) => {
-				const [x, z] = w.outline[right ? last - i : i];
-				const t = w.run!.foam[i];
-				pos.push(x, yOf(route, w.run!.levels[i]), z);
-				col.push(
-					tint.r + (foam.r - tint.r) * t,
-					tint.g + (foam.g - tint.g) * t,
-					tint.b + (foam.b - tint.b) * t,
-				);
-			};
-			for (let i = 0; i < n - 1; i++)
-				for (const [k, right] of [
-					[i, false],
-					[i, true],
-					[i + 1, true],
-					[i, false],
-					[i + 1, true],
-					[i + 1, false],
-				] as const)
-					corner(k, right);
-			continue;
-		}
-		const ring = w.outline.map(([x, z]) => new THREE.Vector2(x, z));
-		const y = yOf(route, w.level);
-		for (const face of THREE.ShapeUtils.triangulateShape(ring, [])) {
-			// Counter-clockwise from above, whichever way the outline runs: both faces are drawn (the material is double-sided).
-			for (const i of face) {
-				pos.push(ring[i].x, y, ring[i].y);
-				col.push(tint.r, tint.g, tint.b);
-			}
-		}
-	}
-	const g = new THREE.BufferGeometry();
-	g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-	g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-	g.computeBoundingSphere();
-	return g;
-}
 
 /** Metres between a bridge's cross-sections, and between its piers. */
 const SECTION_M = 4;

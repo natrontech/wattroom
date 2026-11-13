@@ -34,6 +34,10 @@ export type Water = {
 	 * level and its share of white water, 1 where it falls.
 	 */
 	run?: { levels: number[]; foam: number[] };
+	/** How its bed falls from the shore: metres down a metre out, to `deep` at the most, past the freeboard (FREEBOARD_M). */
+	bed?: { slope: number; deep: number };
+	/** A river's course, the way it flows: its line down the middle. */
+	course?: [x: number, z: number][];
 };
 
 /** Ground a scene lays out by hand: a raised bog, a dry valley floor. */
@@ -233,7 +237,11 @@ function inside(pts: readonly [number, number][], x: number, z: number) {
 /** Metres past a feature its ground is still shaped: beyond, the generator's own. */
 const REACH_M = 400;
 /** The ground beside water stands this far over it at the least, and a bed this far under it at its edge. */
-const FREEBOARD_M = 0.5;
+export const FREEBOARD_M = 0.5;
+/** Metres a lake's bed falls a metre out from its shore, and a river's from its bank, to its deepest. */
+const LAKE_BED = 0.3;
+const RIVER_BED = 0.4;
+const RIVER_DEEP_M = 4;
 
 type Part = {
 	shape(x: number, z: number, h: number, d: number): number;
@@ -400,7 +408,10 @@ function part(f: Solid, world: World): Part {
 				if (offBox(box, x, z) > reach) return h;
 				const off = offLine(shore, true, x, z);
 				if (inside(shore, x, z))
-					return Math.min(h, f.level - Math.min(deep, FREEBOARD_M + 0.3 * off));
+					return Math.min(
+						h,
+						f.level - Math.min(deep, FREEBOARD_M + LAKE_BED * off),
+					);
 				if (off > reach) return h;
 				// Its basin: the land falls to the shore, so the lake is seen from the road above it.
 				let out = h;
@@ -422,7 +433,11 @@ function part(f: Solid, world: World): Part {
 			},
 			waterAt: (x, z) =>
 				offBox(box, x, z) === 0 && inside(shore, x, z) ? f.level : null,
-			water: { level: f.level, outline: shore },
+			water: {
+				level: f.level,
+				outline: shore,
+				bed: { slope: LAKE_BED, deep },
+			},
 		};
 	}
 	const course = rounded(f.course.map(world), false);
@@ -445,7 +460,10 @@ function part(f: Solid, world: World): Part {
 			if (offBox(box, x, z) > REACH_M + half) return h;
 			const off = offLine(course, false, x, z) - half;
 			if (off <= 0)
-				return Math.min(h, f.level - Math.min(4, FREEBOARD_M - 0.4 * off));
+				return Math.min(
+					h,
+					f.level - Math.min(RIVER_DEEP_M, FREEBOARD_M - RIVER_BED * off),
+				);
 			let out = Math.max(h, f.level + Math.min(1.5, FREEBOARD_M + 0.06 * off));
 			// A gorge: the land is cut down to the bank, and rises from it no steeper than its walls.
 			if (f.gorge)
@@ -459,7 +477,12 @@ function part(f: Solid, world: World): Part {
 			offBox(box, x, z) <= half && offLine(course, false, x, z) <= half
 				? f.level
 				: null,
-		water: { level: f.level, outline: [...left, ...right.reverse()] },
+		water: {
+			level: f.level,
+			outline: [...left, ...right.reverse()],
+			bed: { slope: RIVER_BED, deep: RIVER_DEEP_M },
+			course,
+		},
 	};
 }
 

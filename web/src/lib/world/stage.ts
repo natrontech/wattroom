@@ -23,7 +23,6 @@ import {
 	roadworks,
 	roundabouts,
 	stops,
-	waterSheets,
 } from './scenery';
 import type { Piece } from './setpieces';
 import {
@@ -39,6 +38,7 @@ import { lightsMaterial, lightsUniforms, OFF } from './lights';
 import { flat, type Sight } from './materials';
 import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
+import { waterMaterial, waterSheets } from './water';
 import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '#lib/road/route.ts';
@@ -291,13 +291,8 @@ export function buildStage(
 				tag(
 					'terrain',
 					new THREE.Mesh(
-						waterSheets(
-							route,
-							world.waters,
-							c.water,
-							style.palette[Biome.Snow],
-						),
-						both,
+						waterSheets(route, world.waters, world.heightAt),
+						waterMaterial(style, groundMat),
 					),
 				),
 			);

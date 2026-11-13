@@ -20,6 +20,10 @@ const PIXEL_TOKENS = new Set(
 		'sky-light',
 		'sky-shade',
 		'biome-water',
+		'water-deep',
+		'water',
+		'water-shallow',
+		'water-foam',
 		'biome-meadow',
 		'biome-forest',
 		'biome-alpine',
@@ -256,6 +260,12 @@ export function rideLook(
 			snowpole: w('prop-snowpole'),
 			flags: [w('flag-1'), w('flag-2'), w('flag-3'), w('flag-4')],
 			rock: w('prop-rock'),
+		},
+		water: {
+			deep: w('water-deep'),
+			mid: w('water'),
+			shallow: w('water-shallow'),
+			foam: w('water-foam'),
 		},
 		kit: {
 			skin: w('kit-skin'),
