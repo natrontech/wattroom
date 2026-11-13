@@ -317,11 +317,13 @@
 			</div>
 		{/if}
 
-		<!-- 4rem, the sidebar foot's height, so the two top borders meet. -->
+		<!-- 4rem, the sidebar foot's height, so the two top borders meet. A
+		     phone has no sidebar beside it: in voice its full-size buttons
+		     take a second line rather than run off the screen (#4569). -->
 		<div
 			class="border-ink/10 bg-surface flex items-center gap-1 border-t px-2 md:gap-2 md:px-3 {stacked
 				? 'flex-wrap gap-y-1 pt-1.5 pb-[calc(0.375rem+var(--safe-bottom))]'
-				: 'h-[calc(4rem+var(--safe-bottom))] pb-(--safe-bottom)'}"
+				: 'min-h-[calc(4rem+var(--safe-bottom))] pb-(--safe-bottom) max-sm:flex-wrap max-sm:gap-y-1 max-sm:pt-1.5 max-sm:pb-[calc(0.375rem+var(--safe-bottom))] sm:h-[calc(4rem+var(--safe-bottom))]'}"
 		>
 			{#if riding}
 				<!-- The ride hides the sidebar at every width; this is the way back
@@ -335,13 +337,14 @@
 			{/if}
 
 			<!-- Where you are connected, and the way back to it from any page.
-			     A phone riding gives its room to the ride's controls; the
-			     drawer still leads back. -->
+			     A phone riding gives its room to the ride's controls, and a
+			     phone on the channel's own page to full-size buttons: the
+			     page's header names the channel, the drawer still leads back. -->
 			{#if place}<a
 					href={place.address.home}
 					class="hover:bg-ink/5 flex min-w-0 items-center gap-2 rounded px-2 py-1 {rideBar.on
 						? 'max-w-48 shrink-0 max-lg:h-11 max-lg:w-11 max-lg:justify-center max-lg:px-0 max-sm:hidden'
-						: 'shrink-[8]'}"
+						: 'shrink-[8]'} {onPlace ? 'max-sm:hidden' : ''}"
 					title="Back to {place.address.name}"
 					onclick={(event) => {
 						// Your ride stays on screen: the room opens under its numbers.
@@ -437,7 +440,7 @@
 									}}
 									aria-label="More ways to ride"
 									aria-haspopup="menu"
-									class="btn btn-secondary min-h-11 rounded-l-none px-2"
+									class="btn btn-secondary min-h-11 rounded-l-none px-2 max-sm:min-w-11"
 									><ChevronDown size={14} /></button
 								>
 							{/if}

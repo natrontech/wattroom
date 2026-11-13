@@ -103,6 +103,7 @@
 	import type { LiveRider } from '#lib/channel/types.ts';
 	import Beer from '@lucide/svelte/icons/beer';
 	import BookOpen from '@lucide/svelte/icons/book-open';
+	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
 	import Goal from '@lucide/svelte/icons/goal';
 	import { initialsOf } from '#lib/lounge/memory.ts';
@@ -764,8 +765,10 @@
 	};
 
 	/** The crate of styles, under the style's name in the bar. */
-	function crate(e: MouseEvent & { currentTarget: HTMLElement }) {
-		const box = e.currentTarget.getBoundingClientRect();
+	const crate = (e: MouseEvent & { currentTarget: HTMLElement }) =>
+		crateAt(e.currentTarget);
+	function crateAt(anchor: HTMLElement) {
+		const box = anchor.getBoundingClientRect();
 		openMenu(
 			RADIO_PICKS.map((p) => ({
 				label: PICK_NAMES[p],
@@ -775,11 +778,45 @@
 			})),
 			box.left,
 			box.top,
-			e.currentTarget,
+			anchor,
 		);
 	}
 
 	/** One tap sets the window, lamp, stove and radio for everyone. */
+	function more(e: MouseEvent & { currentTarget: HTMLElement }) {
+		const anchor = e.currentTarget;
+		const box = anchor.getBoundingClientRect();
+		openMenu(
+			[
+				...(onAir
+					? [
+							{
+								label: 'Radio style',
+								icon: Disc3,
+								hint: PICK_NAMES[pick],
+								onSelect: () => crateAt(anchor),
+							},
+							{ label: 'Next track', icon: SkipForward, onSelect: next },
+						]
+					: []),
+				{
+					label: 'Furnish',
+					icon: Armchair,
+					onSelect: () => (furnishing = true),
+				},
+				{
+					label: 'Album',
+					icon: BookOpen,
+					hint: `${album.length}/${VISITORS.length}`,
+					onSelect: () => (browsing = true),
+				},
+				{ label: 'Arcade', icon: Gamepad2, onSelect: playGame },
+			],
+			box.left,
+			box.top,
+			anchor,
+		);
+	}
 	function moods(e: MouseEvent & { currentTarget: HTMLElement }) {
 		const box = e.currentTarget.getBoundingClientRect();
 		openMenu(
@@ -1008,7 +1045,7 @@
 					type="button"
 					onclick={() => radioHeard.set(!radioHeard.current)}
 					aria-pressed={radioHeard.current}
-					class="btn btn-ghost btn-xs px-0 {radioHeard.current
+					class="btn btn-ghost btn-xs px-0 max-sm:min-h-11 max-sm:px-2 {radioHeard.current
 						? 'text-ink'
 						: ''}"
 					><Disc3 size={13} />
@@ -1021,7 +1058,7 @@
 					onclick={crate}
 					title="Pick house radio's style for everyone"
 					aria-haspopup="menu"
-					class="btn btn-ghost btn-xs text-ink px-0"
+					class="btn btn-ghost btn-xs text-ink px-0 max-sm:hidden max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 					>{pick === 'mix'
 						? `Mix · ${STYLE_NAMES[styleNow]}`
 						: PICK_NAMES[pick]}</button
@@ -1030,13 +1067,13 @@
 					type="button"
 					onclick={next}
 					title="Next track, for everyone"
-					class="btn btn-ghost btn-xs text-ink px-0"
+					class="btn btn-ghost btn-xs text-ink px-0 max-sm:hidden max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 					><SkipForward size={13} /> Next</button
 				>{:else}<button
 					type="button"
 					onclick={playRadio}
 					title="Lofi made for your crew, for everyone here"
-					class="btn btn-ghost btn-xs text-ink px-0"
+					class="btn btn-ghost btn-xs text-ink px-0 max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 					><Disc3 size={13} /> Play house radio</button
 				>{/if}
 			<button
@@ -1044,7 +1081,7 @@
 				onclick={moods}
 				title="Set the lounge's mood for everyone"
 				aria-haspopup="menu"
-				class="btn btn-ghost btn-xs text-ink px-0"
+				class="btn btn-ghost btn-xs text-ink px-0 max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 				><Sparkles size={13} />
 				{mood ? MOODS[mood].name : 'Mood'}</button
 			>
@@ -1052,28 +1089,39 @@
 				type="button"
 				onclick={() => (furnishing = true)}
 				title="Furnish the lounge with your Batzen"
-				class="btn btn-ghost btn-xs text-ink px-0"
+				class="btn btn-ghost btn-xs text-ink px-0 max-sm:hidden max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 				><Armchair size={13} /> Furnish</button
 			>
 			<button
 				type="button"
 				onclick={() => (browsing = true)}
 				title="Who has come by"
-				class="btn btn-ghost btn-xs text-ink px-0"
+				class="btn btn-ghost btn-xs text-ink px-0 max-sm:hidden max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 				><BookOpen size={13} /> Album {album.length}/{VISITORS.length}</button
 			>
 			<button
 				type="button"
 				onclick={playGame}
 				title="The arcade: three games, Töggeli and your crew's high scores"
-				class="btn btn-ghost btn-xs text-ink px-0"
+				class="btn btn-ghost btn-xs text-ink px-0 max-sm:hidden max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 				><Gamepad2 size={13} /> Arcade</button
+			>
+			<!-- A phone keeps the tools on one row of full-size buttons: the
+			     radio's style and Next, and the three opened least, go under
+			     More (#4569). -->
+			<button
+				type="button"
+				onclick={more}
+				aria-label="More in the lounge"
+				aria-haspopup="menu"
+				class="btn btn-ghost text-ink min-h-11 min-w-11 px-2 sm:hidden"
+				><Ellipsis size={16} /></button
 			>
 			{#if table}<button
 					type="button"
 					onclick={openToeggeli}
 					title="Watch the match at the table"
-					class="btn btn-ghost btn-xs text-ink px-0 tabular-nums"
+					class="btn btn-ghost btn-xs text-ink px-0 tabular-nums max-sm:min-h-11 max-sm:min-w-11 max-sm:px-2"
 					><Goal size={13} /> Töggeli · {initialsOf(table.leftName)}
 					{table.leftGoals}:{table.rightGoals}
 					{initialsOf(table.rightName)}</button
