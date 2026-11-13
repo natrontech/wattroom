@@ -17,13 +17,7 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
 import { roundaboutsOf, sceneOf } from './designed';
-import {
-	bridges,
-	giveWays,
-	roadworks,
-	roundabouts,
-	stops,
-} from './scenery';
+import { bridges, giveWays, roadworks, roundabouts, stops } from './scenery';
 import type { Piece } from './setpieces';
 import {
 	plinth,

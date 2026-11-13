@@ -137,9 +137,16 @@ export function shoreDressing(
 		if (pick === 'reeds') {
 			// A bed of them: two or three clumps along the shore.
 			for (let k = 0; k < 1 + (Math.round(p.k * 1000) % 2); k++)
-				put(into, reeds, p.x + Math.cos(turn + k * 2.4) * 1.6 * k, y - 0.25, p.z + Math.sin(turn + k * 2.4) * 1.6 * k, turn + k, size * (1 - k * 0.15));
-		}
-		else if (p.running) put(into, rock, p.x, y - 0.4, p.z, turn, size * 1.2);
+				put(
+					into,
+					reeds,
+					p.x + Math.cos(turn + k * 2.4) * 1.6 * k,
+					y - 0.25,
+					p.z + Math.sin(turn + k * 2.4) * 1.6 * k,
+					turn + k,
+					size * (1 - k * 0.15),
+				);
+		} else if (p.running) put(into, rock, p.x, y - 0.4, p.z, turn, size * 1.2);
 		else put(into, rock, p.x, y, p.z, turn, size);
 	}
 	reeds.dispose();

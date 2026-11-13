@@ -197,7 +197,13 @@ export function batchBoards(route: Route, style: Style) {
 				// Its back, as a sign's is: the rails it is clamped to, so from behind it is a sign and not a blank board.
 				if (s.look !== 'hairpin')
 					for (const dy of [-0.26, 0.26])
-						frame(out, box, [0, y + dy * s.h, -0.07], [s.w * 0.9, 0.07, 0.06], look.post);
+						frame(
+							out,
+							box,
+							[0, y + dy * s.h, -0.07],
+							[s.w * 0.9, 0.07, 0.06],
+							look.post,
+						);
 				const leg = legH + s.h * 0.6;
 				for (const x of s.look === 'hairpin' ? [0] : [-s.w * 0.38, s.w * 0.38])
 					frame(out, post, [x, leg / 2, -0.05], [0.04, leg, 0.04], look.post);

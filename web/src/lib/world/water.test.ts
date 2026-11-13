@@ -154,8 +154,6 @@ describe('the water of a designed road', () => {
 		const pos = g.getAttribute('position');
 		expect(pos.count).toBeGreaterThan(300);
 		for (let i = 0; i < pos.count; i += 7)
-			expect(world.clearOf(pos.getX(i), pos.getZ(i), FORMATION + 1)).toBe(
-				true,
-			);
+			expect(world.clearOf(pos.getX(i), pos.getZ(i), FORMATION + 1)).toBe(true);
 	});
 });

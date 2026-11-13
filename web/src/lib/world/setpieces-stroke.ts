@@ -79,7 +79,12 @@ const fits: Record<(typeof SMALL_KINDS)[number], (b: Biome | null) => boolean> =
 	};
 
 /** Ground above the trees and the grass, where a small piece that does not fit is a cairn. */
-const BARE = new Set<Biome>([Biome.Alpine, Biome.Rock, Biome.Snow, Biome.Frost]);
+const BARE = new Set<Biome>([
+	Biome.Alpine,
+	Biome.Rock,
+	Biome.Snow,
+	Biome.Frost,
+]);
 /** Ground no fountain stands on: its trough would freeze, or stand on a crag. */
 const NO_FOUNTAIN = new Set<Biome>([Biome.Rock, Biome.Snow, Biome.Frost]);
 

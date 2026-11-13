@@ -592,7 +592,9 @@ function cowStatue(c: PropColors) {
 	const leg = (x: number, z: number) =>
 		cyl(0.11, 0.16, 0.9, 5).translate(x, 0.45, z);
 	const cow = [
-		across(cyl(0.6, 0.62, 2.1, 6)).scale(0.95, 0.85, 1).translate(0, 1.32, 0),
+		across(cyl(0.6, 0.62, 2.1, 6))
+			.scale(0.95, 0.85, 1)
+			.translate(0, 1.32, 0),
 		across(cyl(0.3, 0.42, 0.8, 6))
 			.rotateX(-0.45)
 			.translate(0, 1.6, 1.2),
@@ -602,7 +604,11 @@ function cowStatue(c: PropColors) {
 		box(0.26, 0.07, 0.15).translate(0.4, 1.74, 1.3),
 		box(0.26, 0.07, 0.15).translate(-0.4, 1.74, 1.3),
 		cyl(0.12, 0.2, 0.32, 6).translate(0, 1.0, 1.28),
-		tube(new THREE.Vector3(0, 1.55, -1.05), new THREE.Vector3(0.06, 0.65, -1.2), 0.05),
+		tube(
+			new THREE.Vector3(0, 1.55, -1.05),
+			new THREE.Vector3(0.06, 0.65, -1.2),
+			0.05,
+		),
 		leg(-0.36, -0.72),
 		leg(0.36, -0.72),
 		leg(-0.36, 0.72),

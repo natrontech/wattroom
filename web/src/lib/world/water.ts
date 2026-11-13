@@ -326,7 +326,15 @@ function still(
 		}
 	if (!shore) return;
 	// The waterline: where an edge of the lattice runs out of the water, the drawn shore crosses it.
-	const edge = (c0: number, c1: number, x0: number, z0: number, x1: number, z1: number, salt: number) => {
+	const edge = (
+		c0: number,
+		c1: number,
+		x0: number,
+		z0: number,
+		x1: number,
+		z1: number,
+		salt: number,
+	) => {
 		if (Math.abs(sd[c0]) >= READ_M || Math.abs(sd[c1]) >= READ_M) return;
 		const a = depth[c0];
 		const b = depth[c1];
