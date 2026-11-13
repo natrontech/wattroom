@@ -105,7 +105,7 @@ export function terrain(
 		colors[i * 3 + 1] = c.g;
 		colors[i * 3 + 2] = c.b;
 		ao[i] = Math.min(1, Math.max(0, (shade[i] - 0.72) / 0.4)); // hollows dark, crests light
-		const k = COVER_OF[b];
+		const k = COVER_OF[b as Biome];
 		if (k !== undefined) cover[i * 4 + k] = 255;
 	}
 	const g = new THREE.BufferGeometry();

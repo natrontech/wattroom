@@ -434,6 +434,29 @@ export function milkcans(c: PropColors) {
 	]);
 }
 
+// A cairn on the high ground, where nothing grows to stand beside the road:
+// flat stones stacked smaller to the top, each face its own shade.
+export function cairn(c: PropColors) {
+	const stone = (r: number, h: number, y: number, turn: number) =>
+		facets(
+			new THREE.OctahedronGeometry(1, 0)
+				.rotateY(turn)
+				.scale(r, h / 2, r * 0.85)
+				.translate(0, y + h / 2, 0),
+			c.rock,
+			c.stone,
+			0,
+			1.4,
+		);
+	return merge([
+		stone(0.62, 0.42, 0, 0.3),
+		stone(0.5, 0.36, 0.34, 1.1),
+		stone(0.38, 0.32, 0.64, 0.6),
+		stone(0.26, 0.3, 0.9, 1.7),
+		stone(0.15, 0.26, 1.14, 0.2),
+	]);
+}
+
 // The summit cross on a cairn, where the pass road tops out: steel, painted
 // white, so it reads against the hut and the dusk alike.
 export function summitCross(c: PropColors) {

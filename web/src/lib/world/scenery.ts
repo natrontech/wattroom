@@ -3,8 +3,7 @@
 // ground (its water is water.ts's). Pure data in, geometry
 // out, coloured by vertex so one flat material draws it in any look.
 import * as THREE from 'three';
-import { box, cyl, merge, tint } from './model';
-import { cow } from './props';
+import { box, cyl, facets, merge, tint } from './model';
 import type { PropColors } from './styles';
 import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
@@ -546,6 +545,16 @@ function tube(a: THREE.Vector3, b: THREE.Vector3, r: number) {
 	return g.translate(mid.x, mid.y, mid.z);
 }
 
+/** A statue's bronze, each face its own shade, lighter to the top: one metal, so it reads as a statue and not as the thing itself. */
+const bronze = (g: THREE.BufferGeometry, c: PropColors, top: number) =>
+	facets(g.index ? g.toNonIndexed() : g, c.trunk, c.bell, 1.4, top);
+
+/** A statue's plinth: a stone drum, and a slab on it. */
+const plinth = (c: PropColors) => [
+	tint(cyl(3.4, 3.8, 1.2, 12).translate(0, 0.6, 0), c.stone),
+	tint(cyl(3.6, 3.6, 0.2, 12).translate(0, 1.3, 0), c.wall),
+];
+
 /** A bicycle in bronze, four times life size, on a stone plinth: the village's. */
 function bicycleStatue(c: PropColors) {
 	const v = (x: number, y: number) => new THREE.Vector3(x, y + 1.4, 0);
@@ -557,32 +566,81 @@ function bicycleStatue(c: PropColors) {
 		v(-0.2, 1.5),
 	];
 	const wheel = (at: THREE.Vector3) =>
-		new THREE.TorusGeometry(1.5, 0.13, 6, 22).translate(at.x, at.y, 0);
+		new THREE.TorusGeometry(1.5, 0.2, 5, 20).translate(at.x, at.y, 0);
 	return merge([
-		tint(cyl(3.4, 3.8, 1.4, 12).translate(0, 0.7, 0), c.stone),
+		...plinth(c),
 		...[
 			wheel(rear),
 			wheel(front),
-			tube(rear, seat, 0.11),
-			tube(rear, crank, 0.11),
-			tube(crank, seat, 0.12),
-			tube(crank, head, 0.12),
-			tube(seat, head, 0.12),
-			tube(head, front, 0.11),
-			tube(seat, v(-1.0, 4.4), 0.1),
-			tube(v(-1.45, 4.4), v(-0.55, 4.4), 0.14),
-			tube(head, v(1.4, 4.6), 0.1),
-			tube(v(1.4, 4.6), v(2.0, 4.5), 0.1),
-		].map((g) => tint(g.toNonIndexed(), c.bell)),
+			tube(rear, seat, 0.18),
+			tube(rear, crank, 0.18),
+			tube(crank, seat, 0.2),
+			tube(crank, head, 0.2),
+			tube(seat, head, 0.2),
+			tube(head, front, 0.18),
+			tube(seat, v(-1.0, 4.4), 0.16),
+			tube(v(-1.5, 4.45), v(-0.5, 4.45), 0.2),
+			tube(head, v(1.4, 4.6), 0.16),
+			tube(v(1.4, 4.6), v(2.1, 4.5), 0.16),
+		].map((g) => bronze(g, c, 6.2)),
 	]);
 }
 
-/** A cow three times life size on a stone plinth: the head of the lake's. */
-const cowStatue = (c: PropColors) =>
-	merge([
-		tint(cyl(3.4, 3.8, 1.4, 12).translate(0, 0.7, 0), c.stone),
-		cow(c).scale(3, 3, 3).translate(0, 1.4, 0),
+/** A cow three times life size in bronze on a stone plinth, its bell at its throat: the head of the lake's. */
+function cowStatue(c: PropColors) {
+	const across = (g: THREE.BufferGeometry) => g.rotateX(Math.PI / 2);
+	const leg = (x: number, z: number) =>
+		cyl(0.11, 0.16, 0.9, 5).translate(x, 0.45, z);
+	const cow = [
+		across(cyl(0.6, 0.62, 2.1, 6)).scale(0.95, 0.85, 1).translate(0, 1.32, 0),
+		across(cyl(0.3, 0.42, 0.8, 6))
+			.rotateX(-0.45)
+			.translate(0, 1.6, 1.2),
+		box(0.44, 0.38, 0.34).translate(0, 1.5, 1.66),
+		cyl(0, 0.07, 0.42, 4).rotateZ(-1.1).translate(0.32, 1.92, 1.36),
+		cyl(0, 0.07, 0.42, 4).rotateZ(1.1).translate(-0.32, 1.92, 1.36),
+		box(0.26, 0.07, 0.15).translate(0.4, 1.74, 1.3),
+		box(0.26, 0.07, 0.15).translate(-0.4, 1.74, 1.3),
+		cyl(0.12, 0.2, 0.32, 6).translate(0, 1.0, 1.28),
+		tube(new THREE.Vector3(0, 1.55, -1.05), new THREE.Vector3(0.06, 0.65, -1.2), 0.05),
+		leg(-0.36, -0.72),
+		leg(0.36, -0.72),
+		leg(-0.36, 0.72),
+		leg(0.36, 0.72),
+	];
+	return merge([
+		...plinth(c),
+		...cow.map((g) => bronze(g.scale(3, 3, 3).translate(0, 1.4, 0), c, 7.5)),
 	]);
+}
+
+/** Metres between a roundabout's island and its ring road's formation. */
+const ISLAND_CLEAR_M = 0.4;
+
+/**
+ * A roundabout's island, raised a kerb's height: a stone kerb, mown grass,
+ * and a bed of flowers round the plinth in the colours of the balconies.
+ */
+function island(r: number, c: PropColors) {
+	const grass = `#${new THREE.Color(c.leaf).lerp(new THREE.Color(c.leafLight), 0.55).getHexString()}`;
+	const blooms = [c.flower, c.bale, c.roof];
+	const bed = Array.from({ length: 22 }, (_, k) => {
+		const a = (k / 22) * Math.PI * 2;
+		const d = 4.6 + (k % 2) * 0.7;
+		return tint(
+			new THREE.OctahedronGeometry(0.42, 0)
+				.scale(1, 0.6, 1)
+				.translate(Math.cos(a) * d, 0.42, Math.sin(a) * d),
+			blooms[k % 3],
+		);
+	});
+	return [
+		tint(cyl(r + 0.3, r + 0.3, 1.2, 32).translate(0, -0.45, 0), c.stone),
+		tint(cyl(r, r, 1.2, 32).translate(0, -0.35, 0), grass),
+		tint(cyl(5.6, 5.6, 0.12, 20).translate(0, 0.3, 0), c.trunk),
+		...bed,
+	];
+}
 
 /**
  * The roundabout's signs, as they stand before one in Switzerland: on one
@@ -623,8 +681,9 @@ function ringSign(c: PropColors) {
 }
 
 /**
- * What dresses a roundabout (designed.ts roundaboutsOf): the statue on its
- * island, and before each arm the signs a rider meets coming in.
+ * What dresses a roundabout (designed.ts roundaboutsOf): its island, kerbed,
+ * grassed and planted, the statue on it, and before each arm the signs a
+ * rider meets coming in.
  */
 export function roundabouts(
 	route: Route,
@@ -643,6 +702,11 @@ export function roundabouts(
 		const y = yOf(route, ring.ele);
 		parts.push(
 			(ring.statue === 'bicycle' ? bicycleStatue(c) : cowStatue(c)).translate(
+				ring.x,
+				y,
+				ring.z,
+			),
+			merge(island(ring.r - FORMATION - ISLAND_CLEAR_M, c)).translate(
 				ring.x,
 				y,
 				ring.z,

@@ -49,6 +49,7 @@ export type PieceKind =
 	| 'cattle'
 	| 'mirror'
 	| 'milkcans'
+	| 'cairn'
 	| 'cross';
 // `flag` indexes the style's flag colours: the world says where, the style says what.
 export type Piece = {
