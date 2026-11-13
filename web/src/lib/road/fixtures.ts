@@ -174,6 +174,25 @@ export function hairpinClimb(): TrackPoint[] {
 	return toPoints(drive(moves, 8), height);
 }
 
+/**
+ * A hairpin climb as a hillside carries one: 12 legs of 400 m at 8 % up a
+ * slope of 35 %, so each leg runs 13.2° off the contour and the next comes
+ * back 26.4° off it, a zigzag whose legs part from each hairpin. Legs
+ * stacked side by side (hairpinClimb) stand 50 m over each other 20 m
+ * apart, which no hillside is; this one's ground is a plane.
+ */
+export function hairpinPass(): TrackPoint[] {
+	const height = (s: number) => 900 + 0.08 * s;
+	const off = (Math.asin(0.08 / 0.35) * 180) / Math.PI;
+	const moves: Move[] = [{ straight: 400 }];
+	for (let k = 0; k < 11; k++)
+		moves.push(
+			{ arc: 10, turn: (k % 2 ? -1 : 1) * (180 - 2 * off) },
+			{ straight: 400 },
+		);
+	return toPoints(drive(moves, 8), height);
+}
+
 /** How far beside the way out the out-and-back's way back runs, metres. */
 export const OUT_AND_BACK_APART = 3.5;
 /** The street the out-and-back rides twice, metres. */

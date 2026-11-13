@@ -72,6 +72,7 @@
 		}
 	}
 
+	const STACKED = ['21 hairpins', 'Switchback'];
 	/** Every road the app and its tests are built on, by what the lab calls it: WattRoom's own, the two eights, and the test tracks. */
 	type Made = {
 		id: string;
@@ -106,9 +107,17 @@
 				label: 'Eight, 8 m over',
 				points: async () => syntheticPoints(eight(8)),
 			},
+			{
+				id: 'hairpin-pass',
+				label: 'Hairpin climb',
+				points: async () => fixtures.hairpinPass(),
+			},
 			...Object.entries(fixtures.FIXTURES).map(([label, track]) => ({
 				id: slug(label),
-				label,
+				// Legs side by side tens of metres over each other: no hillside, a test of the ground between them.
+				label: STACKED.includes(label)
+					? `${label} (stacked: a stress test)`
+					: label,
 				points: async () => track(),
 			})),
 			{

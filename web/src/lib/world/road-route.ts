@@ -35,8 +35,9 @@ export function routeOfRoad(road: Road, share = true): Route {
 		z[k] = wz[i] + (wz[i + 1] - wz[i]) * f;
 		ele[k] = heightAt(road, k * step);
 	}
-	// A road that ends where it began ends at the height it began at.
-	const flat = closeWalk(x, z, road.length) ? closeHeights(ele) : ele;
+	// A road that ends where it began ends at the height it began at. One whose end stands high over its start, a hairpin's upper leg beside its lower, has two ends.
+	const home = Math.abs(ele[n - 1] - ele[0]) <= HOME_RISE_M;
+	const flat = home && closeWalk(x, z, road.length) ? closeHeights(ele) : ele;
 	// Centred, as a route file's frame is: the horizon stands round the middle.
 	const cx = x.reduce((s, v) => s + v, 0) / n;
 	const cz = z.reduce((s, v) => s + v, 0) / n;
@@ -79,6 +80,13 @@ export function routeOfRoad(road: Road, share = true): Route {
 		...(bare.length > 0 && { bare }),
 	};
 }
+
+/**
+ * And no higher over it than this, metres: a barometer drifts as much over a
+ * long ride; a road that ends higher climbed there, and ends beside its
+ * start, not on it.
+ */
+export const HOME_RISE_M = 30;
 
 /** A walk that ends this near its start, as a share of its length, is a loop's. */
 export const CLOSES_WITHIN = 0.01;

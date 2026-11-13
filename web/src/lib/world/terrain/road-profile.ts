@@ -66,8 +66,8 @@ export function ringOf(route: Route): boolean {
 	return Math.abs(wrapAngle(leaves - came)) < Math.PI / 4;
 }
 
-/** Metres apart, at most, the road's two ends are one place: an arch's posts and its banner's shade. */
-const HOME_M = 30;
+/** Metres apart, at most, the road's two ends are one place: on one road, a road's width. A ring's meet and a street's out and back is drawn on itself, both to the metre; a hairpin's two legs are two roads, an arch each. */
+const HOME_M = ROAD_W;
 
 /**
  * Whether the road ends where it began, whichever way it comes home: a
