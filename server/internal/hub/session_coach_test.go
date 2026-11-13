@@ -188,3 +188,54 @@ func tickSession(t *testing.T, c *client) protocol.SessionState {
 		return protocol.SessionState{}
 	}
 }
+
+// A session picked or counting in and never ridden (#4562): its coach, the
+// owner or an admin cancels it, another member cannot, the channel is free
+// again and nothing is left to save.
+func TestCancelBeforeTheCountIn(t *testing.T) {
+	ana, dan := as("ana"), as("dan")
+	admin := protocol.Rider{ID: "cleo", Name: "Cleo", Role: "admin"}
+	for _, tc := range []struct {
+		name     string
+		counting bool
+		by       protocol.Rider
+	}{
+		{"the coach, a pick", false, ana},
+		{"the coach, the countdown", true, ana},
+		{"an admin, a pick", false, admin},
+		{"an admin, the countdown", true, admin},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rm, _ := inChannel(t, "pain-cave", ana, dan, admin)
+			expect(t, rm, openers, ana, "")
+			if tc.counting {
+				expect(t, rm, protocol.Control{Action: "start"}, ana, "")
+			}
+			expect(t, rm, protocol.Control{Action: "end"}, dan, "forbidden")
+			expect(t, rm, protocol.Control{Action: "end"}, tc.by, "")
+			now := time.Now()
+			if rm.session.open() {
+				t.Fatalf("the cancel left session %q open", rm.session.id)
+			}
+			// Never done, so the close has nothing to snapshot: no ride is stored.
+			rm.mu.Lock()
+			end := rm.closeLocked(rm.session.state(now), now, true)
+			rm.mu.Unlock()
+			if end != nil {
+				t.Fatalf("a cancelled session was handed to the saver: %+v", end.meta)
+			}
+			// And it said so on the timeline, once.
+			said := 0
+			for _, ev := range rm.events.drain() {
+				if ev.Verb == "stopped" {
+					said++
+				}
+			}
+			if said != 1 {
+				t.Fatalf("the cancel said %d stopped lines, want 1", said)
+			}
+			// The channel is free: another member opens the next one.
+			expect(t, rm, openers, dan, "")
+		})
+	}
+}

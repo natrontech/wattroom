@@ -16,6 +16,7 @@
 	import { useChannel } from '#lib/channel/context.ts';
 	import { leaveChannel } from '#lib/channel/leave.ts';
 	import { controlsFor } from '#lib/session/controls.ts';
+	import { sessionOpen } from '#lib/channel/tick-session.ts';
 	import { endGame } from '#lib/session/end-game.ts';
 	import { showsStartLine } from '#lib/session/start-line.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
@@ -36,6 +37,14 @@
 	const running = $derived(phase === 'running');
 	const paused = $derived(phase === 'paused');
 	const idle = $derived(!phase || phase === 'idle' || phase === 'done');
+
+	// A session picked and not yet counted in (#4562): its coach had no way
+	// out of it, and it held the channel. Nothing has been ridden, so it
+	// goes at once and without asking, as a stopped countdown does.
+	const waiting = $derived(idle && sessionOpen(channel.shared));
+	function cancelSession() {
+		channel.control('end');
+	}
 
 	async function endSession() {
 		const n = channel.riders.filter((r) => r.inSession).length;
@@ -76,9 +85,10 @@
 		const ok = await confirm(
 			pick
 				? {
-						title: `Clear ${whose} pick?`,
-						body: `${channel.shared?.workoutName || 'A workout'} is picked here and was never started. Clearing it frees the channel for another session.`,
-						action: 'Clear the pick',
+						title: `Cancel ${whose} session?`,
+						body: `${channel.shared?.workoutName || 'A workout'} is picked here and was never started. Cancelling it frees the channel for another session.`,
+						action: 'Cancel the session',
+						cancel: 'Keep going',
 					}
 				: {
 						title: `End ${whose} session for ${n} rider${n === 1 ? '' : 's'}?`,
@@ -127,6 +137,15 @@
 		<button onclick={leaveChannel} class="btn btn-secondary btn-lg"
 			>Back to the crew</button
 		>
+	{:else if waiting}
+		<button
+			onclick={cancelSession}
+			data-ride-control="cancel"
+			class="btn btn-danger {compact
+				? 'btn-ride'
+				: 'btn-lg ride-stage:ride-word'}"
+			><Square size={13} /> Cancel session</button
+		>
 	{:else if idle}
 		<!-- Riding size in the compact header too (#2886): a free rider turns
 		     the ride into a session from here while pedalling. -->
@@ -151,7 +170,7 @@
 			class="btn btn-danger {compact
 				? 'btn-ride'
 				: 'btn-lg ride-stage:ride-word'}"
-			><Square size={13} /> Stop the countdown</button
+			><Square size={13} /> Cancel session</button
 		>
 	{:else}
 		<!-- Two boxes (#4567): the bar keeps End on screen at every width, and
@@ -240,7 +259,9 @@
 			? 'btn-ride'
 			: 'btn-lg ride-stage:ride-word'}"
 		><Square size={13} />
-		{view === 'clear' ? `Clear ${whose} pick` : `End ${whose} session`}</button
+		{view === 'clear'
+			? `Cancel ${whose} session`
+			: `End ${whose} session`}</button
 	>
 {:else if view === 'held' && !compact && !onLine}
 	<!-- In place of the Start a member no longer has: who holds the channel. -->

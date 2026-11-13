@@ -161,6 +161,13 @@
 					class="btn btn-accent btn-lg">Join the start line</button
 				>
 			{/if}
+			{#if channel.canDrive}
+				<!-- The coach's way out before the count-in (#4562): nothing is ridden yet, so it goes at once. -->
+				<button
+					onclick={() => channel.control('end')}
+					class="btn btn-danger btn-lg ml-auto">Cancel session</button
+				>
+			{/if}
 		</div>
 		{#if channel.canDrive && view.wait}
 			<p class="text-muted mt-2 text-sm">{view.wait}</p>

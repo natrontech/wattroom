@@ -70,6 +70,16 @@ export function createSessionSounds(deps: SoundDeps) {
 	});
 	$effect(() => heardCoach(deps.coach() ?? ''));
 
+	// A session cancelled before its count-in finished (#4562): the pick,
+	// the start line or the countdown is gone, for everyone who saw it. One
+	// that ran and ended passes through `done` and has its fanfare above.
+	const heardOpen = changes<boolean>((open) => {
+		if (open || deps.phase() === 'done') return;
+		play('block', { semitones: -5 });
+		toasts.push('The session was cancelled.');
+	});
+	$effect(() => heardOpen(!!deps.coach()));
+
 	// The rider's own cues — block, guard, spiral, fault, the sprint and now
 	// the count-in — are the ride's, not the session's (#1792, #1800): a rider
 	// alone hears them too. The shared countdown is fed in as seconds left,
