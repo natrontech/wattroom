@@ -77,6 +77,12 @@ export type Route = {
 	 * Absent where the route never rides a road twice.
 	 */
 	shared?: Float64Array;
+	/**
+	 * The world's road only: the stretches, in metres along it, where it
+	 * crosses another pass of itself and is drawn as bare asphalt, a
+	 * crossroads (crossings.ts). Absent where the route never crosses itself.
+	 */
+	bare?: readonly (readonly [from: number, to: number])[];
 };
 
 /** docs/SPEC.md: resample every 10 m, store every 20 m. */
