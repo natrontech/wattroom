@@ -353,6 +353,27 @@ func (q *Queries) GetPlanPlace(ctx context.Context, arg GetPlanPlaceParams) (Get
 	return i, err
 }
 
+const giveBackCrewPlan = `-- name: GiveBackCrewPlan :execrows
+update scheduled_sessions
+set started_at = null
+where id = $1 and crew_id = $2 and started_at is not null
+`
+
+type GiveBackCrewPlanParams struct {
+	ID     pgtype.UUID
+	CrewID pgtype.UUID
+}
+
+// A plan whose session was cancelled before its count-in (#4562) is
+// upcoming again: no ride came of it.
+func (q *Queries) GiveBackCrewPlan(ctx context.Context, arg GiveBackCrewPlanParams) (int64, error) {
+	result, err := q.db.Exec(ctx, giveBackCrewPlan, arg.ID, arg.CrewID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listCrewCalendar = `-- name: ListCrewCalendar :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        s.channel_id, coalesce(ch.name, '')::text as channel_name

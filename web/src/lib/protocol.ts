@@ -2629,6 +2629,16 @@ export interface SessionState {
    * opened it; absent on a session with no road.
    */
   route?: SessionRoute;
+  /**
+   * The plan that opened it (#4562), so its coach's Undo of a cancel can
+   * start that plan again. Empty off a plan.
+   */
+  planId?: string;
+  /**
+   * Who planned it (#4562): they may cancel it before its count-in,
+   * whoever pressed Start.
+   */
+  planner?: string;
 }
 /**
  * SessionRecapRider is one person a session saw, and when — the only two

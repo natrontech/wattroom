@@ -47,7 +47,7 @@ type Presence interface {
 	// opened, or a code and a message. A plan on a road opens on its start
 	// line (#3228), which lists the riders who said they are in (awaited)
 	// until they arrive.
-	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (id, code, message string)
+	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string, route *protocol.ControlRoute, routeOwner, planID string, awaited []protocol.RsvpRider) (id, code, message string)
 }
 
 // Gate is the channels' one gate, asked again (#2808). The door asks it once,

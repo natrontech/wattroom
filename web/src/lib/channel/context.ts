@@ -4,7 +4,12 @@ import type { Segment } from '#lib/workout/types.ts';
 import type { Block } from '#lib/workout/block.ts';
 import type { LiveRider } from '#lib/channel/types.ts';
 import type { CrewAnnouncement } from '#lib/channels.ts';
-import type { GameState, SensorPairing, SprintState } from '#lib/protocol.ts';
+import type {
+	GameState,
+	SensorPairing,
+	SessionRoute,
+	SprintState,
+} from '#lib/protocol.ts';
 import type { StageSource } from '#lib/channel/stage.ts';
 import type { CrewPlan } from '#lib/crew-schedule.ts';
 import type { FlightRecorder } from '#lib/ride/flightrecorder.svelte.ts';
@@ -87,6 +92,12 @@ export interface ChannelContext {
 				id?: string;
 				coach?: string;
 				coachName?: string;
+				/** What reopens it after a cancel (#4562): its plan, or its pick. */
+				planId?: string;
+				planner?: string;
+				together?: boolean;
+				workoutJson?: string;
+				route?: SessionRoute;
 		  }
 		| undefined;
 	/** Coarse phase the places branch on: lounge, countdown or live. */

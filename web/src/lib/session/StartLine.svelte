@@ -8,6 +8,7 @@
 	// panel, never part of the ride. A road session opens on the crew's own
 	// session page (#4389), which draws it in its Training place (#4504); a
 	// voice channel's lounge draws it as well.
+	import { cancelSession } from '#lib/session/cancel.ts';
 	import { account } from '#lib/account.svelte.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { useChannel } from '#lib/channel/context.ts';
@@ -164,7 +165,7 @@
 			{#if channel.canDrive}
 				<!-- The coach's way out before the count-in (#4562): nothing is ridden yet, so it goes at once. -->
 				<button
-					onclick={() => channel.control('end')}
+					onclick={() => cancelSession(channel)}
 					class="btn btn-danger btn-lg ml-auto">Cancel session</button
 				>
 			{/if}

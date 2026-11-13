@@ -16,7 +16,9 @@ import type { SessionState } from '#lib/protocol.ts';
 export type ControlsView = 'coach' | 'end' | 'clear' | 'held' | 'none';
 
 export function controlsFor(o: {
-	state: Pick<SessionState, 'phase' | 'id'> | undefined;
+	state: Pick<SessionState, 'phase' | 'id' | 'planner'> | undefined;
+	/** This rider, to know the plan's planner (#4562). */
+	me?: string;
 	/** The coach, or anyone while no session is open — ChannelShell's rule. */
 	canControl: boolean;
 	/** The crew's owner or an admin. */
@@ -27,5 +29,9 @@ export function controlsFor(o: {
 	if (!sessionOpen(o.state)) return 'none';
 	const pick = o.state?.phase === 'idle';
 	if (o.canManage) return pick ? 'clear' : 'end';
+	// Whoever planned it may cancel it until it runs (#4562), whoever
+	// pressed Start.
+	const before = pick || o.state?.phase === 'countdown';
+	if (before && o.me && o.state?.planner === o.me) return 'clear';
 	return pick ? 'held' : 'none';
 }

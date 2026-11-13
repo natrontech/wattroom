@@ -345,7 +345,7 @@ type sessionOpener struct {
 	coaches map[string]string
 }
 
-func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ string, _ *protocol.ControlRoute, _ string, _ []protocol.RsvpRider) (string, string, string) {
+func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ string, _ *protocol.ControlRoute, _, _ string, _ []protocol.RsvpRider) (string, string, string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	// A crew's own session is a new one at every start (docs/SESSIONS.md):
@@ -390,6 +390,18 @@ func TestStartingACrewPlan(t *testing.T) {
 	}
 	if _, seen := h.crewSchedule(t, "bob", crew)[unassigned]; seen {
 		t.Error("a started plan is still offered")
+	}
+
+	// Its session cancelled before the count-in (#4562): the hub gives the
+	// plan back, and it is offered and starts again.
+	if err := h.svc.GiveBackPlan(t.Context(), store.UUIDString(crew.ID), unassigned); err != nil {
+		t.Fatalf("give back: %v", err)
+	}
+	if _, seen := h.crewSchedule(t, "bob", crew)[unassigned]; !seen {
+		t.Error("a plan given back is not offered again")
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", unassigned, "/started"), ""); status != http.StatusOK {
+		t.Errorf("a plan given back does not start again: %d", status)
 	}
 
 	// Alice's plan once named Pain Cave: it opens a crew session too, beside

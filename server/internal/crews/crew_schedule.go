@@ -438,7 +438,7 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: user.DisplayName, Role: role}
-		id, code, message := s.presence.OpenSession(protocol.CrewSessionPlace(store.UUIDString(crew.ID), ""), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy), awaited)
+		id, code, message := s.presence.OpenSession(protocol.CrewSessionPlace(store.UUIDString(crew.ID), ""), rider, plan.WorkoutName, workoutJSON, route, store.UUIDString(plan.CreatedBy), store.UUIDString(plan.ID), awaited)
 		if code != "" {
 			status := http.StatusBadRequest
 			if code == "conflict" {
@@ -467,4 +467,26 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	// The session's id too (#2599): the starter goes to the ride, not to the
 	// channel's lobby with the count-in already running.
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"sessionId": sessionID})
+}
+
+// GiveBackPlan puts a started plan back on the calendar (#4562): the hub
+// calls it when the session the plan opened is cancelled before its
+// count-in, so the plan does not leave with a ride that never happened.
+func (s *Service) GiveBackPlan(ctx context.Context, crewID, planID string) error {
+	crew, err := store.ParseUUID(crewID)
+	if err != nil {
+		return fmt.Errorf("give back plan: crew: %w", err)
+	}
+	plan, err := store.ParseUUID(planID)
+	if err != nil {
+		return fmt.Errorf("give back plan: plan: %w", err)
+	}
+	n, err := s.store.Queries.GiveBackCrewPlan(ctx, db.GiveBackCrewPlanParams{ID: plan, CrewID: crew})
+	if err != nil {
+		return fmt.Errorf("give back plan: %w", err)
+	}
+	if n > 0 {
+		s.changed(ctx, crew)
+	}
+	return nil
 }

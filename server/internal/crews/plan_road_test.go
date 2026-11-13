@@ -151,7 +151,7 @@ type workoutOpener struct {
 	awaited     []protocol.RsvpRider
 }
 
-func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string, route *protocol.ControlRoute, routeOwner string, awaited []protocol.RsvpRider) (string, string, string) {
+func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string, route *protocol.ControlRoute, routeOwner, _ string, awaited []protocol.RsvpRider) (string, string, string) {
 	o.workoutJSON, o.route, o.routeOwner, o.awaited = workoutJSON, route, routeOwner, awaited
 	return "session-in-" + channel, "", ""
 }

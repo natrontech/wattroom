@@ -63,6 +63,10 @@ type session struct {
 	// Who said they are in on the plan that opened it (#3228), for the
 	// start line to list until they arrive. Nil off a plan.
 	awaited []protocol.RsvpRider
+	// The plan that opened it and the rider who planned it (#4562), empty
+	// off a plan. The planner may cancel it before its count-in, and the
+	// cancel puts the plan back on the calendar.
+	plan, planner string
 	// Riding together (docs/SESSIONS.md): no workout and no clock to end
 	// it. Every rider rides their own free ride and the coach ends it.
 	together bool
@@ -266,7 +270,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 				Phase: "countdown", CountdownRemaining: remaining,
 				ID: s.id, Coach: s.coach, CoachName: s.coachName,
 				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds, Together: s.together,
-				Route: s.route.ref(),
+				Route: s.route.ref(), PlanID: s.plan, Planner: s.planner,
 			}
 		}
 		// The countdown elapsed; the timeline started the instant it hit zero.
@@ -297,7 +301,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 		Phase: s.phase, Elapsed: elapsed,
 		ID: s.id, Coach: s.coach, CoachName: s.coachName,
 		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds, Together: s.together,
-		Route: s.route.ref(),
+		Route: s.route.ref(), PlanID: s.plan, Planner: s.planner,
 	}
 }
 

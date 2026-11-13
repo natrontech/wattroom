@@ -127,6 +127,13 @@ update scheduled_sessions
 set started_at = now(), channel_id = coalesce(channel_id, sqlc.arg(channel_id))
 where id = sqlc.arg(id) and crew_id = sqlc.arg(crew_id) and started_at is null;
 
+-- name: GiveBackCrewPlan :execrows
+-- A plan whose session was cancelled before its count-in (#4562) is
+-- upcoming again: no ride came of it.
+update scheduled_sessions
+set started_at = null
+where id = sqlc.arg(id) and crew_id = sqlc.arg(crew_id) and started_at is not null;
+
 -- name: GetEnterableVoiceChannel :one
 -- A voice channel of this crew the viewer may enter: what a plan may name.
 select c.id, c.name from channels c

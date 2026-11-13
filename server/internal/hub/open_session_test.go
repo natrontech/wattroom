@@ -41,7 +41,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 		{
 			name: "the plan already under way is started, not refused",
 			before: func(h *Hub, rm *channelState) {
-				if _, code, msg := h.OpenSession("track", alice, "Thursday", plan, nil, "", nil); code != "" {
+				if _, code, msg := h.OpenSession("track", alice, "Thursday", plan, nil, "", "", nil); code != "" {
 					t.Fatalf("first start: %s %s", code, msg)
 				}
 			},
@@ -76,7 +76,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 			rm := h.stateOf("track")
 			tt.before(h, rm)
 
-			id, code, _ := h.OpenSession("track", alice, "Thursday", plan, nil, "", nil)
+			id, code, _ := h.OpenSession("track", alice, "Thursday", plan, nil, "", "", nil)
 			if code != tt.wantCode {
 				t.Fatalf("code = %q, want %q", code, tt.wantCode)
 			}
@@ -113,7 +113,7 @@ func TestOpenSessionRidesThePlansRoad(t *testing.T) {
 	h.SetRoads(fakeRoads{heights: slope(0, 20_000).Heights, listed: "track"})
 	route := &protocol.ControlRoute{ID: homeLoop, FromM: 5000}
 	awaited := []protocol.RsvpRider{{ID: "kim", Name: "Kim"}}
-	if _, code, msg := h.OpenSession("track", alice, "Next leg", plan, route, "bob", awaited); code != "" {
+	if _, code, msg := h.OpenSession("track", alice, "Next leg", plan, route, "bob", "", awaited); code != "" {
 		t.Fatalf("open: %s %s", code, msg)
 	}
 	rm := h.stateOf("track")
@@ -145,7 +145,7 @@ func TestOpenSessionRidesThePlansRoad(t *testing.T) {
 
 	refused := New(slog.New(slog.DiscardHandler), nil, nil)
 	refused.SetRoads(fakeRoads{refused: &protocol.Error{Code: "not_found", Message: "That route is not one of yours."}})
-	if _, code, _ := refused.OpenSession("track", alice, "Next leg", plan, route, "bob", nil); code != "not_found" {
+	if _, code, _ := refused.OpenSession("track", alice, "Next leg", plan, route, "bob", "", nil); code != "not_found" {
 		t.Fatalf("a route the planner does not own answered %q, want not_found", code)
 	}
 	if s := refused.stateOf("track").session; s.workoutName != "" {
