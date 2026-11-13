@@ -10,6 +10,7 @@
 	import { account } from '#lib/account.svelte.ts';
 	import { api } from '#lib/api.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	import NotifyOffer from '#lib/components/NotifyOffer.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
@@ -41,12 +42,12 @@
 		sessions = res.data.sessions;
 	}
 
+	const pinged = pingFollower();
 	$effect(() => {
 		if (!account.me) return;
 		// The lobby ping (#570): planning, moving and cancelling each ping
 		// every socket, and those three are exactly what this list shows.
-		presence.version;
-		void load();
+		if (pinged(presence.version)) void load();
 	});
 
 	// The clock is read again with every read the list is drawn from: a plan

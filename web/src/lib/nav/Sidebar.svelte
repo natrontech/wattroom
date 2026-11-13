@@ -44,6 +44,7 @@
 	import StartOrJoin from '#lib/home/StartOrJoin.svelte';
 	import { personMenu } from '#lib/person-menu.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { statusOf } from '#lib/status.ts';
 	import { goto } from '$app/navigation';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -86,9 +87,12 @@
 		void goto(id === 'you' ? '/home' : `/crew/${id}`);
 	}
 	// What is happening in every crew, re-read on each lobby ping (#2444).
+	// A page's own surface may have asked first (Home's ride door, a crew's
+	// Home): its read is this one (#4565).
+	crewLive.arrive();
+	const crewsPinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		presence.version;
-		void crewLive.reload();
+		if (crewsPinged(presence.version)) void crewLive.reload();
 	});
 	// Updates and what's new (#2588): read once the sidebar is up.
 	$effect(() => {

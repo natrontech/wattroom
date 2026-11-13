@@ -16,9 +16,26 @@ let loaded: string | null = null;
 let newer = $state<string | null>(null);
 let started = false;
 
-async function check() {
+async function ask(): Promise<string | undefined> {
 	const res = await api<{ version?: string }>('/api/version');
-	const version = res.ok ? res.data.version : undefined;
+	// ?. guards an older server answering with the SPA fallback.
+	return res.ok ? res.data?.version : undefined;
+}
+
+let first: Promise<string | undefined> | null = null;
+/**
+ * The version this window loaded with: the server's first answer, asked once
+ * for the watch and for What's new alike (#4565). A failed ask is asked again.
+ */
+export function loadedVersion(): Promise<string | undefined> {
+	return (first ??= ask().then((version) => {
+		if (!version) first = null;
+		return version;
+	}));
+}
+
+async function check() {
+	const version = await (loaded === null ? loadedVersion() : ask());
 	if (!version) return;
 	if (loaded === null) loaded = version;
 	else newer = version === loaded ? null : version;

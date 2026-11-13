@@ -50,7 +50,7 @@
 	const profile = createProfileStore();
 	// The suggestion rides on /api/me, which a ride just saved has moved:
 	// read it again on the way in, as Home does (#2626).
-	void account.load();
+	void account.arrive();
 	let declined = $state(declinedSuggestion('ftp'));
 	let applied = $state(false);
 	const suggestion = $derived(

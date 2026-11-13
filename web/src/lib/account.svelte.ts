@@ -142,7 +142,15 @@ function createAccountStore() {
 	 */
 	let asked = 0;
 
-	async function load(): Promise<void> {
+	let flying: Promise<void> | null = null;
+	function load(): Promise<void> {
+		const one = read().finally(() => {
+			if (flying === one) flying = null;
+		});
+		return (flying = one);
+	}
+
+	async function read(): Promise<void> {
 		const mine = ++asked;
 		try {
 			const [meRes, provRes] = await Promise.all([
@@ -235,6 +243,12 @@ function createAccountStore() {
 			return !!me && !me.figureAsked;
 		},
 		load,
+		/**
+		 * A page arriving (#4565): the read already on its way is as fresh as
+		 * one begun now, so it is that one. The shell starts one on every
+		 * cold load, and each page under it used to start its own beside it.
+		 */
+		arrive: () => flying ?? load(),
 		/** Returns a field-keyed error message, or null on success. */
 		async save(next: {
 			displayName: string;

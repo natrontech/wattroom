@@ -21,6 +21,7 @@
 		shareInviteLink,
 	} from '#lib/crew-flows.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { shareVerb } from '#lib/share.ts';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -74,11 +75,9 @@
 	});
 	// A role change or a rename pings the lobby (#570); re-read on it — on
 	// the ping, not on mount, where the loader's read is seconds old.
-	let seenVersion = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === seenVersion) return;
-		seenVersion = version;
+		if (!pinged(presence.version)) return;
 		const loaded = untrack(() => crew);
 		if (id && loaded) void load(id);
 	});

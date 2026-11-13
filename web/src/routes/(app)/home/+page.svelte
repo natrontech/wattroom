@@ -37,7 +37,7 @@
 	// (#3688): the greeting, one action row, the set-up card while steps
 	// remain, four tiles, then the week beside who is around and your rides.
 
-	void account.load();
+	void account.arrive();
 
 	let rides = $state<ServerRide[] | null>(null);
 	let ridesError = $state<string | null>(null);

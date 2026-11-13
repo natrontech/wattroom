@@ -12,7 +12,7 @@
  * in full; the rest are counted, and their actions still apply — otherwise
  * whatever a missed release offered is never offered at all.
  */
-import { api } from './api';
+import { loadedVersion } from './version-watch.svelte';
 import {
 	actionsFor,
 	parseChangelog,
@@ -79,7 +79,7 @@ export const changelog = {
 		loading = true;
 		try {
 			const [running, text] = await Promise.all([
-				api<{ version?: string }>('/api/version'),
+				loadedVersion(),
 				fetch('/changelog.md').then((r) => (r.ok ? r.text() : null)),
 			]);
 			// The SPA answers any unknown path with index.html and 200 (#1667):
@@ -89,9 +89,7 @@ export const changelog = {
 				return;
 			}
 			releases = releasedOnly(parseChangelog(text));
-			// ?. guards an older server answering with the SPA fallback.
-			const v = running.ok ? (running.data?.version ?? null) : null;
-			version = v && v !== 'dev' ? v : null;
+			version = running && running !== 'dev' ? running : null;
 			const seen = readSeen();
 			// A first visit records where the rider came in and says nothing.
 			if (seen === null && version) writeSeen(version);

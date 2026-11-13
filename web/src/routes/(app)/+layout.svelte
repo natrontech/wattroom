@@ -10,6 +10,7 @@
 	import { noteNewAccount } from '#lib/auth/new-account.ts';
 	import { landing, takeNext } from '#lib/auth/next.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { chosenCrew } from '#lib/nav/chosen-crew.svelte.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	// Side-effect imports: both apply their stored choice to :root the moment
@@ -102,10 +103,13 @@
 	// Friend events arrive the same way (#876): someone asking, someone
 	// accepting. Off the lobby ping — the friends endpoints ping it now — so
 	// it reaches the other side while they watch, wherever they are.
+	let friendsPinged = pingFollower();
 	$effect(() => {
-		if (!account.me) return;
-		presence.version;
-		void friends.reload();
+		if (!account.me) {
+			friendsPinged = pingFollower();
+			return;
+		}
+		if (friendsPinged(presence.version)) void friends.reload();
 	});
 
 	// Account → local profile cache, once me arrives (ADR-0009: server truth).

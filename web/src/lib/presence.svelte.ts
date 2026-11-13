@@ -1,6 +1,6 @@
 import { api } from '#lib/api.ts';
 import { reconnectDelay } from '#lib/reconnect.ts';
-import { STALE_AFTER, readOrder } from '#lib/stale.ts';
+import { STALE_AFTER, latestRead, readOrder } from '#lib/stale.ts';
 import type { CrewRef } from '#lib/crew-types.ts';
 import type { LobbyLane } from '#lib/protocol.ts';
 import { isLaneFrame, riderLane } from '#lib/rider-lane.svelte.ts';
@@ -40,7 +40,7 @@ const PING_WINDOW_MS = 250;
 let pingWindow: ReturnType<typeof setTimeout> | null = null;
 let pingedDuringWindow = false;
 
-async function refresh() {
+async function read() {
 	const mine = order.begin();
 	const res = await api<{ crews: CrewRef[] }>('/api/crews');
 	if (!order.lands(mine)) return;
@@ -55,6 +55,10 @@ async function refresh() {
 	version += 1;
 	// Arrivals are the crew read's to announce (crew-arrivals.ts, #2457).
 }
+// One read at a time (#4565): starting, the socket opening and the hub's ping
+// for your own arrival come within a few ms of each other, and each read that
+// lands bumps `version`, which every follower re-reads on.
+const refresh = latestRead(read);
 
 /**
  * A ping-driven refresh, at most one per window. Leading edge on purpose: the
@@ -88,7 +92,9 @@ function connect() {
 	const open = socket;
 	socket.onopen = () => {
 		attempts = 0;
-		void refresh();
+		// Through the window: the first open comes a few ms after start()'s
+		// read, and the hub's ping for your own arrival right behind it.
+		refreshCoalesced();
 		riderLane.opened((msg) => {
 			if (open.readyState === WebSocket.OPEN) open.send(JSON.stringify(msg));
 		});
@@ -155,7 +161,7 @@ export const presence = {
 	start() {
 		if (!stopped) return;
 		stopped = false;
-		void refresh();
+		refreshCoalesced();
 		connect();
 		// A tab that wakes from sleep has a socket the browser may not report
 		// dead for a while and dots drawn with full confidence (#1741): on
@@ -172,6 +178,7 @@ export const presence = {
 		if (fallback) clearInterval(fallback);
 		if (reconnect) clearTimeout(reconnect);
 		order.reset();
+		refresh.reset();
 		failures = 0;
 		if (pingWindow) clearTimeout(pingWindow);
 		pingWindow = null;

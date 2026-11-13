@@ -15,7 +15,7 @@
 
 	let { pick, road }: { pick: string; road?: string } = $props();
 
-	if (!crewLive.loaded) void crewLive.reload();
+	crewLive.arrive();
 	const crew = $derived(loungeCrew(crewLive.crews));
 	const room = $derived(crew ? lounge(crew) : undefined);
 

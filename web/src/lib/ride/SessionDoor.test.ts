@@ -18,6 +18,7 @@ vi.mock('#lib/nav/crew-live.svelte.ts', () => ({
 			return state.crews;
 		},
 		reload: () => Promise.resolve(),
+		arrive: () => {},
 	},
 }));
 

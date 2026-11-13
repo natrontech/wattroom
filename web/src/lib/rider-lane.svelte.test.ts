@@ -64,7 +64,9 @@ describe('the rider’s lane on the lobby socket (#4425)', () => {
 	it('takes the lane’s frames off the ping path, and pings still re-fetch', async () => {
 		presence.start();
 		socket!.open();
-		await Promise.resolve();
+		// start()'s read, and the one more the open asked for when the ping
+		// window closes (#4565).
+		await new Promise((resolve) => setTimeout(resolve, 600));
 		fetches = 0;
 
 		socket!.onmessage?.({

@@ -10,6 +10,7 @@
  * for a list that almost never changes. The poll is now only the fallback.
  */
 import { api } from '#lib/api.ts';
+import { latestRead } from '#lib/stale.ts';
 import { dm } from '#lib/dm/dm.svelte.ts';
 import { announce } from '#lib/messages/announce.ts';
 import { away } from '#lib/notify.svelte.ts';
@@ -72,7 +73,7 @@ let lastPoll = 0;
  */
 export const FALLBACK_MS = 60_000;
 
-async function poll() {
+async function readHeads() {
 	lastPoll = Date.now();
 	const res = await api<{ conversations: DmHead[] }>('/api/dms');
 	loaded = true;
@@ -127,6 +128,9 @@ async function poll() {
 	first = false;
 }
 
+// One read at a time (#4565): a burst of pings is two reads, not one each.
+const poll = latestRead(readHeads);
+
 export const dmHeads = {
 	get heads() {
 		return heads;
@@ -157,7 +161,8 @@ export const dmHeads = {
 	 * again. The first count seen is the one start() already answered.
 	 */
 	follow(version: number) {
-		if (heardVersion !== null && version !== heardVersion) void poll();
+		// From zero is the feed's own first answer, not a ping (#4565).
+		if (heardVersion && version !== heardVersion) void poll();
 		heardVersion = version;
 	},
 	/**
@@ -167,6 +172,7 @@ export const dmHeads = {
 	stop() {
 		clearInterval(timer);
 		timer = undefined;
+		poll.reset();
 		heardVersion = null;
 		started = false;
 		first = true;

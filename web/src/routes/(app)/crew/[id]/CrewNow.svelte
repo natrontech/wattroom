@@ -18,9 +18,11 @@
 		type CrewPlan,
 		planPath,
 	} from '#lib/crew-schedule.ts';
-	import { fetchCrewsLive, type LiveChannel } from '#lib/crews-live.ts';
+	import { type LiveChannel } from '#lib/crews-live.ts';
+	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
 	import { formatClock, formatWhen } from '#lib/format.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { latestRead, pingFollower } from '#lib/stale.ts';
 	import type { SessionRecap } from '#lib/protocol.ts';
 	import SessionRecapCard from '#lib/session/SessionRecapCard.svelte';
 	import {
@@ -50,9 +52,17 @@
 
 	let { crew }: { crew: Crew } = $props();
 
-	let voice = $state<LiveChannel[] | null>(null);
+	// Who is where is the sidebar's read (#4565): one answer for the app, and
+	// the lobby ping already re-reads it. Null until it has landed.
+	crewLive.arrive();
+	const mine = $derived(crewLive.crew(crew.id));
+	const voice = $derived<LiveChannel[] | null>(
+		crewLive.loaded
+			? (mine?.channels.filter((c) => c.kind === 'voice') ?? [])
+			: null,
+	);
 	// The crew's own sessions (docs/SESSIONS.md), in no voice channel.
-	let sessions = $state<LiveSession[]>([]);
+	const sessions = $derived<LiveSession[]>(mine?.sessions ?? []);
 	let next = $state<CrewPlan | null>(null);
 	let latest = $state<SessionRecap | null>(null);
 	let error = $state<string | null>(null);
@@ -61,34 +71,32 @@
 	let answering = $state(false);
 
 	async function load(id: string) {
-		const [live, schedule, recaps] = await Promise.all([
-			fetchCrewsLive(),
+		const [schedule, recaps] = await Promise.all([
 			fetchCrewSchedule(id),
 			fetchCrewRecaps(id),
 		]);
 		if (id !== crew.id) return;
-		if (live.ok) {
-			const mine = live.data.crews.find((c) => c.id === id);
-			voice = mine?.channels.filter((c) => c.kind === 'voice') ?? [];
-			sessions = mine?.sessions ?? [];
-		}
 		if (schedule.ok) next = schedule.data.sessions[0] ?? null;
 		// Oldest first from the server, as the Members page reads them.
 		if (recaps.ok) latest = recaps.data.recaps.at(-1) ?? null;
 		// The crew's totals are the Members page's.
-		const failed = [live, schedule, recaps].find((res) => !res.ok);
-		error = failed && !failed.ok ? failed.error.message : null;
+		const failed = [schedule, recaps].find((res) => !res.ok);
+		error =
+			failed && !failed.ok ? failed.error.message : (crewLive.error ?? null);
 		gone = !!failed && !failed.ok && failed.error.error === 'not_found';
 	}
+	// By the id, not the row: a ping hands this a new `crew` for the same
+	// crew, and each one used to read again beside the ping's own (#4565).
+	const crewId = $derived(crew.id);
+	const reread = latestRead(() => load(untrack(() => crew.id)));
 	$effect(() => {
-		void load(crew.id);
+		crewId;
+		void reread();
 	});
-	let seenVersion = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === seenVersion) return;
-		seenVersion = version;
-		void load(untrack(() => crew.id));
+		if (!pinged(presence.version)) return;
+		void reread();
 	});
 
 	const live = $derived((voice ?? []).filter((c) => c.session));
@@ -116,7 +124,7 @@
 		);
 		answering = false;
 		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
-		await load(crew.id);
+		await reread();
 	}
 
 	// Start a session of the crew's own (docs/SESSIONS.md): the picker's
@@ -158,8 +166,9 @@
 				{#if gone}
 					<a href="/home" class="btn-link text-xs">Home</a>
 				{:else}
-					<button onclick={() => void load(crew.id)} class="btn-link text-xs"
-						>Retry</button
+					<button
+						onclick={() => (void crewLive.reload(), void load(crew.id))}
+						class="btn-link text-xs">Retry</button
 					>
 				{/if}
 			{/snippet}

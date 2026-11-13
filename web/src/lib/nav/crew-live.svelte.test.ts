@@ -248,8 +248,10 @@ describe('the live read going stale', () => {
 		expect(crewLive.stale).toBe(true);
 	});
 
-	// ...and an older read that lands after a newer one is dropped: it cannot
-	// clear the mark, or put its old list back.
+	// ...and an older read cannot land after a newer one: reads no longer
+	// overlap (#4565). The asks that arrive during one are a single read,
+	// begun when it lands, so the old answer never clears the mark or puts
+	// its list back.
 	it('never lets an older read land over a newer one', async () => {
 		world = crew(text());
 		await read();
@@ -258,13 +260,14 @@ describe('the live read going stale', () => {
 		failing = true;
 		const a = crewLive.reload();
 		const b = crewLive.reload();
-		held[1]();
-		await a;
-		held[2]();
-		await b;
-		expect(crewLive.stale).toBe(true);
+		expect(held).toHaveLength(1);
 		held[0]();
 		await old;
-		expect(crewLive.stale).toBe(true);
+		expect(crewLive.error).toBe(null);
+		await vi.waitFor(() => expect(held).toHaveLength(2));
+		held[1]();
+		await Promise.all([a, b]);
+		expect(held).toHaveLength(2);
+		expect(crewLive.error).not.toBe(null);
 	});
 });

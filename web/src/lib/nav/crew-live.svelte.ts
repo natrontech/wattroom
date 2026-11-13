@@ -3,7 +3,7 @@ import { fetchCrewsLive, type LiveCrew } from '#lib/crews-live.ts';
 import { announce } from '#lib/messages/announce.ts';
 import { shouldAnnounce } from '#lib/notify-once.ts';
 import { away } from '#lib/notify.svelte.ts';
-import { STALE_AFTER, readOrder } from '#lib/stale.ts';
+import { STALE_AFTER, latestRead, readOrder } from '#lib/stale.ts';
 import type { LiveSession } from '#lib/protocol.ts';
 import { rideName } from '#lib/road/profile.ts';
 import { channelConnection } from '#lib/channel/connection.svelte.ts';
@@ -28,10 +28,13 @@ let failures = $state(0);
 const order = readOrder();
 // The first read is the state of the world, not a burst of arrivals: its
 // sessions are old news and its lines are claimed, not announced (#2421).
+// A read has been asked since the last reset (see `arrive`).
+let begun = false;
 let started = false;
 let seen = new Set<string>();
 
-async function load() {
+async function read() {
+	begun = true;
 	const mine = order.begin();
 	const res = await fetchCrewsLive();
 	if (!order.lands(mine)) return;
@@ -62,6 +65,10 @@ async function load() {
 	}
 }
 
+// One read at a time (#4565): the sidebar, Home's ride door and a crew's Home
+// all ask, and a ping asks again.
+const load = latestRead(read);
+
 export const crewLive = {
 	get crews() {
 		return crews;
@@ -79,9 +86,19 @@ export const crewLive = {
 		return crews.find((c) => c.id === id);
 	},
 	reload: load,
+	/**
+	 * A surface arriving that draws from this read (#4565): the first read,
+	 * if nobody has asked for it yet. The sidebar asks and follows the lobby
+	 * ping, so one already asked is as fresh as one begun now.
+	 */
+	arrive() {
+		if (!begun) void load();
+	},
 	/** Signing out starts the world over: the next rider's first read is theirs. */
 	reset() {
 		order.reset();
+		load.reset();
+		begun = false;
 		crews = [];
 		loaded = false;
 		error = null;

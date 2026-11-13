@@ -14,6 +14,7 @@
 	import { provideCrewEmoji } from '#lib/emoji/crew-emoji.svelte.ts';
 	import { learnCrewFaces } from '#lib/crew.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { channelAddress } from '#lib/channel/address.ts';
 	import ChannelShell from '#lib/channel/ChannelShell.svelte';
 	import {
@@ -39,7 +40,7 @@
 	// A crew's own emoji in its cheer set draw mid-ride too (#2643).
 	provideCrewEmoji(() => crewId);
 
-	void account.load();
+	void account.arrive();
 
 	let view = $state<VoiceChannelData>(untrack(() => initial));
 	let loadedFor = $state(untrack(() => `${crewId}/${channelId}`));
@@ -65,11 +66,9 @@
 	});
 	// A role, a rename or a gate changes because someone else changed it; the
 	// lobby ping is how this client hears (#570).
-	let seenVersion = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === seenVersion) return;
-		seenVersion = version;
+		if (!pinged(presence.version)) return;
 		if (crewId && channelId) void load(crewId, channelId);
 	});
 
