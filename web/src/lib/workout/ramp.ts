@@ -46,7 +46,7 @@ export const RAMP = {
  * SPEC number — it is where riders tend to fail: five minutes of warm-up plus
  * seven to thirteen steps.
  */
-export const RAMP_TAKES = 'about 12–18 minutes';
+export const RAMP_TAKES = `about 12–18 minutes, then a ${RAMP.coolSeconds / 60}-minute cool-down`;
 
 /**
  * Is the result meaningful? A ramp abandoned in the warmup produces arithmetic, not

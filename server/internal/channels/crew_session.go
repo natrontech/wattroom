@@ -19,6 +19,7 @@ type CrewSessions interface {
 	OpenCrewSession(crew string, rider protocol.Rider, pick protocol.Control) (id, code, message string)
 	OpenRideTogether(crew string, rider protocol.Rider) string
 	OpenCrewGame(crew string, rider protocol.Rider, cmd protocol.Control) (id, code, message string)
+	EndCrewSession(crew, id string, rider protocol.Rider) (code, message string)
 }
 
 // SetCrewSessions wires the hub's crew sessions in.
@@ -93,4 +94,30 @@ func (s *Service) handleOpenCrewSession(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, map[string]string{"id": id})
+}
+
+// handleEndCrewSession ends or cancels a crew session from the lounge
+// (#4562), where the session's own socket is not: the owner's and admins'
+// End on a session somebody else is running, on a phone too.
+func (s *Service) handleEndCrewSession(w http.ResponseWriter, r *http.Request) {
+	if s.crewSessions == nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "Sessions are not running on this server.")
+		return
+	}
+	crewID, user, role, ok := s.crewFor(w, r)
+	if !ok {
+		return
+	}
+	rider := s.riderOf(r.Context(), user, role, "crew", store.UUIDString(crewID))
+	code, message := s.crewSessions.EndCrewSession(store.UUIDString(crewID), r.PathValue("session"), rider)
+	switch code {
+	case "":
+		w.WriteHeader(http.StatusNoContent)
+	case "forbidden":
+		httpx.WriteError(w, http.StatusForbidden, code, message)
+	case "not_found":
+		httpx.WriteError(w, http.StatusNotFound, code, message)
+	default:
+		httpx.WriteError(w, http.StatusConflict, "conflict", message)
+	}
 }

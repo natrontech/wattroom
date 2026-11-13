@@ -350,3 +350,31 @@ func TestACrewSessionKeepsAWatchersNumbersTheirOwn(t *testing.T) {
 		t.Errorf("free = %v, want alice's numbers the session's", free)
 	}
 }
+
+// The lounge's End (#4562): a crew session ended from outside its socket,
+// by the crew's owner on a phone; a member who is not its coach may not,
+// and a session already gone answers not_found.
+func TestEndCrewSessionFromTheLounge(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	alice := protocol.Rider{ID: "alice", Name: "Alice", Role: "member"}
+	dan := protocol.Rider{ID: "dan", Name: "Dan", Role: "member"}
+	owner := protocol.Rider{ID: "olga", Name: "Olga", Role: "owner"}
+	id, code, msg := h.OpenSession(protocol.CrewSessionPlace("crew1", ""), alice, "Tempo", crewWorkout, nil, "", "", nil)
+	if code != "" {
+		t.Fatalf("open: %s %s", code, msg)
+	}
+	if code, _ := h.EndCrewSession("crew1", id, dan); code != "forbidden" {
+		t.Fatalf("a member's end = %q, want forbidden", code)
+	}
+	if code, msg := h.EndCrewSession("crew1", id, owner); code != "" {
+		t.Fatalf("the owner's end = %s %s", code, msg)
+	}
+	for _, live := range h.CrewSessions("crew1") {
+		if live.ID == id {
+			t.Fatalf("session %s still live after the owner's end", id)
+		}
+	}
+	if code, _ := h.EndCrewSession("crew1", "no-such", owner); code != "not_found" {
+		t.Fatalf("an unknown session = %q, want not_found", code)
+	}
+}

@@ -78,6 +78,29 @@ func (h *Hub) OpenCrewGame(crew string, rider protocol.Rider, cmd protocol.Contr
 	return rm.sessionID, "", ""
 }
 
+// EndCrewSession ends one of a crew's sessions from outside its socket
+// (#4562): the lounge's End for the crew's owner and admins, on a phone too.
+// The socket's own rules decide who may, and a plan it cancels before its
+// count-in goes back on the calendar.
+func (h *Hub) EndCrewSession(crew, id string, rider protocol.Rider) (code, message string) {
+	place := protocol.CrewSessionPlace(crew, id)
+	var rm *channelState
+	for _, r := range h.liveChannels() {
+		if r.channel == place {
+			rm = r
+			break
+		}
+	}
+	if rm == nil {
+		return "not_found", "That session has already ended."
+	}
+	if code, message := rm.control(protocol.Control{Action: "end"}, rider, h.now()); code != "" {
+		return code, message
+	}
+	h.giveBackPlan(rm)
+	return "", ""
+}
+
 // newCrewRoom makes a crew session's room, its session id minted before it.
 func (h *Hub) newCrewRoom(crew string) *channelState {
 	id := uuid.NewString()

@@ -126,6 +126,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}/channels", s.handleList)
 	mux.HandleFunc("GET /api/crews/{id}/live", s.handleLive)
 	mux.HandleFunc("POST /api/crews/{id}/sessions", s.handleOpenCrewSession)
+	mux.HandleFunc("POST /api/crews/{id}/sessions/{session}/end", s.handleEndCrewSession)
 	mux.HandleFunc("POST /api/crews/{id}/channels", s.handleCreate)
 	mux.HandleFunc("PATCH /api/channels/{id}", s.handleUpdate)
 	mux.HandleFunc("DELETE /api/channels/{id}", s.handleDelete)

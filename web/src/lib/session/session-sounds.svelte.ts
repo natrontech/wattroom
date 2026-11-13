@@ -1,3 +1,4 @@
+import { cancelledOnThisScreen } from '#lib/session/cancel.ts';
 import type { GameState, StartLine } from '#lib/protocol.ts';
 import { gameCues, golfMoment } from '#lib/session/game-cues.ts';
 import { lineCue } from '#lib/session/start-line.ts';
@@ -73,11 +74,12 @@ export function createSessionSounds(deps: SoundDeps) {
 	// A session cancelled before its count-in finished (#4562): the pick,
 	// the start line or the countdown is gone, for everyone who saw it. One
 	// that ran and ended passes through `done` and has its fanfare above.
-	// Its coach cancelled it here and has the toast with the Undo already.
+	// A cancel pressed on this screen has its own toast, with the Undo; the
+	// coach whose session somebody else cancelled hears it like everyone.
 	const heardOpen = changes<string>((coach, previous) => {
 		if (coach || !previous || deps.phase() === 'done') return;
 		play('block', { semitones: -5 });
-		if (previous !== deps.me()) toasts.push('The session was cancelled.');
+		if (!cancelledOnThisScreen()) toasts.push('The session was cancelled.');
 	});
 	$effect(() => heardOpen(deps.coach() ?? ''));
 
