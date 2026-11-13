@@ -8,6 +8,7 @@
  * so a request lands on the other side while they watch, not a minute later.
  */
 import { api } from '#lib/api.ts';
+import { latestRead } from '#lib/stale.ts';
 import { announce } from '#lib/messages/announce.ts';
 import { people } from '#lib/people.svelte.ts';
 import type { StatusLine } from '#lib/protocol.ts';
@@ -99,7 +100,7 @@ let error = $state<string | null>(null);
 // world, not a burst of arrivals (same rule as presence and the DM heads).
 let before: Record<string, Friend['status']> | null = null;
 
-async function refresh() {
+async function read() {
 	const res = await api<{
 		friends: Friend[];
 		code: string;
@@ -154,6 +155,9 @@ async function refresh() {
 		});
 	}
 }
+
+// One read at a time (#4565): a burst of pings is two reads, not one each.
+const refresh = latestRead(read);
 
 export const friends = {
 	/** Null until the first answer lands — a loading line, never a blank panel. */

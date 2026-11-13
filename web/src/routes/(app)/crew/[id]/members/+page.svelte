@@ -19,6 +19,7 @@
 		type CrewMembers,
 	} from '#lib/crew.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import type { SessionRecap } from '#lib/protocol.ts';
 	import SessionRecapCard from '#lib/session/SessionRecapCard.svelte';
 	import { untrack } from 'svelte';
@@ -71,11 +72,9 @@
 		void load(which);
 	});
 	// A role, a ban or a switch elsewhere pings the lobby (#570): re-read.
-	let seenVersion = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === seenVersion) return;
-		seenVersion = version;
+		if (!pinged(presence.version)) return;
 		if (id && untrack(() => crew)) void load(id);
 	});
 

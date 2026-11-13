@@ -19,6 +19,7 @@
 	} from '#lib/crew-workouts.ts';
 	import { formatDuration, formatWhen } from '#lib/format.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { toasts } from '#lib/toast.svelte.ts';
 	import { customWorkouts } from '#lib/workout/custom.svelte.ts';
 	import { buildShelf } from '#lib/workout/shelf.ts';
@@ -50,11 +51,9 @@
 	// unless the rider is already on their way out. SvelteKit hands an
 	// invalidation the navigation token, so a ping during a click's load
 	// cancelled the click and kept the rider here (#2591).
-	let heard = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === heard) return;
-		heard = version;
+		if (!pinged(presence.version)) return;
 		if (untrack(() => navigating.to)) return;
 		untrack(() => void refreshAll());
 	});

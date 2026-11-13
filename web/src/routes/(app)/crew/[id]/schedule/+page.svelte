@@ -43,6 +43,7 @@
 	import { needsTrainer } from '#lib/session/sensor-status.ts';
 	import { formatWhen } from '#lib/format.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import RsvpRow from '#lib/session/RsvpRow.svelte';
 	import SessionPicker from '#lib/session/SessionPicker.svelte';
 	import { takePickerDoor } from '#lib/session/doors.ts';
@@ -104,11 +105,9 @@
 		if (s.ok) plans = s.data.sessions;
 	}
 	// Somebody else planned, moved or answered (#570): the lobby says so.
-	let seenVersion = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === seenVersion) return;
-		seenVersion = version;
+		if (!pinged(presence.version)) return;
 		if (untrack(() => crew)) void reload();
 	});
 

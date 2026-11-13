@@ -27,6 +27,7 @@
 	import type { ThreadSource } from '#lib/messages/thread-types.ts';
 	import { learnCrewFaces } from '#lib/crew.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { messageTimeline } from '#lib/messages/timeline.ts';
 	import { toasts } from '#lib/toast.svelte.ts';
 	import { untrack } from 'svelte';
@@ -58,11 +59,9 @@
 			thread = null;
 		};
 	});
-	let heard = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === heard) return;
-		heard = version;
+		if (!pinged(presence.version)) return;
 		untrack(() => thread?.reload());
 	});
 

@@ -14,6 +14,8 @@
 		type PinDraft,
 	} from '#lib/pins/pins.ts';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { latestRead, pingFollower } from '#lib/stale.ts';
+	import { untrack } from 'svelte';
 
 	let { crewId, crewName }: { crewId: string; crewName: string } = $props();
 
@@ -38,18 +40,22 @@
 		}
 	}
 
+	// `loadedCrew` is read untracked: the first read writes it, and tracking
+	// it made every crew's first read ask twice (#4565).
+	const reread = latestRead(() => load(crewId, true));
+	const pinged = pingFollower();
 	$effect(() => {
 		const id = crewId;
-		if (loadedCrew !== id) {
+		// Someone else pinned something: every write pings the lobby, and the
+		// ping is how this client hears about it (#570).
+		const ping = pinged(presence.version);
+		if (untrack(() => loadedCrew) !== id) {
 			pins = [];
 			error = null;
 			void load(id);
 			return;
 		}
-		// Someone else pinned something: every write pings the lobby, and the
-		// ping is how this client hears about it (#570).
-		void presence.version;
-		void load(id, true);
+		if (ping) void reread();
 	});
 
 	/** Write, then re-read: the server owns ids, order and timestamps. */

@@ -37,7 +37,7 @@
 	const skin = (first: boolean) =>
 		lead && first ? 'btn-primary' : 'btn-secondary';
 
-	if (!crewLive.loaded) void crewLive.reload();
+	crewLive.arrive();
 
 	// The crews that have somewhere to ride, and the one this door is for:
 	// picked here, else remembered, else the first.

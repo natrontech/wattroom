@@ -10,6 +10,8 @@
 	// down with the two that are the owner's alone.
 	import { account, unchosen } from '#lib/account.svelte.ts';
 	import { fetchCrew } from '#lib/crew.ts';
+	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { canSimulate } from '#lib/ble/can-simulate.ts';
 	import { INTRO_ROAD_ID } from '#lib/ride/roads.ts';
 	import FtpAsk from '#lib/home/FtpAsk.svelte';
@@ -43,9 +45,18 @@
 	// How many are in the crew is not on the crew list; one read, once per
 	// crew, and the card stays quiet until it knows.
 	let people = $state<number | null>(null);
+	// Again on a lobby ping, which is how someone joining reaches the card.
+	// By the crew's id, not the row: every read of the crew list hands this
+	// a new row for the same crew, and each one used to ask again (#4565).
+	const crewId = $derived(crew?.id);
+	const pinged = pingFollower();
+	let readFor: string | undefined;
 	$effect(() => {
-		const id = crew?.id;
-		people = null;
+		const id = crewId;
+		const ping = pinged(presence.version);
+		if (id !== readFor) people = null;
+		else if (!ping) return;
+		readFor = id;
 		if (!id) return;
 		void fetchCrew(id).then((res) => {
 			if (res.ok && res.data.id === id) people = res.data.people.length;

@@ -41,6 +41,13 @@ vi.stubGlobal('WebSocket', FakeSocket);
 
 const { presence } = await import('#lib/presence.svelte.ts');
 
+/**
+ * Lets start()'s reads land and its window close. A read asked while one is
+ * in flight waits for it, and starting opens the ping window (#4565), so a
+ * test that counts reads puts both behind it first.
+ */
+const landed = () => vi.advanceTimersByTimeAsync(300);
+
 /** One ping from the hub. */
 function ping() {
 	socket?.onmessage?.();
@@ -56,9 +63,10 @@ describe('the presence feed coalesces pings', () => {
 		vi.useRealTimers();
 	});
 
-	it('fetches once for a burst, and once more for what the burst changed', () => {
+	it('fetches once for a burst, and once more for what the burst changed', async () => {
 		presence.start();
 		// start() fetches the world; the burst is what we are measuring.
+		await landed();
 		fetches = 0;
 
 		// Ten messages in a fast exchange, well inside one window.
@@ -68,38 +76,56 @@ describe('the presence feed coalesces pings', () => {
 		expect(fetches).toBe(1);
 
 		// The window closes and the burst is picked up exactly once.
-		vi.advanceTimersByTime(250);
+		await vi.advanceTimersByTimeAsync(250);
 		expect(fetches).toBe(2);
 
 		// Nothing further: a settled feed does not keep fetching.
-		vi.advanceTimersByTime(1000);
+		await vi.advanceTimersByTimeAsync(1000);
 		expect(fetches).toBe(2);
 	});
 
-	it('still refreshes promptly for pings spaced further apart', () => {
+	it('still refreshes promptly for pings spaced further apart', async () => {
 		presence.start();
+		await landed();
 		fetches = 0;
 
 		ping();
 		expect(fetches).toBe(1);
-		vi.advanceTimersByTime(300);
+		await vi.advanceTimersByTimeAsync(300);
 		ping();
 		expect(fetches).toBe(2);
-		vi.advanceTimersByTime(300);
+		await vi.advanceTimersByTimeAsync(300);
 		ping();
 		expect(fetches).toBe(3);
 	});
 
-	it('stops fetching once stopped, with a window still open', () => {
+	it('stops fetching once stopped, with a window still open', async () => {
 		presence.start();
+		await landed();
 		fetches = 0;
 
 		ping();
 		ping(); // arms the trailing fetch
 		expect(fetches).toBe(1);
 		presence.stop();
-		vi.advanceTimersByTime(1000);
+		await vi.advanceTimersByTimeAsync(1000);
 		expect(fetches).toBe(1);
+	});
+
+	// Starting, the socket opening and the hub's ping for your own arrival
+	// come within a few ms: three reads, each bumping `version`, which every
+	// follower re-reads on (#4565).
+	it('reads twice for its own start: once, and once more for what came during it', async () => {
+		presence.start();
+		socket!.onopen?.();
+		ping();
+		expect(fetches).toBe(1);
+		await landed();
+		// The one more began after the open and the ping, when the window
+		// closed: it has what they were about.
+		expect(fetches).toBe(2);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(fetches).toBe(2);
 	});
 });
 
@@ -116,9 +142,10 @@ describe('the presence feed survives its socket (#1742)', () => {
 		vi.useRealTimers();
 	});
 
-	it('re-dials at once after a drop, and refreshes on the reopen', () => {
+	it('re-dials at once after a drop, and refreshes on the reopen', async () => {
 		presence.start();
 		const first = socket!;
+		await landed();
 		fetches = 0;
 		first.onclose?.();
 		expect(socket).not.toBe(first);
@@ -137,8 +164,9 @@ describe('the presence feed survives its socket (#1742)', () => {
 		expect(socket).not.toBe(second);
 	});
 
-	it('re-fetches and re-dials when the tab becomes visible', () => {
+	it('re-fetches and re-dials when the tab becomes visible', async () => {
 		presence.start();
+		await landed();
 		fetches = 0;
 		// A zombie: the socket is dead and the browser never said so.
 		socket!.close();
@@ -203,32 +231,34 @@ describe('a feed that stopped answering says so', () => {
 		expect(presence.stale).toBe(false);
 	});
 
-	// A read already on its way when the feed starts refusing lands after the
-	// refusals asked later — on a loaded machine the refusals come back first.
-	// It answers with the world as it was, and it must not reset the count or
-	// put its old list back: the e2e spec lost its mark exactly that way.
+	// A read already on its way when the feed starts refusing answers with
+	// the world as it was. Reads no longer overlap (#4565): the ones asked
+	// meanwhile are one read, begun after it lands, so the old answer cannot
+	// come back last, reset the count or put its list back (#2565).
 	it('never lets an older read land over a newer one (#2565)', async () => {
 		const crew: CrewRef = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
 		world = { crews: [crew] };
 		presence.start();
 		await vi.waitFor(() => expect(presence.loaded).toBe(true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		hold = true;
 		presence.reload(); // the old world, answering late
 		world = { crews: [], error: 'The crews could not be loaded.' };
 		presence.reload();
 		presence.reload();
-		expect(held).toHaveLength(3);
+		// Two asks during the read: neither started one beside it.
+		expect(held).toHaveLength(1);
 
-		// Two refusals land in the order they were asked: two in a row.
-		held[1]();
-		held[2]();
-		await vi.waitFor(() => expect(presence.stale).toBe(true));
-
-		// Then the old read.
 		held[0]();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(presence.stale).toBe(true);
-		expect(presence.error).toBe('The crews could not be loaded.');
+		await vi.waitFor(() => expect(held).toHaveLength(2));
+		expect(presence.error).toBe(null);
+		// The one read for both began after them, and has the refusal.
+		held[1]();
+		await vi.waitFor(() =>
+			expect(presence.error).toBe('The crews could not be loaded.'),
+		);
+		expect(presence.crews).toHaveLength(1);
+		expect(held).toHaveLength(2);
 	});
 });

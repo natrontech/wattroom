@@ -27,7 +27,7 @@
 	}: { crewId: string; session: LiveSession; children: Snippet } = $props();
 
 	provideCrewEmoji(() => crewId);
-	void account.load();
+	void account.arrive();
 
 	let crew = $state<Crew | null>(null);
 	let error = $state<string | null>(null);

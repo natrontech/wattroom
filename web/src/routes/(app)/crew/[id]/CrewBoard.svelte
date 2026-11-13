@@ -13,6 +13,7 @@
 	import { provideCrewEmoji } from '#lib/emoji/crew-emoji.svelte.ts';
 	import CrewPins from '#lib/pins/CrewPins.svelte';
 	import { presence } from '#lib/presence.svelte.ts';
+	import { pingFollower } from '#lib/stale.ts';
 	import { untrack } from 'svelte';
 
 	let { crew }: { crew: Crew } = $props();
@@ -29,11 +30,9 @@
 	}
 	void reread();
 	// Marking or clearing one pings the lobby with its channel (#2435).
-	let heard = untrack(() => presence.version);
+	const pinged = pingFollower(untrack(() => presence.version));
 	$effect(() => {
-		const version = presence.version;
-		if (version === heard) return;
-		heard = version;
+		if (!pinged(presence.version)) return;
 		untrack(() => void reread());
 	});
 	// The re-read, not a local null: taking the newest down can surface the
