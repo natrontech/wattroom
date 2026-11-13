@@ -12,8 +12,9 @@ import type { Corner } from './synthetic';
 const HAIRPIN_R = 12;
 
 /**
- * Col de Berne: 21 hairpins up a south face to a notch between two snow
- * peaks, and a long way down the north side and round the massif's west end.
+ * Col de Berne: 21 hairpins up a south face, out of the forest at 1,850 m
+ * and on to a notch at 2,306 m between two snow peaks, then a long way down
+ * the north side and round the massif's west end.
  * The legs are 430 m at 8 % on a face of 30 %, so each runs 15.5° off the
  * contour and the hillside between them is a hillside (the stacked 21
  * hairpins of the tests stand 50 m over each other).
@@ -28,32 +29,32 @@ function colDeBerne(): Corner[] {
 		legs.push({
 			x: k % 2 ? 800 - east : 800,
 			y: 1300 + north * k,
-			ele: 1230 + 0.08 * LEG * k,
+			ele: 1530 + 0.08 * LEG * k,
 			r: k === 0 ? 60 : k === 22 ? 40 : HAIRPIN_R,
 		});
 	return [
 		// The south valley, east to the foot of the climb.
-		{ x: -3000, y: -200, ele: 1060, r: 300 },
-		{ x: -500, y: 0, ele: 1080, r: 300 },
-		{ x: 600, y: 300, ele: 1120, r: 200 },
-		{ x: 1100, y: 900, ele: 1185, r: 120 },
+		{ x: -3000, y: -200, ele: 1360, r: 300 },
+		{ x: -500, y: 0, ele: 1380, r: 300 },
+		{ x: 600, y: 300, ele: 1420, r: 200 },
+		{ x: 1100, y: 900, ele: 1485, r: 120 },
 		...legs,
 		// The col, and five long legs down the north face.
-		{ x: 700, y: 4150, ele: 2010, r: 60 },
-		{ x: 900, y: 4700, ele: 1960, r: 100 },
-		{ x: 228, y: 4896, ele: 1911, r: 14 },
-		{ x: 900, y: 5092, ele: 1862, r: 14 },
-		{ x: 228, y: 5288, ele: 1813, r: 14 },
-		{ x: 900, y: 5484, ele: 1764, r: 14 },
-		{ x: 228, y: 5680, ele: 1715, r: 60 },
+		{ x: 700, y: 4150, ele: 2310, r: 60 },
+		{ x: 900, y: 4700, ele: 2260, r: 100 },
+		{ x: 228, y: 4896, ele: 2211, r: 14 },
+		{ x: 900, y: 5092, ele: 2162, r: 14 },
+		{ x: 228, y: 5288, ele: 2113, r: 14 },
+		{ x: 900, y: 5484, ele: 2064, r: 14 },
+		{ x: 228, y: 5680, ele: 2015, r: 60 },
 		// Down the north valley and round the west end of the massif.
-		{ x: -800, y: 6400, ele: 1620, r: 150 },
-		{ x: -2200, y: 6700, ele: 1500, r: 200 },
-		{ x: -3800, y: 6300, ele: 1380, r: 250 },
-		{ x: -5200, y: 5200, ele: 1270, r: 300 },
-		{ x: -5900, y: 3800, ele: 1180, r: 300 },
-		{ x: -5700, y: 2200, ele: 1120, r: 300 },
-		{ x: -4800, y: 600, ele: 1075, r: 300 },
+		{ x: -800, y: 6400, ele: 1920, r: 150 },
+		{ x: -2200, y: 6700, ele: 1800, r: 200 },
+		{ x: -3800, y: 6300, ele: 1680, r: 250 },
+		{ x: -5200, y: 5200, ele: 1570, r: 300 },
+		{ x: -5900, y: 3800, ele: 1480, r: 300 },
+		{ x: -5700, y: 2200, ele: 1420, r: 300 },
+		{ x: -4800, y: 600, ele: 1375, r: 300 },
 	];
 }
 
@@ -64,23 +65,29 @@ const peak = (
 	clear?: readonly [number, number],
 ): Feature => ({ kind: 'peak', at, rise, spread, ...(clear && { clear }) });
 
-/** Two peaks, the ridge that joins them, the notch the road goes through, and crags beside the hairpins. */
+/**
+ * The land: the col is a notch between two snow peaks that stand right
+ * over it, a ridge runs off either way, and beside every other hairpin a
+ * crag stands out of the face. Snow lies from 2,350 m, 45 m over the col.
+ */
 const BERNE_LAND: Feature[] = [
-	peak([-1700, 4300], 800, 900),
-	peak([3200, 4500], 950, 1000),
-	peak([-500, 4150], 300, 450),
-	peak([1900, 4250], 380, 500),
+	// The two peaks of the notch, their feet cut by the road's own cuttings.
+	peak([-150, 4300], 560, 420, [50, 320]),
+	peak([1650, 4350], 640, 460, [50, 320]),
+	// The ridge, west and east.
+	peak([-1700, 4300], 700, 900),
+	peak([3200, 4500], 800, 1000),
 	peak([-3300, 3600], 420, 800),
 	peak([4600, 3000], 500, 900),
-	// Crags: steep enough to stand as rock.
-	peak([0, 2300], 140, 100, [50, 180]),
-	peak([100, 3300], 160, 110, [50, 180]),
-	peak([1250, 2900], 200, 130, [50, 200]),
-	peak([1300, 3700], 220, 140, [50, 200]),
-	peak([-100, 4000], 250, 150, [60, 220]),
-	peak([1500, 4300], 260, 160, [60, 220]),
-	peak([-350, 5300], 180, 120, [50, 200]),
-	peak([1450, 5200], 200, 130, [50, 200]),
+	// Crags beside the hairpins, west and east of the stack by turns, steep enough to stand as rock.
+	...[0, 1, 2, 3, 4, 5, 6].flatMap((k): Feature[] => [
+		peak([230, 1420 + 345 * k], 70 + 12 * k, 55, [20, 80]),
+		peak([955, 1590 + 345 * k], 80 + 12 * k, 60, [20, 80]),
+	]),
+	// And over the north side's legs.
+	peak([60, 5100], 150, 90, [25, 110]),
+	peak([1080, 5290], 170, 100, [25, 110]),
+	peak([50, 5480], 150, 90, [25, 110]),
 ];
 
 /**
@@ -209,10 +216,10 @@ const URNSEE_LAND: Feature[] = [
 	peak([2500, -1800], 440, 800, [40, 300]),
 	peak([2700, -300], 520, 850, [40, 300]),
 	peak([2900, 2700], 480, 850, [40, 300]),
-	peak([1700, -1900], 180, 120, [30, 130]),
-	peak([1560, -400], 200, 130, [30, 130]),
-	peak([1950, 700], 220, 140, [30, 140]),
-	peak([1650, 2700], 200, 130, [30, 130]),
+	peak([1760, -1900], 90, 70, [30, 110]),
+	peak([1640, -400], 100, 75, [30, 110]),
+	peak([1980, 700], 110, 80, [30, 110]),
+	peak([1700, 2700], 100, 75, [30, 110]),
 	// The west side's mountains, behind the terrace, and the head of the lake.
 	peak([-2900, 100], 900, 1000),
 	peak([-2700, -2700], 700, 900),
