@@ -171,6 +171,7 @@
 			<button
 				onclick={() => to('room')}
 				aria-pressed={state.pressed === 'room'}
+				title="The lounge view"
 				class={seg(state.pressed === 'room')}>Lounge</button
 			>
 		{/if}

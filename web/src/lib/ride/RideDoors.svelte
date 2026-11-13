@@ -119,17 +119,19 @@
 				><Bike size={18} />
 				{where === 'alone' ? 'Ride alone' : `Ride in ${room.name}`}</button
 			>
-			<select
-				aria-label="where to ride"
-				class="input min-h-11 w-auto max-w-64"
-				value={where === 'alone' ? 'alone' : crew.id}
-				onchange={(e) => choose(e.currentTarget.value)}
-			>
-				<option value="alone">Alone</option>
-				{#each withLounge as c (c.id)}
-					<option value={c.id}>{c.name} · {lounge(c)?.name}</option>
-				{/each}
-			</select>
+			<label class="flex items-center gap-2">
+				<span class="eyebrow">where</span>
+				<select
+					class="input min-h-11 w-auto max-w-64"
+					value={where === 'alone' ? 'alone' : crew.id}
+					onchange={(e) => choose(e.currentTarget.value)}
+				>
+					<option value="alone">Alone</option>
+					{#each withLounge as c (c.id)}
+						<option value={c.id}>{c.name} · {lounge(c)?.name}</option>
+					{/each}
+				</select>
+			</label>
 		</div>
 		<p class="text-muted mt-1.5 text-xs text-pretty" data-testid="lounge-now">
 			{#if where === 'alone'}

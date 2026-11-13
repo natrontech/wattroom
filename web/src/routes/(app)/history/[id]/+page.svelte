@@ -289,7 +289,7 @@
 						class="btn btn-secondary disabled:opacity-50"
 					>
 						<Download size={14} />
-						{exporting ? 'Preparing…' : 'Export'}
+						{exporting ? 'Preparing…' : 'Export .fit'}
 					</button>
 					<!-- Delete last, after a separator, as in the ride's context
 					     menu. On a phone the row wraps and a separator would end a

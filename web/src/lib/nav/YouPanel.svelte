@@ -97,8 +97,8 @@
 				undefined && pathname.startsWith('/settings')
 				? 'text-ink'
 				: 'text-muted hover:bg-ink/5 hover:text-ink'}"
-			title="Settings"
-			aria-label="Settings"><Settings size={16} /></a
+			title="Your settings"
+			aria-label="Your settings"><Settings size={16} /></a
 		>
 	</div>
 </div>

@@ -194,6 +194,7 @@
 						? 'max-sm:hidden'
 						: ''}"
 					title="Back to {place.address.name}"
+					aria-label="Back to the voice channel {place.address.name}"
 					onclick={(event) => {
 						// Your ride stays on screen: the room opens under its numbers.
 						if (!rideRoom.offered) return;
