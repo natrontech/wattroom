@@ -1,10 +1,7 @@
-import { OBC_BUTTONS, type ObcAction } from './obc';
-
 /**
- * The Controllers page's legend (#4547): what each OpenBikeControl action
- * WattRoom answers does here, and the button that usually sends it. Built
- * from OBC_BUTTONS, so an ID added there without a name here fails its
- * test rather than going missing from the page.
+ * The OpenBikeControl IDs WattRoom answers, by name (#4547): the
+ * Controllers table (#4563) reads the Click V2's buttons from here. An ID
+ * added to OBC_BUTTONS without a name here fails its test.
  */
 
 /**
@@ -33,47 +30,3 @@ export const OBC_NAMES: Readonly<
 	0x44: { action: 'HUD Toggle' },
 	0x45: { action: 'Map Toggle' },
 };
-
-/** What each action does in WattRoom, in the legend's order. */
-const DOES: Record<ObcAction, string> = {
-	harder: 'Harder',
-	easier: 'Easier',
-	'page-prev': 'Previous computer page',
-	'page-next': 'Next computer page',
-	details: 'Ride details, open or shut',
-	back: 'Back to RIDE',
-	'next-view': 'Next view: 3D, Flat, Map, Lounge',
-	talk: 'Talk, while held',
-	camera: 'Next camera',
-	map: 'Map page, and back',
-	clean: 'Clean view',
-	snap: 'Snapshot',
-};
-
-export interface LegendRow {
-	action: ObcAction;
-	does: string;
-	/** The OBC actions that run it, as PROTOCOL.md names them. */
-	sends: string[];
-	/** The Click V2's buttons for them; empty where it has none. */
-	click: string[];
-}
-
-export function obcLegend(
-	buttons: Readonly<Record<number, ObcAction>> = OBC_BUTTONS,
-): LegendRow[] {
-	const ids = Object.keys(buttons).map(Number);
-	return (Object.keys(DOES) as ObcAction[])
-		.map((action) => {
-			const names = ids
-				.filter((id) => buttons[id] === action)
-				.map((id) => OBC_NAMES[id]);
-			return {
-				action,
-				does: DOES[action],
-				sends: names.map((n) => n.action),
-				click: names.flatMap((n) => (n.click ? [n.click] : [])),
-			};
-		})
-		.filter((row) => row.sends.length > 0);
-}
