@@ -81,6 +81,8 @@ export type Stage = {
 
 // Room for the ground within reach, and for a hilly road's pieces; either grows by half when it runs out.
 const GROUND_ROOM = { pieces: 13_000, vertices: 200_000, indices: 800_000 };
+/** The ground is culled by cells this wide, not piece by piece (piece-pool.ts, #4566). */
+const GROUND_CELL_M = 960;
 const ROAD_ROOM = { pieces: 48, vertices: 48_000, indices: 240_000 };
 
 const SKY_R = 40000;
@@ -188,7 +190,7 @@ export function buildStage(
 
 	// The ride's ground, chunk by chunk as the stream holds it, and its road, piece by piece within the near reach.
 	const groundMat = terrainMaterial(style, lights);
-	const ground = piecePool(groundMat, GROUND_ROOM);
+	const ground = piecePool(groundMat, GROUND_ROOM, GROUND_CELL_M);
 	group.add(tag('terrain', ground.mesh));
 	stream.attach({
 		add: (id, [ci, cj], grid) =>

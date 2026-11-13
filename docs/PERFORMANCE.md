@@ -245,6 +245,21 @@ At a frame a second, a standing world was still only where nothing in it moved. 
 - **The always-on 50 ms clock was the climb card's, not the dock-in's.** `RidingSurface`'s dock-in clock runs only while a count-in does, and a voice channel's free ride has none. The climb card's moments queue (climb-cues.svelte.ts) ticked 20 times a second all ride: 403 ticks in 20 s standing. It now runs only while a moment is on: 53 ticks for the Pass loop's opening climb card, then none.
 - **The page still sees 60 animation frames a second while the world stands,** the loop asking each vsync whether to draw (and `?perf`'s own counter). Waking on a timer instead is the next thing to measure, with the overlay off.
 
+## The ground, culled by cells
+
+The streamed ground is about 12,700 pieces in one `BatchedMesh`. three culls a batch's pieces one by one on every frame, a matrix read and a sphere test each (`BatchedMesh.onBeforeRender`, `getBoundingSphereAt`): two thirds of the world's script time, and on the low tier's rig the main thread is the limit, not the GPU (#4566). The ground's pool now culls by cells of 960 m (piece-pool.ts): one box test a cell a frame, and three walks the batch only on a frame where a cell came into or left view.
+
+`BENCH_SCENES=world BENCH_GL=gpu BENCH_RATES="1 4" BENCH_PROFILE=1 make world-bench`, M5 Pro, November 2026, 20 s after 10 s, before and after in one session:
+
+| Rig                | before: render JS p50 / p95, three's culling ms a second | after: render JS p50 / p95, three's walk + the cells' test ms a second |
+| ------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| GPU                | 1.7 / 2.0 ms, 37                                         | 1.7 / 2.6 ms, 9                                                        |
+| GPU, CPU 4× slower | 5.8 / 7.2 ms, 145                                        | 1.6 / 2.8 ms, 11                                                       |
+
+- **Triangles rose from 95k to 103k (p50; 97k to 107k at most):** a cell that is partly in view draws whole. Both tiers hold (150k low, 400k high); draws are unchanged at 28.
+- **Cells of one chunk (160 m) gained nothing:** as many box tests as there had been sphere tests (38 ms a second on the GPU rig).
+- The props' batches (about 1,700 instances) and the road's (under 48) are still culled one by one: what is left of three's walk.
+
 ## Adding a case
 
 Add its name to `KNOWN` in `+page@.svelte` and render the real component under it. Put it in `DEFAULT_CASES` in `desktop/perf/main.js` only if it earns the time: something that animates without end, or a media path people use while riding.
