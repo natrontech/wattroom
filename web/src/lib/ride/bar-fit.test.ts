@@ -63,4 +63,20 @@ describe('the ride bar fits its controls', () => {
 				if (!order.includes(key)) order.push(key);
 		expect(order).toEqual(['ride-with#1', 'ride-with#0', '#2', 'view#3']);
 	});
+
+	it("keeps the coach's End and tucks the sprint, pause and hand-off last of all (#4567)", () => {
+		const row = [
+			{ key: 'trim#0', id: 'trim', width: 150 },
+			{ key: 'view#1', id: 'view', width: 180 },
+			{ key: 'end#2', id: 'end', width: 62 },
+			{ key: 'coach#3', id: 'coach', width: 140 },
+			{ key: 'end#4', id: 'end', width: 50 },
+		];
+		// Room for all but one: the view switch goes, the coach's box stays.
+		expect(ids(fitControls(470, row).more)).toEqual(['view']);
+		// A phone: the coach's box goes too, both Ends stay.
+		const phone = fitControls(340, row);
+		expect(ids(phone.more)).toEqual(['view', 'coach']);
+		expect(ids(phone.shown)).toEqual(['trim', 'end', 'end']);
+	});
 });
