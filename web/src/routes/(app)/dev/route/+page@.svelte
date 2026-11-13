@@ -209,8 +209,13 @@
 				route: r,
 				world: built,
 				style: worldDiorama()
-					? look.dioramaLook(paint, { night: false, weather: 'clear' })
+					? look.dioramaLook(paint, {
+							night: params.get('night') === '1',
+							weather: 'clear',
+						})
 					: look.rideLook(paint),
+				// ?light=1: the World control's Light, the lowest rung.
+				light: params.get('light') === '1',
 				ftp: 250,
 				camera,
 				// Just sought, the world keeps drawing for a moment: a standing world draws once a second.
