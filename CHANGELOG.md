@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.34] - 2026-11-13
+
+### Fixed
+
+- A route that ends where it started now has one START / FINISH arch instead of two stood in each other, and meets itself at one height even when the recording came home a few metres higher. A street ridden twice joins and leaves as a side road does, a crossroads is painted as one, and a road's end is rounded off. (#4588)
+
 ## [2026.11.33] - 2026-11-13
 
 ### Added
@@ -4577,7 +4583,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.33...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.34...HEAD
+[2026.11.34]: https://github.com/natrontech/wattroom/compare/2026.11.33...2026.11.34
 [2026.11.33]: https://github.com/natrontech/wattroom/compare/2026.11.32...2026.11.33
 [2026.11.32]: https://github.com/natrontech/wattroom/compare/2026.11.31...2026.11.32
 [2026.11.31]: https://github.com/natrontech/wattroom/compare/2026.11.30...2026.11.31
