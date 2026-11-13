@@ -2,7 +2,7 @@
 // materials, so one world can be drawn in any art style.
 import * as THREE from 'three';
 import { Biome } from './biome';
-import type { RoutePoint } from '#lib/road/along.ts';
+import { at, type RoutePoint } from '#lib/road/along.ts';
 import { type Route } from '#lib/road/route.ts';
 import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
@@ -13,7 +13,12 @@ import { sceneOf } from './designed';
 import { smoothstep } from './rand';
 import { sharedAt } from './shared-road';
 import { BANK_SPAN_M, banksOf, bendsOf } from './terrain/road-frame';
-import { ribbonRows, ROAD_W, SHOULDER_DROP } from './terrain/road-profile';
+import {
+	FORMATION,
+	ribbonRows,
+	ROAD_W,
+	SHOULDER_DROP,
+} from './terrain/road-profile';
 
 export const EXAG = 1.2; // vertical exaggeration; the Alps read flat from a chase cam otherwise
 export { ROAD_W } from './terrain/road-profile';
@@ -46,6 +51,33 @@ function roofedOf(route: Route): [number, number][] {
 	});
 	roofs.set(route, spans);
 	return spans;
+}
+
+/**
+ * A road's drawn surface, as road() draws its ribbon with `lift`: the
+ * height at metre `d`, `u` metres left of its centre line, banked as the
+ * ribbon is. What is painted on a road is laid on this, never on a guess
+ * at it: a metre along a grade or across a bank is centimetres of height.
+ */
+export function surfaceOf(route: Route, lift = ROAD_LIFT) {
+	const rows = ribbonRows(route, 2);
+	const cx: number[] = [];
+	const cz: number[] = [];
+	for (let k = 0; k < rows.count; k++) {
+		const p = rows.row(k);
+		cx.push(p.x);
+		cz.push(p.z);
+	}
+	const banks = banksOf(cx, cz);
+	return (d: number, u: number) => {
+		const p = at(route, Math.min(Math.max(d, 0), route.length));
+		const k = Math.min(banks.length - 1, Math.max(0, Math.round(d / 2)));
+		return {
+			x: p.x + Math.cos(p.heading) * u,
+			y: yOf(route, p.ele) + lift - u * Math.tan(banks[k]),
+			z: p.z - Math.sin(p.heading) * u,
+		};
+	};
 }
 
 export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
@@ -488,7 +520,10 @@ export function roadMaterial(
 				float line = max(edge, centre) * (1.0 - theirEdge * (1.0 - joined));
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
 				col = mix(col, uLine, line * (1.0 - shoulder));
+				// And no verge of mine on its formation: a green wedge on its shoulder at each corner of a junction.
+				float theirForm = 1.0 - smoothstep(${FORMATION.toFixed(2)} - 0.5 * fo, ${FORMATION.toFixed(2)} + 0.5 * fo, o);
 				col = mix(col, uVerge, verge * (1.0 - theirEdge));
+				col = mix(col, uShoulder, verge * theirForm * (1.0 - theirEdge));
 				col = mix(col, uSnow, shoulder * smoothstep(uSnowY - ${SNOW_EASE_M.toFixed(1)}, uSnowY + ${SNOW_EASE_M.toFixed(1)}, vLampAt.y));
 				col = mix(col, uAsphalt, theirs * mix(1.0, shoulder, joined));
 				vec4 diffuseColor = vec4(col, opacity);`,

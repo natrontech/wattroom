@@ -39,7 +39,8 @@ import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
 import { drawnRows, FORMATION } from './terrain/road-profile';
 import { othersOf, sceneOf, type Water } from './designed';
-import { sideRoads, type SideRoad } from './side-roads';
+import { offRoad, sideRoads, type Mouth, type SideRoad } from './side-roads';
+import { JOINED, JOINS } from './crossings';
 
 export type World = {
 	/** The far skyline's seed: the backdrop is still drawn from the route. */
@@ -71,6 +72,10 @@ export type World = {
 	bridges: [from: number, to: number][];
 	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges: drawn, never ridden. */
 	sides: (SideRoad & { bridges: [from: number, to: number][] })[];
+	/** Where the road ridden is joined by a side road: what its ribbon's paint reads (Route.meets). */
+	meets: NonNullable<Route['meets']>;
+	/** Metres from (x, z) to the nearest of the roads a mouth's junction is made of (Mouth.near). */
+	offJunction: (m: Mouth, x: number, z: number) => number;
 	/** Whether (x, z) lies under a gallery's roof: nothing grows or stands there. */
 	roofedAt: (x: number, z: number) => boolean;
 	/** Where the road runs under a gallery's roof, in metres along it. */
@@ -165,6 +170,68 @@ export function generate(
 		...side,
 		bridges: spansOf(sideRows[j], roads[j + 1]),
 	}));
+	// At each mouth the two roads' paint reads the other's line (crossings.ts): the side road joins, the road met is joined.
+	const meets: NonNullable<Route['meets']> = [];
+	const slice = (r: Route, from: number, to: number) => {
+		const a = Math.max(0, Math.floor(from / r.step));
+		const b = Math.min(r.x.length - 1, Math.ceil(to / r.step));
+		return { x: r.x.slice(a, b + 1), z: r.z.slice(a, b + 1) };
+	};
+	const drawn = [route, ...beside.map((s) => s.route)];
+	beside.forEach((side, k) =>
+		side.mouths.forEach((m, end) => {
+			if (!m) return;
+			const own = side.route;
+			const [from, to] =
+				end === 0 ? [0, JUNCTION_M] : [own.length - JUNCTION_M, own.length];
+			// Every road drawn before it that passes the mouth, not only the one it ends on: at a node several roads meet in one place, and each gives way to those before it.
+			m.near = [];
+			for (let r = 0; r <= k; r++) {
+				const other = drawn[r];
+				let best = NODE_M;
+				let at = -1;
+				for (let i = 0; i < other.x.length; i++) {
+					const d = Math.hypot(other.x[i] - m.x, other.z[i] - m.z);
+					if (d < best) {
+						best = d;
+						at = i * other.step;
+					}
+				}
+				if (r === m.met) at = m.at;
+				if (at < 0) continue;
+				m.near.push({ road: r, at });
+				(own.meets ??= []).push({
+					from,
+					to,
+					...slice(other, at - 2 * JUNCTION_M, at + 2 * JUNCTION_M),
+					role: JOINS,
+				});
+				// The road joined reads the side road's line only as far as its mouth: past it the ribbon runs on under the asphalt, and read there it would open the far shoulder too.
+				const mine = slice(own, from, to);
+				const cut = Math.ceil(m.over / own.step);
+				const keep = (v: ArrayLike<number>) =>
+					end === 0
+						? Array.from(v).slice(cut)
+						: Array.from(v).slice(0, v.length - cut);
+				const x = keep(mine.x);
+				const z = keep(mine.z);
+				if (end === 0) {
+					x.unshift(m.x);
+					z.unshift(m.z);
+				} else {
+					x.push(m.x);
+					z.push(m.z);
+				}
+				(r === 0 ? meets : (other.meets ??= [])).push({
+					from: at - JUNCTION_M,
+					to: at + JUNCTION_M,
+					x,
+					z,
+					role: JOINED,
+				});
+			}
+		}),
+	);
 	const ground = makeGround(roads, { salt, scene: layout });
 	// The scene as the ground laid it: its streams run where that ground falls.
 	const scene = ground.scene;
@@ -278,6 +345,13 @@ export function generate(
 		waterAt: (x, z) => scene?.waterAt(x, z) ?? null,
 		bridges,
 		sides,
+		meets,
+		offJunction: (m, x, z) =>
+			Math.min(
+				...(m.near ?? [{ road: m.met, at: m.at }]).map((n) =>
+					offRoad(drawn[n.road], n.at, x, z),
+				),
+			),
 		galleries,
 		roofedAt,
 		groundAt: ground.heightAt,
@@ -320,6 +394,10 @@ export function generate(
 	};
 }
 
+/** Metres of each road, either side of a junction, whose paint reads the other road's line. */
+const JUNCTION_M = 30;
+/** A road passing within this of a mouth is part of its junction. */
+const NODE_M = 20;
 /** Metres between the ground's rows of the road (drawnRows). */
 const ROW_M = 2;
 /** A road this far over the designed ground is carried, not banked up: an embankment that high is 12 m wide at its foot each side. */

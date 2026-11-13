@@ -9,6 +9,10 @@ import { DESIGNS } from './designs';
 import { routeOfRoad } from './road-route';
 import { syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
+import { JOINED, JOINS } from './crossings';
+import { surfaceOf } from './geometry';
+import { SQUARE_COS, stops } from './scenery';
+import { ROAD_W } from './terrain/road-profile';
 import { BUILD_MS } from './world.test-helper';
 
 /**
@@ -288,6 +292,135 @@ describe('the map', () => {
 						expect(best, `${id} draws ${other.id}`).toBeLessThan(18);
 					}
 			}
+		},
+		3 * BUILD_MS,
+	);
+
+	it(
+		'makes a junction of every mouth: the side road runs into the road it meets at its height, and what is painted on it lies on it, inside its lane, clear of the other road',
+		async () => {
+			/** Metres from (x, z) to a road's line, and which side of it: positive left. */
+			const off = (r: Route, x: number, z: number) => {
+				let best = Infinity;
+				let side = 1;
+				for (let i = 0; i + 1 < r.x.length; i++) {
+					const sx = r.x[i + 1] - r.x[i];
+					const sz = r.z[i + 1] - r.z[i];
+					const px = x - r.x[i];
+					const pz = z - r.z[i];
+					const t = Math.min(
+						1,
+						Math.max(0, (px * sx + pz * sz) / (sx * sx + sz * sz)),
+					);
+					const d = Math.hypot(px - sx * t, pz - sz * t);
+					if (d < best) {
+						best = d;
+						side = px * sz - pz * sx >= 0 ? 1 : -1;
+					}
+				}
+				return best * side;
+			};
+			let mouths = 0;
+			let painted = 0;
+			for (const d of LOOPS) {
+				const route = routeOfRoad(await roadOf(d.id));
+				const world = generate(route);
+				world.sides.forEach((side, k) =>
+					side.mouths.forEach((m, end) => {
+						if (!m) return;
+						mouths++;
+						const where = `${d.id}, side road ${k}, end ${end}`;
+						const met = m.met === 0 ? route : world.sides[m.met - 1].route;
+						const last = end === 0 ? 0 : side.route.x.length - 1;
+						// Its end lies inside the other road's asphalt, which hides it, at that road's height.
+						const reach = Math.abs(
+							off(met, side.route.x[last], side.route.z[last]),
+						);
+						expect(reach, where).toBeLessThan(ROAD_W / 2 - 0.3);
+						expect(Math.abs(side.route.ele[last] - m.h), where).toBeLessThan(
+							0.01,
+						);
+						// Each road's paint reads the other's line there.
+						expect(
+							side.route.meets?.some((o) => o.role === JOINS),
+							where,
+						).toBe(true);
+						const theirs = m.met === 0 ? world.meets : met.meets;
+						expect(
+							theirs?.some(
+								(o) => o.role === JOINED && o.from < m.at && o.to > m.at,
+							),
+							where,
+						).toBe(true);
+						const surface = surfaceOf(side.route);
+						const mouth = {
+							...m,
+							off: (x: number, z: number) => world.offJunction(m, x, z),
+						};
+						const paint = stops(
+							[
+								{
+									length: side.route.length,
+									surface,
+									mouths: end === 0 ? [mouth, null] : [null, mouth],
+								},
+							],
+							{ line: '#fff', sign: '#f00', post: '#888' },
+						).getAttribute('position');
+						const square = m.sx * m.tx + m.sz * m.tz;
+						// A fork has no stop; a square mouth has one.
+						expect(paint.count > 0, where).toBe(square >= SQUARE_COS);
+						for (let i = 0; i < paint.count; i++) {
+							const [x, y, z] = [paint.getX(i), paint.getY(i), paint.getZ(i)];
+							const u = off(side.route, x, z);
+							// What is painted, not the sign on its post: within a hand of the road.
+							// Its metre along the side road, between its samples.
+							const along = (() => {
+								let best = Infinity;
+								let at = 0;
+								const r = side.route;
+								for (let j = 0; j + 1 < r.x.length; j++) {
+									const sx = r.x[j + 1] - r.x[j];
+									const sz = r.z[j + 1] - r.z[j];
+									const t = Math.min(
+										1,
+										Math.max(
+											0,
+											((x - r.x[j]) * sx + (z - r.z[j]) * sz) /
+												(sx * sx + sz * sz),
+										),
+									);
+									const dd = Math.hypot(
+										x - r.x[j] - sx * t,
+										z - r.z[j] - sz * t,
+									);
+									if (dd < best) {
+										best = dd;
+										at = (j + t) * r.step;
+									}
+								}
+								return at;
+							})();
+							const over = y - surface(along, u).y;
+							if (Math.abs(u) > ROAD_W / 2) continue; // the sign, off the asphalt
+							painted++;
+							// On the road: a centimetre or two over it, never under it or floating.
+							expect(over, where).toBeGreaterThan(-0.02);
+							expect(over, where).toBeLessThan(0.05);
+							// In the incoming lane: right of its centre line as the rider comes in, inside its edge line.
+							const right = end === 0 ? u : -u;
+							expect(right, where).toBeGreaterThan(0.1);
+							expect(right, where).toBeLessThan(ROAD_W / 2 - 0.25);
+							// And clear of the road it meets: outside its painted shoulder.
+							expect(world.offJunction(m, x, z), where).toBeGreaterThan(
+								ROAD_W / 2 + 0.9,
+							);
+						}
+					}),
+				);
+			}
+			expect(mouths).toBeGreaterThan(20);
+			expect(painted).toBeGreaterThan(1000);
 		},
 		3 * BUILD_MS,
 	);

@@ -53,9 +53,9 @@ function wind(
 }
 
 /** The two nodes every loop is built between: the village south of the lake, and the head of the lake. */
-// A loop turns at a node as a rider turns at a junction, tight round the corner: every loop's road passes within a couple of metres of the node, so the roads meet there.
-const HUB: Corner = { x: 200, y: 300, ele: 1446, r: 9 };
-const HEAD: Corner = { x: 150, y: 4250, ele: 1441, r: 10 };
+// A loop sweeps through a node on a road's own radius: the other roads find it wherever it runs and join it there (side-roads.ts). Turned tight round the node's very point, its ribbon folded on the inside of the bend.
+const HUB: Corner = { x: 200, y: 300, ele: 1446, r: 30 };
+const HEAD: Corner = { x: 150, y: 4250, ele: 1441, r: 45 };
 
 /** A stretch between two nodes, wound, without the nodes themselves. */
 const stretch = (
@@ -462,9 +462,10 @@ const MAP = {
 		],
 		// Across the plateau's moor, over the gorge loop twice.
 		[
-			{ x: -3700, y: -1300, ele: 1492, r: 0 },
-			{ x: -2660, y: -1700, ele: 1467, r: 0 },
-			{ x: -2000, y: -2300, ele: 1458, r: 0 },
+			{ x: -3700, y: -1650, ele: 1492, r: 0 },
+			{ x: -3100, y: -1700, ele: 1476, r: 0 },
+			{ x: -2200, y: -1750, ele: 1462, r: 0 },
+			{ x: -1500, y: -2300, ele: 1456, r: 0 },
 			{ x: -1150, y: -3060, ele: 1456, r: 0 },
 			{ x: -900, y: -3900, ele: 1470, r: 0 },
 		],
@@ -614,22 +615,22 @@ const VALLEY_LAND: Feature[] = [
 export const DESIGNS: readonly Designed[] = [
 	loop(
 		'urnsee',
-		10691.12,
+		10680.32,
 		4340,
 		[HUB, ...SHORE, HEAD, ...TERRACE],
 		['aare', 'berne'],
 	),
-	loop('aare', 11986.98, 4404, [HUB, ...GORGE], ['urnsee', 'berne']),
+	loop('aare', 11962.78, 4404, [HUB, ...GORGE], ['urnsee', 'berne']),
 	loop(
 		'lac',
-		22692.33,
+		22681.67,
 		4406,
 		[HUB, ...SHORE, HEAD, ...TERRACE, HUB, ...GORGE],
 		['berne'],
 	),
 	loop(
 		'berne',
-		30811.49,
+		30763.28,
 		2101,
 		[HUB, ...COL, HEAD, ...TERRACE],
 		['urnsee', 'aare'],

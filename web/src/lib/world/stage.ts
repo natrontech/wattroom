@@ -17,12 +17,13 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
 import { sceneOf } from './designed';
-import { bridges, junctions, roadworks, waterSheets } from './scenery';
+import { bridges, roadworks, stops, waterSheets } from './scenery';
 import type { Piece } from './setpieces';
 import {
 	plinth,
 	road,
 	ROAD_LIFT,
+	surfaceOf,
 	roadMaterial,
 	ROAD_W,
 	terrain,
@@ -225,7 +226,8 @@ export function buildStage(
 	// The road ridden, and the map's other roads where they leave it (side-roads.ts): a hair lower, so where one meets the ridden road it lies under its asphalt.
 	const ribbons = [
 		{
-			of: route,
+			// The road ridden, with the side roads that join it (Route.meets).
+			of: world.meets.length > 0 ? { ...route, meets: world.meets } : route,
 			lift: undefined as number | undefined,
 			caps: undefined as readonly [boolean, boolean] | undefined,
 		},
@@ -328,22 +330,33 @@ export function buildStage(
 			),
 		);
 	}
-	// Where a side road meets a road (side-roads.ts): the junction's asphalt, its stop line, STOP and its sign.
-	const mouths = world.sides.flatMap((s) => s.mouths.flatMap((m) => m ?? []));
-	if (mouths.length > 0) {
-		const both = flat(sight);
-		both.side = THREE.DoubleSide;
+	// Where a side road comes in square (side-roads.ts): its stop line, STOP and its sign, laid on its own surface.
+	if (world.sides.some((s) => s.mouths.some((m) => m))) {
+		const paint = flat(sight);
+		paint.side = THREE.DoubleSide;
+		// Drawn over the ribbon it lies on from any distance, where a centimetre of height no longer tells in the depth buffer.
+		paint.polygonOffset = true;
+		paint.polygonOffsetFactor = -2;
+		paint.polygonOffsetUnits = -8;
 		group.add(
 			tag(
 				'road',
 				new THREE.Mesh(
-					junctions(route, mouths, ROAD_LIFT + 0.03, {
-						asphalt: style.road.asphalt,
-						line: style.road.line,
-						sign: c.warning,
-						post: c.pole,
-					}),
-					both,
+					stops(
+						world.sides.map((s) => ({
+							length: s.route.length,
+							surface: surfaceOf(s.route, ROAD_LIFT - SIDE_SINK),
+							mouths: s.mouths.map(
+								(m) =>
+									m && {
+										...m,
+										off: (x: number, z: number) => world.offJunction(m, x, z),
+									},
+							),
+						})),
+						{ line: style.road.line, sign: c.warning, post: c.pole },
+					),
+					paint,
 				),
 			),
 		);

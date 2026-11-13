@@ -10,6 +10,8 @@
  * that are far apart along the route and meet at a point count.
  */
 
+import type { Route } from '#lib/road/route.ts';
+
 /** Metres along the route two samples lie apart at least to be two passes, not one bend. */
 const APART_M = 100;
 
@@ -31,6 +33,9 @@ export type Crossing = {
 export const CLEAR_M = 12;
 /** A shallow crossing reads the other pass for longer, to this at most either side. */
 const REACH_MAX_M = 80;
+
+/** Metres from an earlier road's centre line within which a road that joins it gives way to it, whatever else it meets there: that road's formation. */
+const JOINS_WITHIN_M = 4.8;
 
 /** A crossroads, both passes alike; a pass joining an earlier one, which gives way to it; and the earlier one it joins. */
 export const CROSSES = 0;
@@ -95,6 +100,8 @@ export function meetingsOf(
 
 type Met = {
 	bare?: readonly Meeting[];
+	/** Other roads it meets at a junction (side-roads.ts), each as its own line. */
+	meets?: Route['meets'];
 	x: ArrayLike<number>;
 	z: ArrayLike<number>;
 	step: number;
@@ -119,11 +126,34 @@ export function meetingAt(
 	x: number,
 	z: number,
 ): [off: number, as: number] {
-	if (!route.bare) return [CLEAR_M, CROSSES];
+	if (!route.bare && !route.meets) return [CLEAR_M, CROSSES];
 	const L = route.length;
 	const dd = d < 0 || d > L ? ((d % L) + L) % L : d;
 	let best = CLEAR_M;
 	let as = CROSSES;
+	let joins = Infinity;
+	for (const o of route.meets ?? []) {
+		if (dd < o.from || dd > o.to) continue;
+		for (let i = 0; i + 1 < o.x.length; i++) {
+			const sx = o.x[i + 1] - o.x[i];
+			const sz = o.z[i + 1] - o.z[i];
+			const px = x - o.x[i];
+			const pz = z - o.z[i];
+			const t = Math.min(
+				1,
+				Math.max(0, (px * sx + pz * sz) / (sx * sx + sz * sz || 1)),
+			);
+			const off = Math.hypot(px - sx * t, pz - sz * t);
+			if (o.role === JOINS) joins = Math.min(joins, off);
+			if (off < best) {
+				best = off;
+				as = o.role;
+			}
+		}
+	}
+	// At a node a road both joins the roads before it and is joined by those after: inside an earlier road's formation it joins, whatever lies nearer.
+	if (joins < JOINS_WITHIN_M) return [joins, JOINS];
+	if (!route.bare) return [best, as];
 	const last = route.x.length - 2;
 	for (const [from, to, otherFrom, otherTo, role] of route.bare) {
 		if (dd < from || dd > to) continue;

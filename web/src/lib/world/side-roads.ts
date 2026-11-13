@@ -7,23 +7,29 @@
  * back: a road with two ends, drawn and built on as the ridden one is,
  * never ridden. Three-free.
  *
- * A side road ends at the edge of the road it meets, its mouth: the two
- * ribbons never lie in one another, and the stage paints the junction over
- * the gap (scenery.ts).
+ * A side road runs on into the road it meets, to END_M from its centre:
+ * the two ribbons overlap, and the road's own paint makes the junction of
+ * them, as it does where a route joins itself (crossings.ts JOINS and
+ * JOINED): the side road is not drawn inside the other's asphalt, the other
+ * gives up its shoulder under it and dashes its edge line across the mouth.
+ * Nothing is laid over the two to hide a seam, so there is none to show
+ * through.
  */
 import type { Route } from '#lib/road/route.ts';
-import { FORMATION } from './terrain/road-profile';
+import { ROAD_W } from './terrain/road-profile';
 
 /** A side road is one where its line is this far from every road kept so far: past both formations. */
 const CLEAR_M = 11;
-/** And it ends this far from the centre of the road it meets: just past that road's formation. */
-export const MOUTH_M = FORMATION + 0.2;
+/** And it ends this far from the centre of the road it meets: inside that road's asphalt, which hides its end, and near enough its edge line for the line to be dashed the mouth's width (geometry.ts MOUTH_WITHIN_M). */
+export const END_M = 2.4;
 /** A stretch shorter than this is two roads brushing past one another, not a road. */
 const MIN_M = 40;
 /** Metres a side road is followed back towards the road it leaves, at the most: one leaving at a shallower angle than that is cut where it is, with a rounded end. */
 const REACH_M = 70;
 /** Samples over which a side road's end eases to the height of the road it meets. */
 const EASE = 12;
+/** The most a ribbon runs on past its mouth. */
+const OVER_MAX_M = 8;
 const CELL_M = 16;
 
 /** Where a side road meets a road: the end of its line, the way across to that road's centre, and that road's height there. */
@@ -39,6 +45,13 @@ export type Mouth = {
 	sx: number;
 	sz: number;
 	h: number;
+	/** The road met: 0 the road ridden, k the side road k − 1; and the metre along it the mouth lies at. */
+	met: number;
+	at: number;
+	/** Every road drawn before this one that passes the mouth, the one met among them (world.ts fills it). */
+	near?: { road: number; at: number }[];
+	/** Metres its ribbon runs on past the mouth, so a road that comes in askew is under the other's asphalt across its whole width, not cut square short of it. */
+	over: number;
 };
 export type SideRoad = {
 	route: Route;
@@ -46,29 +59,68 @@ export type SideRoad = {
 	mouths: [Mouth | null, Mouth | null];
 };
 
+/** Metres from (x, z) to a road's line within `reach` metres either side of its metre `at`: a junction's own stretch of it. */
+export function offRoad(
+	r: Route,
+	at: number,
+	x: number,
+	z: number,
+	reach = 40,
+): number {
+	const a = Math.max(0, Math.floor((at - reach) / r.step));
+	const b = Math.min(r.x.length - 2, Math.ceil((at + reach) / r.step));
+	let best = Infinity;
+	for (let i = a; i <= b; i++) {
+		const sx = r.x[i + 1] - r.x[i];
+		const sz = r.z[i + 1] - r.z[i];
+		const px = x - r.x[i];
+		const pz = z - r.z[i];
+		const t = Math.min(
+			1,
+			Math.max(0, (px * sx + pz * sz) / (sx * sx + sz * sz || 1)),
+		);
+		best = Math.min(best, Math.hypot(px - sx * t, pz - sz * t));
+	}
+	return best;
+}
+
 export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
 	const kept = new Map<string, number[]>();
-	const keep = (x: number, z: number, h: number) => {
+	const keep = (x: number, z: number, h: number, owner: number, m: number) => {
 		const k = `${Math.floor(x / CELL_M)}:${Math.floor(z / CELL_M)}`;
 		const cell = kept.get(k);
-		if (cell) cell.push(x, z, h);
-		else kept.set(k, [x, z, h]);
+		if (cell) cell.push(x, z, h, owner, m);
+		else kept.set(k, [x, z, h, owner, m]);
 	};
 	/** The kept point nearest (x, z) within CLEAR_M: how far, where, and its height. */
 	const nearest = (x: number, z: number) => {
 		const ci = Math.floor(x / CELL_M);
 		const cj = Math.floor(z / CELL_M);
 		let best = CLEAR_M;
-		let hit: { d: number; x: number; z: number; h: number } | null = null;
+		let hit: {
+			d: number;
+			x: number;
+			z: number;
+			h: number;
+			owner: number;
+			m: number;
+		} | null = null;
 		for (let i = ci - 1; i <= ci + 1; i++)
 			for (let j = cj - 1; j <= cj + 1; j++) {
 				const cell = kept.get(`${i}:${j}`);
 				if (!cell) continue;
-				for (let k = 0; k < cell.length; k += 3) {
+				for (let k = 0; k < cell.length; k += 5) {
 					const d = Math.hypot(cell[k] - x, cell[k + 1] - z);
 					if (d < best) {
 						best = d;
-						hit = { d, x: cell[k], z: cell[k + 1], h: cell[k + 2] };
+						hit = {
+							d,
+							x: cell[k],
+							z: cell[k + 1],
+							h: cell[k + 2],
+							owner: cell[k + 3],
+							m: cell[k + 4],
+						};
 					}
 				}
 			}
@@ -86,15 +138,15 @@ export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
 			grade: r.grade[i],
 		};
 	};
-	/** A line's points every metre, kept. */
-	const keepAll = (r: Route) => {
+	/** A line's points every half metre, kept as road `owner`'s. */
+	const keepAll = (r: Route, owner: number) => {
 		const end = (r.x.length - 1) * r.step;
-		for (let m = 0; m <= end; m += 1) {
+		for (let m = 0; m <= end; m += 0.5) {
 			const p = at(r, m);
-			keep(p.x, p.z, p.ele);
+			keep(p.x, p.z, p.ele, owner, m);
 		}
 	};
-	keepAll(route);
+	keepAll(route, 0);
 	const out: SideRoad[] = [];
 	for (const other of others) {
 		const n = other.x.length;
@@ -113,27 +165,41 @@ export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
 		for (const [a, b] of runs) {
 			// Along its own line towards the road it leaves, a metre at a time, to that road's edge: its mouth.
 			const mouth = (m: number, dir: number): [number, Mouth | null] => {
-				for (let by = 0; by <= REACH_M; by++) {
+				for (let by = 0; by <= REACH_M; by += 0.25) {
 					const at0 = m + dir * by;
 					if (at0 < 0 || at0 > end)
 						return [Math.min(Math.max(at0, 0), end), null];
 					const p = at(other, at0);
 					const hit = nearest(p.x, p.z);
-					if (hit && hit.d <= MOUTH_M) {
+					if (hit && hit.d <= END_M) {
 						const d = hit.d || 1;
 						const q = at(other, at0 - dir * 2);
 						const run = Math.hypot(p.x - q.x, p.z - q.z) || 1;
+						const sx = (p.x - q.x) / run;
+						const sz = (p.z - q.z) / run;
+						const square = Math.abs(
+							(sx * (hit.x - p.x) + sz * (hit.z - p.z)) / d,
+						);
+						const skew = Math.sqrt(Math.max(0, 1 - square * square));
+						const want = Math.min(
+							OVER_MAX_M,
+							((ROAD_W / 2) * skew) / Math.max(square, 0.2),
+						);
+						const over = Math.max(0, Math.min(want, dir > 0 ? end - at0 : at0));
 						return [
-							at0,
+							at0 + dir * over,
 							{
 								x: p.x,
 								z: p.z,
 								tx: (hit.x - p.x) / d,
 								tz: (hit.z - p.z) / d,
 								d: hit.d,
-								sx: (p.x - q.x) / run,
-								sz: (p.z - q.z) / run,
+								sx,
+								sz,
+								over,
 								h: hit.h,
+								met: hit.owner,
+								at: hit.m,
 							},
 						];
 					}
@@ -180,8 +246,10 @@ export function sideRoads(route: Route, others: readonly Route[]): SideRoad[] {
 			});
 		}
 		// Kept once the whole of it is cut: a road never ends on itself.
-		for (const s of sides) keepAll(s.route);
-		out.push(...sides);
+		for (const s of sides) {
+			out.push(s);
+			keepAll(s.route, out.length);
+		}
 	}
 	return out;
 }

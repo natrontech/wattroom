@@ -78,6 +78,19 @@ export type Route = {
 	 */
 	shared?: Float64Array;
 	/**
+	 * The world's road only: where it meets another road at a junction
+	 * (world/side-roads.ts). Between metres `from` and `to` its paint reads its
+	 * distance to that road's line (x, z) and gives way as `role` says
+	 * (world/crossings.ts JOINS, JOINED).
+	 */
+	meets?: {
+		from: number;
+		to: number;
+		x: ArrayLike<number>;
+		z: ArrayLike<number>;
+		role: number;
+	}[];
+	/**
 	 * The world's road only: the designed scene it is drawn in, by its id
 	 * (world/designed.ts). Absent on every road but WattRoom's designed ones.
 	 */

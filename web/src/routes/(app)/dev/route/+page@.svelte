@@ -376,6 +376,11 @@
 			setCamera,
 			crossings: () => crossings,
 			length: () => route?.length ?? 0,
+			// Where a side road meets the road ridden, in metres along it: what a check of every junction stands at.
+			junctions: () =>
+				(land?.sides ?? []).flatMap((s) =>
+					s.mouths.flatMap((m) => (m && m.met === 0 ? [Math.round(m.at)] : [])),
+				),
 		},
 	});
 </script>
