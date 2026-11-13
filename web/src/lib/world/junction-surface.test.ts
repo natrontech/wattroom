@@ -3,10 +3,10 @@ import * as THREE from 'three';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import type { Route } from '#lib/road/route.ts';
 import { DESIGNS } from './designs';
-import { road } from './geometry';
+import { ribbonOf, road } from './geometry';
 import { routeOfRoad } from './road-route';
 import { liftOf } from './road-surface';
-import { FORMATION, ROAD_W, SHOULDER } from './terrain/road-profile';
+import { FORMATION, ROAD_W } from './terrain/road-profile';
 import { generate } from './world';
 import { BUILD_MS } from './world.test-helper';
 
@@ -27,15 +27,20 @@ const W = ROAD_W / 2;
  * at `bare` (crossings.ts meetingAt, interpolated): geometry.ts
  * roadMaterial's discards, the same three rules.
  */
-function drawn(u: number, bare: [number, number]): boolean {
+function drawn(
+	u: number,
+	bare: [number, number],
+	/** Half the drawn road's own surface: a gravel lane's is narrower (geometry.ts ribbonOf). */
+	half = W,
+): boolean {
 	const [signed, as] = bare;
 	const o = Math.abs(signed);
 	const joins = as >= 0.5;
 	const joined = -as >= 0.5;
 	const seated = as >= 1.5;
 	if (joins && (seated ? signed : o) < W - 0.1) return false;
-	if (joins && !seated && Math.abs(u) > W && o < FORMATION) return false;
-	if (joined && Math.abs(u) > W && o < W - 0.15) return false;
+	if (joins && !seated && Math.abs(u) > half && o < FORMATION) return false;
+	if (joined && Math.abs(u) > half && o < W - 0.15) return false;
 	return true;
 }
 
@@ -105,8 +110,7 @@ describe('a junction’s surface', () => {
 							const r = roads[j];
 							const mesh = new THREE.Mesh(
 								road(r.of, {
-									width: ROAD_W,
-									shoulder: SHOULDER,
+									...ribbonOf(r.of),
 									rows: [
 										r.of.loop ? rows[0] : Math.max(0, rows[0]),
 										rows[1],
@@ -143,7 +147,11 @@ describe('a junction’s surface', () => {
 									a.getComponent(f.c, c) * bc.z
 								);
 							};
-							return drawn(lerp('uv', 0), [lerp('bare', 0), lerp('bare', 1)])
+							return drawn(
+								lerp('uv', 0),
+								[lerp('bare', 0), lerp('bare', 1)],
+								ribbonOf(roads[Number(h.object.name)].of).width / 2,
+							)
 								? [{ y: h.point.y, road: h.object.name }]
 								: [];
 						});
@@ -160,7 +168,10 @@ describe('a junction’s surface', () => {
 							const kept = at(x, z);
 							if (
 								kept.length === 0 &&
-								pieces.some((p) => off(p.line, x, z) < FORMATION - 0.3)
+								pieces.some((p) => {
+									const { width, shoulder } = ribbonOf(p.line);
+									return off(p.line, x, z) < width / 2 + shoulder - 0.3;
+								})
 							)
 								holes++;
 							return kept;

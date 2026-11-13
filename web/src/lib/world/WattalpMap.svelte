@@ -140,6 +140,16 @@
 					stroke-width={1.4 * k}
 					{...PX}
 				/>
+				<!-- A gravel lane finer, dashed: a farm track, not a road. -->
+				<path
+					d={MAP.roads.lanes ?? ''}
+					stroke="var(--world-px-road-asphalt)"
+					stroke-opacity="0.7"
+					stroke-width={1 * k}
+					stroke-dasharray="3 2"
+					stroke-linecap="butt"
+					{...PX}
+				/>
 				<path
 					d={MAP.roads.loops}
 					stroke="var(--world-px-road-asphalt)"
@@ -151,6 +161,15 @@
 					stroke="var(--world-px-prop-wall)"
 					stroke-width={1.4 * k}
 					stroke-dasharray="2 2"
+					stroke-linecap="butt"
+					{...PX}
+				/>
+				<!-- A tunnel: the road under the hill, its line broken. -->
+				<path
+					d={MAP.roads.tunnels ?? ''}
+					stroke="var(--world-px-road-shoulder)"
+					stroke-width={2.4 * k}
+					stroke-dasharray="1.5 1.5"
 					stroke-linecap="butt"
 					{...PX}
 				/>

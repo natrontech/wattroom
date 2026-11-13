@@ -88,6 +88,8 @@ export function bridges(
 	spans: readonly (readonly [number, number])[],
 	groundAt: (x: number, z: number) => number,
 	colors: { deck: string; pier: string },
+	/** Metres from the road's centre to the deck's edge under the parapet: the formation's where not given. */
+	half = FORMATION,
 ): THREE.BufferGeometry {
 	const pos: number[] = [];
 	const col: number[] = [];
@@ -111,7 +113,7 @@ export function bridges(
 		const lx = Math.cos(p.heading);
 		const lz = -Math.sin(p.heading);
 		const y = yOf(route, p.ele);
-		const edge = FORMATION + DECK.out;
+		const edge = half + DECK.out;
 		const pt = (u: number, dy: number) =>
 			new THREE.Vector3(p.x + lx * u, y + dy, p.z + lz * u);
 		return {
@@ -406,6 +408,22 @@ const STOP_SIGN = {
 const MOUTH_REACH_M = 30;
 /** Paint lies this far over the road it is painted on. */
 const PAINT_LIFT = 0.015;
+
+/**
+ * A side road's mouths that are given a stop (stops): none onto a
+ * roundabout's ring, where nobody stops, and none out of a gravel lane,
+ * which has neither paint nor sign.
+ */
+export function stopped<M extends { met: number }>(
+	side: { route: Pick<Route, 'gravel'>; mouths: readonly (M | null)[] },
+	sides: readonly { route: Pick<Route, 'level'> }[],
+): (M | null)[] {
+	return side.mouths.map((m) =>
+		!m || side.route.gravel || (m.met > 0 && sides[m.met - 1].route.level)
+			? null
+			: m,
+	);
+}
 
 /**
  * What a side road that comes in square is given at its mouth
