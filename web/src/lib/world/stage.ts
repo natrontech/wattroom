@@ -38,7 +38,8 @@ import { lightsMaterial, lightsUniforms, OFF } from './lights';
 import { flat, type Sight } from './materials';
 import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
-import { waterMaterial, waterSheets } from './water';
+import { shoreDressing } from './shore';
+import { waterMaterial, waterSheets, type ShorePoint } from './water';
 import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '#lib/road/route.ts';
@@ -286,16 +287,21 @@ export function buildStage(
 	if (world.scene !== undefined) {
 		const both = flat(sight);
 		both.side = THREE.DoubleSide;
-		if (world.waters.length > 0)
+		if (world.waters.length > 0) {
+			const waterline: ShorePoint[] = [];
 			group.add(
 				tag(
 					'terrain',
 					new THREE.Mesh(
-						waterSheets(route, world.waters, world.heightAt),
+						waterSheets(route, world.waters, world.heightAt, waterline),
 						waterMaterial(style, groundMat),
 					),
 				),
 			);
+			// Reeds and stones at its edge.
+			const dressed = shoreDressing(route, waterline, world.clearOf, c);
+			if (dressed) group.add(tag('terrain', new THREE.Mesh(dressed, flat(sight))));
+		}
 		for (const b of [{ route, bridges: world.bridges }, ...world.sides])
 			if (b.bridges.length > 0)
 				group.add(

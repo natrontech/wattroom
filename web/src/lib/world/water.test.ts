@@ -1,10 +1,14 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type * as THREE from 'three';
+import type { Route } from '#lib/road/route.ts';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import type { Water } from './designed';
 import { routeOfRoad } from './road-route';
 import { generate, type World } from './world';
-import { waterSheets } from './water';
+import { waterSheets, type ShorePoint } from './water';
+import { shoreDressing } from './shore';
+import { rideLook } from './look';
+import { FORMATION } from './terrain/road-profile';
 import { BUILD_MS } from './world.test-helper';
 
 /**
@@ -18,11 +22,14 @@ describe('the water of a designed road', () => {
 	let lake: Water;
 	let still: THREE.BufferGeometry;
 	let streams: THREE.BufferGeometry;
+	let route: Route;
+	const waterline: ShorePoint[] = [];
 	beforeAll(async () => {
 		const road = (await homeRoute(HOME_ROADS.find((r) => r.id === 'urnsee')!))
 			.road;
-		const route = routeOfRoad(road);
+		route = routeOfRoad(road);
 		world = generate(route);
+		waterSheets(route, world.waters, world.heightAt, waterline);
 		lake = world.waters.find((w) => !w.run && !w.course)!;
 		still = waterSheets(route, [lake], world.heightAt);
 		streams = waterSheets(
@@ -128,5 +135,27 @@ describe('the water of a designed road', () => {
 		expect(white.length).toBeGreaterThan(0);
 		expect(calm.length).toBeGreaterThan(0);
 		expect(Math.min(...white)).toBeGreaterThan(Math.max(...calm));
+	});
+
+	it('finds its shore where the drawn ground leaves the water', () => {
+		const still = waterline.filter((p) => !p.running);
+		expect(still.length).toBeGreaterThan(500);
+		for (const p of still)
+			expect(Math.abs(world.heightAt(p.x, p.z) - p.level)).toBeLessThan(0.01);
+	});
+
+	it('grows its reeds and lays its stones on the shore, never on a road', () => {
+		const g = shoreDressing(
+			route,
+			waterline,
+			world.clearOf,
+			rideLook(() => '#808080').props,
+		)!;
+		const pos = g.getAttribute('position');
+		expect(pos.count).toBeGreaterThan(300);
+		for (let i = 0; i < pos.count; i += 7)
+			expect(world.clearOf(pos.getX(i), pos.getZ(i), FORMATION + 1)).toBe(
+				true,
+			);
 	});
 });

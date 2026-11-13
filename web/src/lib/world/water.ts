@@ -142,6 +142,28 @@ function crossings(ring: readonly Pt[], z: number): number[] {
 	return xs.sort((a, b) => a - b);
 }
 
+/** A point on the waterline, for what grows and lies at a shore (shore.ts). */
+export type ShorePoint = {
+	x: number;
+	z: number;
+	/** The water's level there, metres above sea. */
+	level: number;
+	/** How steeply the dry ground rises from it, metres a metre. */
+	bank: number;
+	/** The white water's share there: 0 on still water. */
+	foam: number;
+	/** Running water (a stream), or still (a lake, a river). */
+	running: boolean;
+	/** Its own number, 0–1, the same on every screen. */
+	k: number;
+};
+
+/** A number 0–1 for two integers, the same on every screen. */
+const hash2 = (a: number, b: number) =>
+	(Math.imul(Math.imul(a, 73856093) ^ Math.imul(b, 19349663), 2654435761) >>>
+		0) /
+	2 ** 32;
+
 /** The geometry's arrays as they are filled. */
 type Out = {
 	pos: number[];
@@ -161,11 +183,12 @@ function still(
 	w: Water,
 	groundAt: (x: number, z: number) => number,
 	out: Out,
+	shore?: ShorePoint[],
 ) {
 	const ring = w.outline;
 	const bed = w.bed ?? { slope: 0.3, deep: 25 };
 	const y = yOf(route, w.level);
-	const shore = segments(ring, true);
+	const banks = segments(ring, true);
 	const course = w.course ? segments(w.course, false) : null;
 	let [x0, z0, x1, z1] = [Infinity, Infinity, -Infinity, -Infinity];
 	for (const [x, z] of ring) {
@@ -193,7 +216,7 @@ function still(
 			const x = (i0 + i) * S;
 			while (k < xs.length && xs[k] < x) k++;
 			const wet = k % 2 === 1;
-			const near = shore.mayReach(x, z, CAP_M) ? shore(x, z, CAP_M) : null;
+			const near = banks.mayReach(x, z, CAP_M) ? banks(x, z, CAP_M) : null;
 			sd[j * row + i] = (near ? near.d : CAP_M) * (wet ? 1 : -1);
 		}
 	}
@@ -301,10 +324,37 @@ function still(
 			}
 			quad(i, j, 1);
 		}
+	if (!shore) return;
+	// The waterline: where an edge of the lattice runs out of the water, the drawn shore crosses it.
+	const edge = (c0: number, c1: number, x0: number, z0: number, x1: number, z1: number, salt: number) => {
+		if (Math.abs(sd[c0]) >= READ_M || Math.abs(sd[c1]) >= READ_M) return;
+		const a = depth[c0];
+		const b = depth[c1];
+		if (Number.isNaN(a) || Number.isNaN(b) || a > 0 === b > 0) return;
+		const t = a / (a - b);
+		const dry = Math.max(-a, -b);
+		shore.push({
+			x: x0 + (x1 - x0) * t,
+			z: z0 + (z1 - z0) * t,
+			level: w.level,
+			bank: dry / (S * (a > 0 ? 1 - t : t) || 1),
+			foam: 0,
+			running: false,
+			k: hash2(Math.round(x0 + x1) + salt, Math.round(z0 + z1)),
+		});
+	};
+	for (let j = 0; j < nj; j++)
+		for (let i = 0; i < ni; i++) {
+			const c = j * row + i;
+			const x = (i0 + i) * S;
+			const z = (j0 + j) * S;
+			edge(c, c + 1, x, z, x + S, z, 0);
+			edge(c, c + row, x, z, x, z + S, 1);
+		}
 }
 
 /** A stream: a strip down its course, its banks and its middle, each cross-section at its own level. */
-function running(route: Route, w: Water, out: Out) {
+function running(route: Route, w: Water, out: Out, shore?: ShorePoint[]) {
 	const run = w.run!;
 	const n = run.levels.length;
 	const last = w.outline.length - 1;
@@ -327,6 +377,20 @@ function running(route: Route, w: Water, out: Out) {
 		const fall = Math.max(0, (run.levels[a] - run.levels[b]) / span);
 		const mps = Math.min(STREAM_MPS[1], STREAM_MPS[0] + 8 * fall);
 		const y = yOf(route, run.levels[i]);
+		if (shore)
+			for (const [side, p] of [
+				[0, l],
+				[1, r],
+			] as const)
+				shore.push({
+					x: p[0],
+					z: p[1],
+					level: run.levels[i],
+					bank: 1,
+					foam: run.foam[i],
+					running: true,
+					k: hash2(Math.round(p[0] * 10) + side, Math.round(p[1] * 10)),
+				});
 		for (const [x, z, u, d] of [
 			[l[0], l[1], half, 0],
 			[mx, mz, 0, STREAM_MID_M],
@@ -358,11 +422,13 @@ export function waterSheets(
 	waters: readonly Water[],
 	/** The drawn ground's height, metres above sea. */
 	groundAt: (x: number, z: number) => number,
+	/** Filled with the waterline's points, where given. */
+	shore?: ShorePoint[],
 ): THREE.BufferGeometry {
 	const out: Out = { pos: [], depth: [], flow: [], foam: [], index: [] };
 	for (const w of waters)
-		if (w.run) running(route, w, out);
-		else still(route, w, groundAt, out);
+		if (w.run) running(route, w, out, shore);
+		else still(route, w, groundAt, out, shore);
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(out.pos, 3));
 	g.setAttribute('depth', new THREE.Float32BufferAttribute(out.depth, 1));
