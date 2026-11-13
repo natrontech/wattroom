@@ -7,9 +7,15 @@
 	 * a thin muted line, you are a ring, the riders around you are ink dots
 	 * with their names, each classed climb names its class at its top, and the
 	 * road's end says how far there is to go. No north, no names of places, no
-	 * coordinates: the shape a crew is sent (ADR-0063).
+	 * coordinates: the shape a crew is sent (ADR-0063). One of the Wattalp
+	 * map's loops is the exception: WattRoom's own land, no place of anyone's,
+	 * so it is drawn on the whole map it runs through (WattalpMap.svelte), its
+	 * loop on top: every loop of the map shows the same map.
 	 */
 	import Flag from '@lucide/svelte/icons/flag';
+	import { untrack } from 'svelte';
+	import type { Road } from '#lib/road/road.ts';
+	import type { Route } from '#lib/road/route.ts';
 	import { heightAt } from '#lib/road/at-metre.ts';
 	import { planPoints, walk } from '#lib/road/draw.ts';
 	import { GRADE_STROKE, gradeStep } from '#lib/road/skyline.ts';
@@ -26,6 +32,32 @@
 
 	// ponytail: the road in 160 even pieces, each its grade; finer if a short
 	// steep ramp ever disappears in a long piece.
+	// A loop of the Wattalp map, once its road is known: the line it is drawn
+	// on there, loaded with the map's picture only for such a road.
+	let placed = $state.raw<{
+		road: Road;
+		line: Route;
+		reverse: boolean;
+		Map: typeof import('#lib/world/WattalpMap.svelte').default;
+	} | null>(null);
+	$effect(() => {
+		const road = view.road;
+		if (untrack(() => placed?.road) === road) return;
+		let gone = false;
+		void import('#lib/world/wattalp.ts').then(async ({ onWattalp }) => {
+			const on = onWattalp(road);
+			const Map = on && (await import('#lib/world/WattalpMap.svelte')).default;
+			if (!gone) placed = on && Map ? { road, ...on, Map } : null;
+		});
+		return () => {
+			gone = true;
+		};
+	});
+	const wattalp = $derived(placed?.road === view.road ? placed : null);
+	/** Metres along the road as ridden, as metres along the map's line. */
+	const onLine = (m: number) =>
+		wattalp?.reverse ? wattalp.line.length - m : m;
+
 	const PIECES = 160;
 	const PAD = 28;
 	let w = $state(0);
@@ -79,7 +111,21 @@
 	bind:clientWidth={w}
 	bind:clientHeight={h}
 >
-	{#if line && dot}
+	{#if wattalp}
+		<wattalp.Map
+			line={wattalp.line}
+			m={onLine(view.m)}
+			mates={mates.map((mate) => ({ ...mate, m: onLine(mate.m) }))}
+			you="ink"
+		/>
+		<span
+			data-testid="map-to-go"
+			class="border-frame bg-surface text-ink absolute right-3 bottom-3 flex items-center gap-1 rounded border px-[0.4em] text-[max(16px,2.4vh)] leading-snug font-bold whitespace-nowrap"
+			><Flag aria-hidden="true" class="size-[0.9em]" /><span class="num"
+				>{toGo.toFixed(1)} km</span
+			></span
+		>
+	{:else if line && dot}
 		<svg
 			viewBox="0 0 {w} {h}"
 			width="100%"
