@@ -66,7 +66,13 @@ export function makeRig(route: Route, world: World) {
 	/** The bearing the following eye looks along, eased; null until it first follows. */
 	let yaw: number | null = null;
 	let turned = false;
-	const ground = (x: number, z: number) => yOf(route, world.heightAt(x, z));
+	// Under a roof the eye keeps over the road and under the roof (world.roofAt): in a tunnel the ground is the hill over it.
+	const ground = (x: number, z: number) =>
+		world.roofAt?.(x, z)?.floor ?? yOf(route, world.heightAt(x, z));
+	const under = (v: THREE.Vector3) => {
+		const roof = world.roofAt?.(v.x, v.z);
+		if (roof) v.y = Math.min(v.y, roof.most);
+	};
 	const climb = world.markers.find(
 		(m) => m.kind === 'summit' && m.d > 0 && m.d <= REVEAL.reach,
 	);
@@ -176,6 +182,7 @@ export function makeRig(route: Route, world: World) {
 				);
 			}
 			want.y = Math.max(want.y, ground(want.x, want.z) + GOAL_FLOOR);
+			under(want);
 			const kmh = rider.v * 3.6;
 			const fov = steady
 				? STEADY.fov
@@ -205,6 +212,7 @@ export function makeRig(route: Route, world: World) {
 			}
 			// The goal clears the ground; the eased eye can still cut a crest.
 			eye.y = Math.max(eye.y, ground(eye.x, eye.z) + EYE_FLOOR);
+			under(eye);
 			camera.position.copy(eye);
 			camera.lookAt(gaze);
 			if (Math.abs(camera.fov - fov) > 0.05) {

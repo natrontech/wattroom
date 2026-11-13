@@ -29,6 +29,8 @@ export function standTiles(
 	origin: Origin = [0, 0],
 	/** Where nothing stands that reaches `reach` metres round its middle: a designed scene's water (designed.ts), a gallery. */
 	wet?: (x: number, z: number, reach: number) => boolean,
+	/** Where no sign or arch stands: a gallery, a tunnel and before its portals. */
+	roofed?: (x: number, z: number, reach: number) => boolean,
 ) {
 	const candidates = new Map<string, Candidate<Thing>[]>();
 	const stood = new Map<string, Stood>();
@@ -42,6 +44,15 @@ export function standTiles(
 		}
 		return list;
 	}
+
+	const boardsOf = (ti: number, tj: number) => {
+		const b = set.boards(ti, tj);
+		if (!roofed) return b;
+		return {
+			signs: b.signs.filter((s) => !roofed(s.x, s.z, 1)),
+			arches: b.arches.filter((a) => !roofed(a.x, a.z, 0)),
+		};
+	};
 
 	/** Tile (ti, tj) as it stands, settled the first time it is asked. */
 	function tile(ti: number, tj: number): Stood {
@@ -70,7 +81,7 @@ export function standTiles(
 			props: ok.flatMap((c) => (isStanding(c.is) ? [] : [c.is])),
 			pieces: standing.map((s) => s.piece),
 			standing,
-			...set.boards(ti, tj),
+			...boardsOf(ti, tj),
 			placements: ok.map((c) => c.p),
 		};
 		stood.set(id, out);

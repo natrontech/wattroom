@@ -12,6 +12,7 @@ import { Biome } from './biome';
 import { sunDir, type Light } from './light';
 import { lightsUniforms, POOL, type Lights } from './lights';
 import { DIORAMA } from './pixel';
+import { BORE_BOXES, TUBE } from './structure-sizes';
 import type { SignLook } from './setpieces';
 
 /** A designed scene's own ground (biome.ts): a look that names no colour for it draws it from the ones it has (geometry.ts). */
@@ -308,6 +309,15 @@ export function terrainMaterial(
 			uPeak: { value: col(style.imhof?.peak) },
 			uRock: { value: col(style.palette[Biome.Rock]) },
 			uDiorama: DIORAMA, // Diorama 3D: the light in soft steps (diorama.ts)
+			// A tunnel's tube, cut out of the ground drawn across its mouth (setBores)
+			uBoreA: {
+				value: Array.from({ length: BORE_BOXES }, () => new THREE.Vector4()),
+			},
+			uBoreB: {
+				value: Array.from({ length: BORE_BOXES }, () => new THREE.Vector4()),
+			},
+			uBores: { value: 0 },
+			uBoreBox: { value: new THREE.Vector4() },
 		},
 		vertexColors: true,
 		vertexShader: /* glsl */ `
@@ -323,10 +333,22 @@ export function terrainMaterial(
 		fragmentShader: /* glsl */ `
 			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
 			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uDiorama;
+			uniform vec4 uBoreA[${BORE_BOXES}]; uniform vec4 uBoreB[${BORE_BOXES}]; uniform int uBores; uniform vec4 uBoreBox;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo; varying vec4 vCover;
 			${POOL}
 			${PIXEL_LAND}
 			void main() {
+				// Inside a tunnel's tube at its portals no ground is drawn: each box its centre and way (a), its half length and width, height and rise (b).
+				// All of them inside one box round them (uBoreBox): the rest of the land asks once.
+				if (uBores > 0 && all(greaterThan(vPos.xz, uBoreBox.xy)) && all(lessThan(vPos.xz, uBoreBox.zw)))
+				for (int i = 0; i < ${BORE_BOXES}; i++) {
+					if (i >= uBores) break;
+					vec4 a = uBoreA[i]; vec4 b = uBoreB[i];
+					vec2 r = vPos.xz - a.xy;
+					float s = dot(r, a.zw);
+					float y = vPos.y - b.z - b.w * s;
+					if (abs(s) < b.x && abs(dot(r, vec2(a.w, -a.z))) < b.y && y > -0.65 && y < ${(TUBE.crown - 0.02).toFixed(2)}) discard;
+				}
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
 				// One colour per face (ADR-0092): its land's, or rock on a face from about 30 degrees up,
@@ -376,6 +398,32 @@ export function terrainMaterial(
 				#include <colorspace_fragment>
 			}`,
 	});
+}
+
+/** The ground's cut-outs at tunnel portals (structures.ts boreBoxes), as many as it takes. */
+export function setBores(
+	m: THREE.ShaderMaterial,
+	boxes: readonly (readonly number[])[],
+) {
+	const n = Math.min(BORE_BOXES, boxes.length);
+	const box = [Infinity, Infinity, -Infinity, -Infinity];
+	for (let i = 0; i < n; i++) {
+		const [x, z, tx, tz, len, half, y, rise] = boxes[i];
+		(m.uniforms.uBoreA.value as THREE.Vector4[])[i].set(x, z, tx, tz);
+		(m.uniforms.uBoreB.value as THREE.Vector4[])[i].set(len, half, y, rise);
+		const r = Math.hypot(len, half);
+		box[0] = Math.min(box[0], x - r);
+		box[1] = Math.min(box[1], z - r);
+		box[2] = Math.max(box[2], x + r);
+		box[3] = Math.max(box[3], z + r);
+	}
+	(m.uniforms.uBoreBox.value as THREE.Vector4).set(
+		box[0],
+		box[1],
+		box[2],
+		box[3],
+	);
+	m.uniforms.uBores.value = n;
 }
 
 // A sky whose horizon is exactly the fog colour; a thin band on the horizon

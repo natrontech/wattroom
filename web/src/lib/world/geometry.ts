@@ -28,7 +28,7 @@ export { EXAG, ROAD_LIFT, surfaceOf, yOf } from './road-surface';
 const SNOW_BANK_M = 0.9;
 const SNOW_EASE_M = 12;
 
-/** A road's galleries in metres along it (designed.ts), found once a road: under a roof no bank is ploughed up. */
+/** A road's galleries and tunnels in metres along it (designed.ts), found once a road: under a roof no bank is ploughed up. */
 const roofs = new WeakMap<Route, [number, number][]>();
 function roofedOf(route: Route): [number, number][] {
 	let spans = roofs.get(route);
@@ -45,10 +45,13 @@ function roofedOf(route: Route): [number, number][] {
 		}
 		return at;
 	};
-	spans = (sceneOf(route.scene)?.galleries ?? []).flatMap(([a, b]) => {
-		const [from, to] = [metre(a), metre(b)].sort((p, q) => p - q);
-		return from < 0 ? [] : [[from, to] as [number, number]];
-	});
+	const scene = sceneOf(route.scene);
+	spans = [...(scene?.galleries ?? []), ...(scene?.tunnels ?? [])].flatMap(
+		([a, b]) => {
+			const [from, to] = [metre(a), metre(b)].sort((p, q) => p - q);
+			return from < 0 ? [] : [[from, to] as [number, number]];
+		},
+	);
 	roofs.set(route, spans);
 	return spans;
 }

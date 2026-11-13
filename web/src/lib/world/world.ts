@@ -51,7 +51,15 @@ import {
 } from './designed';
 import { offRoad, sideRoads, type Mouth, type SideRoad } from './side-roads';
 import { JOINED, JOINS } from './crossings';
-import { carriagewayAt, liftOf } from './road-surface';
+import { carriagewayAt, liftOf, yOf } from './road-surface';
+import {
+	GALLERY,
+	GALLERY_BACK,
+	PORTAL,
+	PORTAL_M,
+	TUBE,
+	UNDER_ROOF,
+} from './structure-sizes';
 
 export type World = {
 	/** The far skyline's seed: the backdrop is still drawn from the route. */
@@ -81,16 +89,31 @@ export type World = {
 	waterAt: (x: number, z: number) => number | null;
 	/** Where the road is carried over the ground, in metres along it: its bridges. */
 	bridges: [from: number, to: number][];
-	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges: drawn, never ridden. */
-	sides: (SideRoad & { bridges: [from: number, to: number][] })[];
+	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges and tunnels: drawn, never ridden. */
+	sides: (SideRoad & {
+		bridges: [from: number, to: number][];
+		tunnels: [from: number, to: number][];
+	})[];
 	/** The road ridden as its ribbon is drawn: with the roads that join it (Route.meets), and hidden where it runs on a roundabout's ring. */
 	ridden: Route;
 	/** Metres from (x, z) to the nearest of the roads a mouth's junction is made of (Mouth.near). */
 	offJunction: (m: Mouth, x: number, z: number) => number;
-	/** Whether something reaching `reach` metres round (x, z) would stand under a gallery's roof or through its wall: nothing grows or stands there. */
+	/** Whether something reaching `reach` metres round (x, z) would stand under a gallery's roof or through its wall, or in a tunnel or before its portal: nothing grows or stands there. */
 	roofedAt: (x: number, z: number, reach?: number) => boolean;
 	/** Where the road runs under a gallery's roof, in metres along it. */
 	galleries: [from: number, to: number][];
+	/** Where the road runs through the hill, in metres along it, portal to portal (designed.ts tunnels). */
+	tunnels: [from: number, to: number][];
+	/**
+	 * Under a roof at (x, z), a tunnel's vault or a gallery's slab: the
+	 * road's height there and the most an eye may stand, in the scene's
+	 * heights (yOf). Before a tunnel's portal the most rises a half metre a
+	 * metre out, so a camera comes down to it as it comes in. Null in the open.
+	 */
+	roofAt: (
+		x: number,
+		z: number,
+	) => { floor: number | null; most: number } | null;
 	/** The ground at (x, z) as the place has it, earthworks and all, without drawing it: what the road's rails are read off (scenery.ts). */
 	groundAt: (x: number, z: number) => number;
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
@@ -166,10 +189,40 @@ export function generate(
 			h: r.map((p) => p.ele),
 		}),
 	);
-	const cut = layout && makeGround(roads, { salt, scene: layout }).natural;
+	// A tunnel's road runs through the hill (designed.ts): past its portal's cut-and-cover the ground is left closed over it (terrain/ground.ts Line.bore).
+	const tunnelsOf = (r: typeof rows, line: Line) => {
+		const spans = layout ? spansAlong(r, layout.tunnels) : [];
+		if (spans.length > 0) {
+			const bore = new Uint8Array(r.length);
+			for (const [from, to] of spans)
+				if (to - from > 2 * PORTAL_M)
+					bore.fill(
+						1,
+						Math.ceil((from + PORTAL_M) / ROW_M),
+						Math.floor((to - PORTAL_M) / ROW_M) + 1,
+					);
+			line.bore = bore;
+		}
+		return spans;
+	};
+	const tunnels = tunnelsOf(rows, roads[0]);
+	const sideTunnels = sideRows.map((r, j) => tunnelsOf(r, roads[j + 1]));
+	const shaped = layout && makeGround(roads, { salt, scene: layout });
+	const cut = shaped?.natural;
 	const uncut = layout && makeGround(roads, { salt }).natural;
-	const spansOf = (r: typeof rows, line: Line) => {
-		const spans = cut && uncut ? bridgesOf(r, cut, uncut) : [];
+	// Where a stream runs under the road, a short bridge over it, so it is seen going under.
+	const streams = (shaped?.scene?.waters ?? []).filter((w) => w.run);
+	const spansOf = (r: typeof rows, line: Line, through: [number, number][]) => {
+		const spans =
+			cut && uncut
+				? withCulverts(
+						bridgesOf(r, cut, uncut),
+						culvertsOf(r, streams),
+						through,
+						// No stream's bridge under a gallery's roof: the road there is the gallery's.
+						spansAlong(r, layout?.galleries ?? []),
+					)
+				: [];
 		if (spans.length > 0) {
 			const open = new Uint8Array(r.length);
 			for (const [from, to] of spans)
@@ -178,10 +231,11 @@ export function generate(
 		}
 		return spans;
 	};
-	const bridges = spansOf(rows, roads[0]);
+	const bridges = spansOf(rows, roads[0], tunnels);
 	const sides = beside.map((side, j) => ({
 		...side,
-		bridges: spansOf(sideRows[j], roads[j + 1]),
+		bridges: spansOf(sideRows[j], roads[j + 1], sideTunnels[j]),
+		tunnels: sideTunnels[j],
 	}));
 	// At each mouth the two roads' paint reads the other's line (crossings.ts): the side road joins, the road met is joined.
 	const meets: NonNullable<Route['meets']> = [];
@@ -392,6 +446,7 @@ export function generate(
 		// Nor under a gallery's roof.
 		scene &&
 			((x, z, reach) => scene.waterAt(x, z) !== null || roofedAt(x, z, reach)),
+		scene && ((x, z, reach) => roofedAt(x, z, reach)),
 	);
 	let all: Stood | null = null;
 	/** Every tile within reach of a road: a tree stands within 700 m of one, and its tile's centre within half a diagonal more. */
@@ -449,7 +504,59 @@ export function generate(
 			);
 		return { a, b, back: over(1) >= over(-1) ? 1 : -1 };
 	});
+	// Each tunnel's line, from PORTAL.clear before one portal to as far past the other: what nothing stands near, and what a camera keeps under.
+	const bores = [
+		...tunnels.map((t) => ({ t, r: rows })),
+		...sideTunnels.flatMap((ts, j) => ts.map((t) => ({ t, r: sideRows[j] }))),
+	].map(({ t: [from, to], r }) => {
+		const a = Math.max(0, Math.floor((from - PORTAL.clear) / ROW_M));
+		const b = Math.min(r.length - 1, Math.ceil((to + PORTAL.clear) / ROW_M));
+		const pts = r.slice(a, b + 1).map((p, k) => ({
+			x: p.x,
+			z: p.z,
+			ele: p.ele,
+			out: Math.max(0, from - (a + k) * ROW_M, (a + k) * ROW_M - to),
+		}));
+		return { pts, box: boxAround(pts) };
+	});
+	/** The nearest point of a tunnel's line within `reach` of (x, z): the road's height there and metres outside its portals. */
+	const boreAt = (x: number, z: number, reach: number) => {
+		let best: { ele: number; out: number; d: number } | null = null;
+		for (const { pts, box } of bores) {
+			if (
+				x < box[0] - reach ||
+				x > box[2] + reach ||
+				z < box[1] - reach ||
+				z > box[3] + reach
+			)
+				continue;
+			for (let k = 0; k < pts.length - 1; k++) {
+				const p = pts[k];
+				const q = pts[k + 1];
+				const sx = q.x - p.x;
+				const sz = q.z - p.z;
+				const t = Math.min(
+					1,
+					Math.max(
+						0,
+						((x - p.x) * sx + (z - p.z) * sz) / (sx * sx + sz * sz || 1),
+					),
+				);
+				const d = Math.hypot(p.x + sx * t - x, p.z + sz * t - z);
+				if (d < reach && (!best || d < best.d))
+					best = {
+						d,
+						ele: p.ele + (q.ele - p.ele) * t,
+						out: p.out + (q.out - p.out) * t,
+					};
+			}
+		}
+		return best;
+	};
 	const roofedAt = (x: number, z: number, reach = 0) => {
+		// Nothing in a tunnel, over its portal or before it.
+		if (bores.length > 0 && boreAt(x, z, PORTAL.half + reach + 0.5))
+			return true;
 		if (roofs.length === 0) return false;
 		const hit = nearest(x, z);
 		if (!hit || hit.d > GALLERY_EDGE + GALLERY_WALL + reach + GALLERY_CLEAR)
@@ -501,7 +608,30 @@ export function generate(
 				),
 			),
 		galleries,
+		tunnels,
 		roofedAt,
+		roofAt(x, z) {
+			if (bores.length > 0) {
+				const b = boreAt(x, z, TUBE.half);
+				if (b) {
+					const floor = yOf(route, b.ele);
+					return {
+						floor: b.out > 0 ? null : floor,
+						most: floor + TUBE.crown - UNDER_ROOF + 0.5 * b.out,
+					};
+				}
+			}
+			if (roofs.length === 0) return null;
+			const hit = nearest(x, z);
+			if (!hit || hit.d > GALLERY_EDGE) return null;
+			const d = (hit.i + hit.t) * route.step;
+			if (!roofs.some(({ a, b }) => d >= a && d <= b)) return null;
+			const i = Math.min(route.ele.length - 1, Math.round(d / route.step));
+			return {
+				floor: null,
+				most: yOf(route, route.ele[i]) + GALLERY.clear - UNDER_ROOF,
+			};
+		},
 		groundAt: ground.heightAt,
 		tile: tiles.tile,
 		settled: tiles.has,
@@ -579,10 +709,10 @@ export function offRoundabouts(
 /** Metres a roundabout's sign post keeps anything off it, past what that thing reaches. */
 const SIGN_CLEAR_M = 0.6;
 
-/** A gallery's roof reaches this far from the road's centre, where its back wall and pillars stand (scenery.ts GALLERY.out). */
-const GALLERY_EDGE = FORMATION + 0.9;
-/** Half its back wall's thickness, and what a thing keeps clear of the wall or the pillars past its own reach. */
-const GALLERY_WALL = 0.3;
+/** A gallery's roof reaches this far from the road's centre, where its back wall's face and its pillars stand (structure-sizes.ts GALLERY.out). */
+const GALLERY_EDGE = FORMATION + GALLERY.out;
+/** How far past that its back wall, its roof and the earth banked behind it reach into the hill (structures.ts galleries), and what a thing keeps clear of them or the pillars past its own reach. */
+const GALLERY_WALL = GALLERY_BACK + GALLERY.ramp;
 const GALLERY_CLEAR = 1;
 /** Metres of each road, either side of a junction, whose paint reads the other road's line. */
 const JUNCTION_M = 30;
@@ -649,6 +779,136 @@ export function bridgesOf(
 			}
 			from = -1;
 		}
+	}
+	return out;
+}
+
+/** A spot names a road's metre within this of its line: a gallery's or a tunnel's on another of the map's roads is not this one's. */
+const SPOT_M = 30;
+
+/** The box round a line's points: minX, minZ, maxX, maxZ. */
+function boxAround(pts: readonly { x: number; z: number }[]) {
+	const b = [Infinity, Infinity, -Infinity, -Infinity];
+	for (const p of pts) {
+		b[0] = Math.min(b[0], p.x);
+		b[1] = Math.min(b[1], p.z);
+		b[2] = Math.max(b[2], p.x);
+		b[3] = Math.max(b[3], p.z);
+	}
+	return b;
+}
+
+/**
+ * The stretches between pairs of spots (designed.ts galleries, tunnels) on
+ * a road's rows, in metres along it: each spot's nearest row within 30 m,
+ * none where either spot lies off this road.
+ */
+export function spansAlong(
+	rows: readonly { x: number; z: number }[],
+	pairs: readonly (readonly [
+		readonly [number, number],
+		readonly [number, number],
+	])[],
+): [number, number][] {
+	const metre = ([x, z]: readonly [number, number]) => {
+		let best = SPOT_M;
+		let at = -1;
+		rows.forEach((p, i) => {
+			const d = Math.hypot(p.x - x, p.z - z);
+			if (d < best) {
+				best = d;
+				at = i * ROW_M;
+			}
+		});
+		return at;
+	};
+	return pairs.flatMap(([a, b]) => {
+		const [from, to] = [metre(a), metre(b)].sort((p, q) => p - q);
+		return from < 0 ? [] : [[from, to] as [number, number]];
+	});
+}
+
+/** A stream's bridge (a culvert's, where none carries the road already): its deck this far over the water at the least, and as long as the water is wide and this much more each side, past a road's formation and the fill's fall to the bank. */
+const CULVERT = { over: 1, beyond: FORMATION + 2.5 };
+
+/**
+ * Where a stream runs under the road and the road is not carried over it
+ * already: a short span over the water, in metres along the road, where
+ * the road stands clear over it. The ground under it is left as the stream
+ * cut it, so the water runs out from under the deck.
+ */
+export function culvertsOf(
+	rows: readonly { x: number; z: number; ele: number }[],
+	streams: readonly Water[],
+): [number, number][] {
+	const out: [number, number][] = [];
+	for (const w of streams) {
+		const run = w.run!;
+		const n = run.levels.length;
+		const o = w.outline;
+		// Its centre line, and its width there: the outline is its left bank down and its right bank back.
+		const mid = (i: number) => [
+			(o[i][0] + o[o.length - 1 - i][0]) / 2,
+			(o[i][1] + o[o.length - 1 - i][1]) / 2,
+			Math.hypot(
+				o[i][0] - o[o.length - 1 - i][0],
+				o[i][1] - o[o.length - 1 - i][1],
+			),
+		];
+		for (let i = 0; i < n - 1; i++) {
+			const [ax, az, wide] = mid(i);
+			const [bx, bz] = mid(i + 1);
+			const ex = bx - ax;
+			const ez = bz - az;
+			for (let k = 0; k < rows.length - 1; k++) {
+				const dx = rows[k + 1].x - rows[k].x;
+				const dz = rows[k + 1].z - rows[k].z;
+				const den = dx * ez - dz * ex;
+				if (Math.abs(den) < 1e-9) continue;
+				const rx = ax - rows[k].x;
+				const rz = az - rows[k].z;
+				const t = (rx * ez - rz * ex) / den;
+				const u = (rx * dz - rz * dx) / den;
+				if (t < 0 || t > 1 || u < 0 || u > 1) continue;
+				const ele = rows[k].ele + (rows[k + 1].ele - rows[k].ele) * t;
+				if (ele - run.levels[i] < CULVERT.over) continue;
+				const m = (k + t) * ROW_M;
+				// Square across the road or askew, the water's width along it.
+				const cos =
+					Math.abs(dx * ez - dz * ex) /
+					(Math.hypot(dx, dz) * Math.hypot(ex, ez) || 1);
+				const half = wide / 2 / Math.max(0.5, cos) + CULVERT.beyond;
+				out.push([
+					Math.max(0, m - half),
+					Math.min((rows.length - 1) * ROW_M, m + half),
+				]);
+			}
+		}
+	}
+	return out;
+}
+
+/** A road's bridges with its streams' culverts among them, overlapping ones one span: none in a tunnel, and no culvert under a gallery's roof either (`roofed`). */
+export function withCulverts(
+	bridges: readonly [number, number][],
+	culverts: readonly [number, number][],
+	tunnels: readonly [number, number][],
+	roofed: readonly [number, number][] = [],
+): [number, number][] {
+	const all = [
+		...bridges.filter(([a, b]) => !tunnels.some(([p, q]) => a < q && b > p)),
+		...culverts.filter(
+			([a, b]) =>
+				![...tunnels, ...roofed].some(([p, q]) => a < q + 6 && b > p - 6),
+		),
+	]
+		.map(([a, b]) => [a, b] as [number, number])
+		.sort((p, q) => p[0] - q[0]);
+	const out: [number, number][] = [];
+	for (const s of all) {
+		const last = out[out.length - 1];
+		if (last && s[0] <= last[1]) last[1] = Math.max(last[1], s[1]);
+		else out.push(s);
 	}
 	return out;
 }

@@ -32,6 +32,14 @@ export const EARTHWORKS_M = 60;
 const SHELF_M = 20;
 /** Every road's cut and fill bound the ground out to here; past it no natural ground is 267 m below a road. */
 const CONE_M = 400;
+/**
+ * The hill over a tunnel (Line.bore): metres of it over the road at the
+ * least, out to `top` metres either side of its line, falling 1:1 past
+ * that. Its tube's crown stands 5.8 m over the road (structure-sizes.ts
+ * TUBE, in the scene's exaggerated heights): rock over it, and a 10 m
+ * cell's straight line across the top never dips into the vault.
+ */
+const BORE = { cover: 10, top: 16 };
 /** How far out the natural ground's relief keeps rising from a road. */
 const RISE_M = 1600;
 
@@ -182,6 +190,9 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	/** A road's nearest point, where the road lies on the ground: none where it is carried over it, on a bridge. */
 	const onGround = (hit: Hit | null) =>
 		hit && index.open[hit.i] && index.open[hit.i + 1] ? null : hit;
+	/** Whether a road's nearest point lies in a tunnel (Line.bore): the hill stands over it. */
+	const bored = (hit: Hit | null) =>
+		!!hit && index.bore[hit.i] === 1 && index.bore[hit.i + 1] === 1;
 
 	/** The generator's ground under a scene's lakes and peaks, before its streams are laid on it. */
 	function unwatered(x: number, z: number): number {
@@ -223,12 +234,13 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	 */
 	function heightAt(x: number, z: number): number {
 		const hit = onGround(index.nearest(x, z, 2));
-		if (hit && hit.d <= FORMATION) return hit.h - SUBGRADE;
+		const hill = bored(hit);
+		if (hit && hit.d <= FORMATION && !hill) return hit.h - SUBGRADE;
 		let lower = -Infinity;
 		let upper = Infinity;
 		const cone = (vh: number, d: number, slack: number, g = -1) => {
-			// A bridge's vertex bears on no ground.
-			if (g >= 0 && index.open[g]) return;
+			// A bridge's vertex bears on no ground, and a tunnel's cuts none: the hill stands over it.
+			if (g >= 0 && (index.open[g] || index.bore[g])) return;
 			const dd = Math.max(0, d - FORMATION);
 			lower = Math.max(lower, vh - SUBGRADE - FILL * dd - slack);
 			upper = Math.min(
@@ -242,8 +254,15 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		const letGo = (d: number) => 2 * smoothstep(40, EARTHWORKS_M, d);
 		index.thinWithin(x, z, CONE_M, (vh, d, g) => cone(vh, d, 0, g));
 		index.within(x, z, EARTHWORKS_M, (vh, d, g) => cone(vh, d, letGo(d), g));
-		if (hit) cone(hit.h, hit.d, letGo(hit.d));
+		if (hit && !hill) cone(hit.h, hit.d, letGo(hit.d));
 		const ground = natural(x, z);
+		// Over a tunnel nothing cuts the hill down: it stands as it is, and a cover of rock over the tube at the least, falling away past it as a cutting rises.
+		if (hill)
+			return Math.max(
+				ground,
+				lower,
+				hit!.h - SUBGRADE + BORE.cover - CUT * Math.max(0, hit!.d - BORE.top),
+			);
 		if (lower === -Infinity) return ground;
 		if (lower > upper) return (lower + upper) / 2; // two roads disagree: a retaining wall's worth, split
 		return smoothClamp(ground, lower, upper, 1.5);
@@ -259,7 +278,7 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	function drawnAt(x: number, z: number): number {
 		const h = heightAt(x, z);
 		const hit = onGround(index.nearest(x, z, 1));
-		if (!hit || hit.d >= SHELF_M) return h;
+		if (!hit || hit.d >= SHELF_M || bored(hit)) return h;
 		const dd = Math.max(0, hit.d - FORMATION);
 		return Math.min(h, hit.h - SUBGRADE + CUT * Math.max(0, dd - BENCH));
 	}

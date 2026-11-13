@@ -64,6 +64,8 @@ export type Scene = {
 	names: PlaceNames;
 	/** Its galleries, each from one spot on the road to another, in the world's frame: the road roofed over against the mountain, open to the valley between pillars. */
 	galleries: [from: [number, number], to: [number, number]][];
+	/** Its tunnels, each from one portal on the road to the other, in the world's frame: the road through the hill, the ground left closed over it. */
+	tunnels: [from: [number, number], to: [number, number]][];
 	waters: Water[];
 };
 
@@ -154,6 +156,8 @@ export type Designed = {
 	spurs?: readonly (readonly Corner[])[];
 	/** Galleries: each from one spot on the road to another. */
 	galleries?: readonly (readonly [Spot, Spot])[];
+	/** Tunnels: each from one portal's spot on the road to the other's. */
+	tunnels?: readonly (readonly [Spot, Spot])[];
 };
 
 /** Rounds a line's corners off: each cut twice, a quarter in from either end (Chaikin). */
@@ -495,6 +499,7 @@ function sceneFrom(
 	climate: Climate,
 	names: PlaceNames,
 	galleries: Scene['galleries'],
+	tunnels: Scene['tunnels'],
 ): Scene {
 	const wet = parts.filter((p) => p.waterAt);
 	return {
@@ -514,6 +519,7 @@ function sceneFrom(
 		climate,
 		names,
 		galleries,
+		tunnels,
 		waters: parts.flatMap((p) => (p.water ? [p.water] : [])),
 	};
 }
@@ -576,7 +582,11 @@ function build(d: Designed): Built {
 	const galleries = (d.galleries ?? []).map(
 		([a, b]): Scene['galleries'][number] => [world(a), world(b)],
 	);
-	const dry = sceneFrom(parts, covers, climate, names, galleries);
+	const tunnels = (d.tunnels ?? []).map(([a, b]): Scene['tunnels'][number] => [
+		world(a),
+		world(b),
+	]);
+	const dry = sceneFrom(parts, covers, climate, names, galleries, tunnels);
 	const streams = d.features.filter((f) => f.kind === 'stream');
 	const laid = new Map<string, Scene>();
 	b = {
@@ -597,6 +607,7 @@ function build(d: Designed): Built {
 					climate,
 					names,
 					galleries,
+					tunnels,
 				);
 				scene = {
 					...whole,
