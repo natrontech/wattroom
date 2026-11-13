@@ -667,6 +667,9 @@ function spur(corners: readonly Corner[], like: Route): Route {
 
 /** Metres a roundabout's arm is drawn as a road of its own, out from the ring's centre line. */
 export const ARM_M = 30;
+/** How much wider an arm is at the ring than a road, and the metres over which it narrows to one. */
+const ARM_FLARE = 1.1;
+const ARM_FLARE_M = 22;
 
 /**
  * A design's roundabouts' arms, each a straight road from the ring out
@@ -680,28 +683,49 @@ export function armsOf(id: string | undefined): Route[] {
 	const d = DESIGNS.find((k) => k.id === id);
 	if (!d?.rings) return [];
 	const like = build(d).line;
+	// Every loop of the map: an arm takes its heights from whichever road runs along it.
+	const lines = DESIGNS.filter((k) => k.rings).map((k) => build(k).line);
 	const n = ARM_M / 2;
 	return d.rings.flatMap((ring) =>
 		ring.arms.map((a) => {
-			const at = (k: number) => ring.r + 2 * k;
+			const x = Float64Array.from(
+				{ length: n + 1 },
+				(_, k) => ring.at[0] + Math.cos(a) * (ring.r + 2 * k),
+			);
+			const z = Float64Array.from(
+				{ length: n + 1 },
+				(_, k) => -(ring.at[1] + Math.sin(a) * (ring.r + 2 * k)),
+			);
+			const ele = Float64Array.from(x, (px, k) => {
+				let best = 8;
+				let h = ring.ele;
+				for (const l of lines)
+					for (let i = 0; i < l.x.length; i++) {
+						if (Math.abs(l.x[i] - px) > best) continue;
+						const off = Math.hypot(l.x[i] - px, l.z[i] - z[k]);
+						if (off < best) {
+							best = off;
+							h = l.ele[i];
+						}
+					}
+				// At the ring it is the ring's height, whatever the road there has.
+				return ring.ele + (h - ring.ele) * smoothstep(0, 12, 2 * k);
+			});
 			return {
 				...like,
 				name: 'arm',
 				step: 2,
 				length: ARM_M,
-				x: Float64Array.from(
-					{ length: n + 1 },
-					(_, k) => ring.at[0] + Math.cos(a) * at(k),
-				),
-				z: Float64Array.from(
-					{ length: n + 1 },
-					(_, k) => -(ring.at[1] + Math.sin(a) * at(k)),
-				),
-				ele: new Float64Array(n + 1).fill(ring.ele),
+				x,
+				z,
+				ele,
 				grade: new Float64Array(n + 1),
 				gain: 0,
 				loop: false,
 				level: true,
+				// Flared to the ring, as a roundabout's entries and exits are: a rider turning onto the ring or off it stays on asphalt.
+				widen: (m: number) =>
+					1 + ARM_FLARE * (1 - smoothstep(2, ARM_FLARE_M, m)),
 				climbs: [],
 				shared: undefined,
 				meets: undefined,

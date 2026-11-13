@@ -58,7 +58,7 @@ const HUB: Corner = { x: 200, y: 300, ele: 1446, r: 0 };
 const HEAD: Corner = { x: 150, y: 4250, ele: 1441, r: 0 };
 
 /** A roundabout: the radius of its ring's centre line, how far out each arm runs straight at it, and the radius a line turns onto the ring or off it on: tight, so an arm is one straight road to the ring's edge, the same for the way in and the way out. */
-const RING = { r: 18, stub: 70, arm: 3 };
+const RING = { r: 18, stub: 70, level: 160, arm: 3 };
 
 /** A stretch between two nodes, wound, without the nodes themselves. */
 const stretch = (
@@ -184,9 +184,9 @@ function colDeBerne(): Corner[] {
 			// The north valley, down past the tarn to the lake.
 			{ x: 2200, y: 4900, ele: 1690, r: 100 },
 			{ x: 1400, y: 4700, ele: 1622, r: 100 },
-			{ x: 800, y: 5000, ele: 1566, r: 80 },
-			{ x: 300, y: 4900, ele: 1522, r: 60 },
-			{ x: 550, y: 4500, ele: 1480, r: 40 },
+			{ x: 800, y: 5000, ele: 1552, r: 80 },
+			{ x: 300, y: 4900, ele: 1506, r: 60 },
+			{ x: 550, y: 4500, ele: 1466, r: 40 },
 		],
 		HEAD,
 		2101,
@@ -674,10 +674,11 @@ function through(node: Corner, from: Corner, to: Corner): Corner[] {
 		ele: node.ele,
 		r,
 	});
-	const corners = [at(a, RING.stub, 40)];
+	// Level from RING.level out: the heights are smoothed along the road (road/route.ts), and a grade that ran to the stub stood the road a metre over the ring's arm.
+	const corners = [at(a, RING.level, 0), at(a, RING.stub, 0)];
 	for (let k = 0; k <= sides; k++)
 		corners.push(at(a + k * each, out, k === 0 || k === sides ? arm : RING.r));
-	corners.push(at(b, RING.stub, 40));
+	corners.push(at(b, RING.stub, 0), at(b, RING.level, 0));
 	return corners;
 }
 
@@ -695,20 +696,20 @@ function round(...parts: (Corner[] | Corner)[]): Corner[] {
 		out.push(...s, ...(i === n - 1 ? ring.slice(0, -1) : ring));
 	});
 	// It starts on its way out of the last roundabout, on the first stretch's arm.
-	return [first[first.length - 1], ...out];
+	return [...first.slice(-2), ...out.slice(0, -1)];
 }
 
 /** The loops, each from the village and back: by the time they take, about 30, 40, 60 and 90 minutes. Each stretch is followed by the node it runs to. */
 export const DESIGNS: readonly Designed[] = [
-	loop('urnsee', 10695.26, 4340, round(SHORE, HEAD, TERRACE, HUB), [
+	loop('urnsee', 10695.18, 4340, round(SHORE, HEAD, TERRACE, HUB), [
 		'aare',
 		'berne',
 	]),
-	loop('aare', 11978.45, 4404, round(GORGE, HUB), ['urnsee', 'berne']),
-	loop('lac', 22672.97, 4406, round(SHORE, HEAD, TERRACE, HUB, GORGE, HUB), [
+	loop('aare', 11978.49, 4404, round(GORGE, HUB), ['urnsee', 'berne']),
+	loop('lac', 22672.87, 4406, round(SHORE, HEAD, TERRACE, HUB, GORGE, HUB), [
 		'berne',
 	]),
-	loop('berne', 30736.14, 2101, round(COL, HEAD, TERRACE, HUB), [
+	loop('berne', 30735.45, 2101, round(COL, HEAD, TERRACE, HUB), [
 		'urnsee',
 		'aare',
 	]),

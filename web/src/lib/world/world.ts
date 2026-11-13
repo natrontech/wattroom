@@ -274,13 +274,22 @@ export function generate(
 			joins(arm, ring);
 			// The ring gives its shoulder and dashes its edge where the arm comes in: read from the ring's edge out.
 			const from = Math.ceil(END_M / arm.step);
-			(ring.meets ??= []).push({
-				from: 0,
-				to: ring.length,
-				x: arm.x.slice(from),
-				z: arm.z.slice(from),
-				role: JOINED,
-			});
+			// And across the whole of the arm's flared mouth: the arm's line, and one either side of it.
+			const [ux, uz] = [arm.x[1] - arm.x[0], arm.z[1] - arm.z[0]].map(
+				(v) => v / arm.step,
+			);
+			for (const side of [0, -1, 1])
+				(ring.meets ??= []).push({
+					from: 0,
+					to: ring.length,
+					x: arm.x
+						.slice(from, from + 6)
+						.map((v) => v - uz * side * MOUTH_SIDE_M),
+					z: arm.z
+						.slice(from, from + 6)
+						.map((v) => v + ux * side * MOUTH_SIDE_M),
+					role: JOINED,
+				});
 		}
 		const off = (i: number) => Math.hypot(route.x[i] - cx, route.z[i] - cz);
 		const last = route.x.length - 1;
@@ -290,14 +299,17 @@ export function generate(
 			// One pass through the roundabout: its samples from here on that lie within reach of it.
 			let end = i;
 			while (end < last && off(end + 1) < reach) end++;
-			for (const other of [ring, ...arms])
+			// An arm's line is read 4 m short of its far end: the road is not drawn within its asphalt, and read to the very end that took a bite out of the road past the arm's square end.
+			for (const other of [ring, ...arms]) {
+				const cut = other === ring ? undefined : -2;
 				meets.push({
 					from: i * route.step,
 					to: end * route.step,
-					x: other.x,
-					z: other.z,
+					x: other.x.slice(0, cut),
+					z: other.z.slice(0, cut),
 					role: JOINS,
 				});
+			}
 			for (let k = i; k <= end; k++)
 				if (off(k) < radius + ARM_M - RING_LAP_M)
 					(hidden ??= new Float64Array(route.x.length))[k] = 1;
@@ -516,6 +528,8 @@ const NODE_M = 20;
 const RING_REACH_M = 35;
 /** Metres of an arm's far end the road ridden is drawn over, so the two lap. */
 const RING_LAP_M = 12;
+/** Metres either side of an arm's line its flared mouth reaches on the ring. */
+const MOUTH_SIDE_M = 4;
 /** Metres between the ground's rows of the road (drawnRows). */
 const ROW_M = 2;
 /** A road this far over the designed ground is carried, not banked up: an embankment that high is 12 m wide at its foot each side. */

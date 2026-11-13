@@ -85,6 +85,8 @@ export type Route = {
 	 */
 	/** The world's road only: drawn level across, not banked into its bend. A roundabout's ring (world/designed.ts). */
 	level?: boolean;
+	/** The world's road only: how many times its own width it is drawn at metre `d`. A roundabout's arm flares where it meets the ring (world/designed.ts). */
+	widen?: (d: number) => number;
 	meets?: {
 		from: number;
 		to: number;

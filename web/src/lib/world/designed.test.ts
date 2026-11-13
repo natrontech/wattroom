@@ -430,6 +430,39 @@ describe('the map', () => {
 	);
 
 	it(
+		'never draws the ground over a road: every road of every loop, ridden or not, lies on the land or over it',
+		async () => {
+			for (const d of LOOPS) {
+				const route = routeOfRoad(await roadOf(d.id));
+				const world = generate(route);
+				const roads = [
+					{ name: 'ridden', r: route, spans: world.bridges },
+					...world.sides.map((side, k) => ({
+						name: `side road ${k}`,
+						r: side.route,
+						spans: side.bridges,
+					})),
+				];
+				for (const { name, r, spans } of roads)
+					for (let m = 0; m <= r.length; m += 4) {
+						if (spans.some(([a, b]) => m >= a - 12 && m <= b + 12)) continue;
+						const p = at(r, m);
+						for (const u of [0, 2.5, -2.5]) {
+							const x = p.x + Math.cos(p.heading) * u;
+							const z = p.z - Math.sin(p.heading) * u;
+							// Another road may lie over this one where they meet; the land never does.
+							expect(
+								world.heightAt(x, z) - p.ele,
+								`${d.id}, ${name}, ${Math.round(m)} m`,
+							).toBeLessThan(0.1);
+						}
+					}
+			}
+		},
+		3 * BUILD_MS,
+	);
+
+	it(
 		'names each pass once, and the col is Col de Berne',
 		async () => {
 			const names = new Map<string, string[]>();

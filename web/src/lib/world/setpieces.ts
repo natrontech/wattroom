@@ -233,7 +233,8 @@ export function offOthers(
 		return mouths.every(
 			(m) =>
 				m.on !== k ||
-				Math.hypot(x - m.x, z - m.z) >= MOUTH_M + reach ||
+				// Two metres more than is asked of it: a line ends a little inside the road it meets.
+				Math.hypot(x - m.x, z - m.z) >= MOUTH_M + 2 + reach ||
 				sideOf(m.a, x, z) !== m.side,
 		);
 	};

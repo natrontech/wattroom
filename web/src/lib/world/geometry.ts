@@ -212,8 +212,10 @@ export function road(
 				? 0
 				: SNOW_BANK_M *
 					smoothstep(snowline - SNOW_EASE_M, snowline + SNOW_EASE_M, p.ele);
+		const wide = route.widen?.(d) ?? 1;
 		for (let c = 0; c < cols; c++) {
-			let u = offs[c];
+			// Its paint is laid by its own width (uv), so a road drawn wider carries its edge lines out with it.
+			let u = offs[c] * wide;
 			if (Math.sign(u) === Math.sign(k) && Math.abs(k) > 1e-4)
 				u = Math.sign(u) * Math.min(Math.abs(u), 0.85 / Math.abs(k));
 			const v = new THREE.Vector3(

@@ -45,6 +45,21 @@
 		VIEWS.find(([id]) => id === params.get('view'))?.[0] ?? '3d',
 	);
 	let land = $state.raw<World | null>(null);
+	/** The road as the Flat view draws it: a loop twice round, so it runs on past its finish. */
+	const flatRoad = $derived.by(() => {
+		const road = route?.road;
+		const n = route ? route.x.length - 1 : 0;
+		// It comes home: its last sample stands where its first does.
+		const home =
+			!!route &&
+			Math.hypot(route.x[n] - route.x[0], route.z[n] - route.z[0]) < 30;
+		if (!road || !home) return road ?? { length: 0, heights: [], turns: [] };
+		return {
+			length: road.length * 2,
+			heights: [...road.heights, ...road.heights.slice(1)],
+			turns: [...road.turns, ...road.turns],
+		};
+	});
 	let playing = $state(false);
 	let m = $state(0);
 	let note = $state('');
@@ -422,7 +437,13 @@
 				     lab paints that place in the 3D world's own colours, unmixed with
 				     the theme's surface, as the Map's picture is (map-render.ts). -->
 				<div class="flat-ground world-flat bg-surface absolute inset-0">
-					<Skyline road={route.road} {m} mps={playing ? kmh / 3.6 : 0} />
+					<!-- A road that comes home is drawn on into its next lap, the finish marked on it: the line never stops short of the frame's edge. -->
+					<Skyline
+						road={flatRoad}
+						{m}
+						mps={playing ? kmh / 3.6 : 0}
+						finishM={route.road.length}
+					/>
 				</div>
 			{:else if view === 'map' && land}
 				<div class="bg-surface absolute inset-0 p-3">

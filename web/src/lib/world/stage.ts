@@ -232,7 +232,8 @@ export function buildStage(
 		},
 		...world.sides.map((s) => ({
 			of: s.route,
-			lift: ROAD_LIFT - SIDE_SINK,
+			// A roundabout's arm a finger over the ring it flares onto: its asphalt covers the ring's shoulder there.
+			lift: ROAD_LIFT - SIDE_SINK + (s.route.widen ? 0.02 : 0),
 			caps: s.square
 				? ([false, false] as const)
 				: ([!s.mouths[0], !s.mouths[1]] as const),

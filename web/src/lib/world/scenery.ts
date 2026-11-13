@@ -618,23 +618,23 @@ const cowStatue = (c: PropColors) =>
  * origin.
  */
 function ringSign(c: PropColors) {
+	// Each face stands clear in front of the post, the paint on it clear in front of the face: a post 5 cm thick came through a face laid on its axis.
 	const face = (g: THREE.BufferGeometry, y: number, z: number, color: string) =>
-		tint(g.rotateX(Math.PI / 2).translate(0, y, z), color);
+		tint(g.rotateX(Math.PI / 2).translate(0, y, 0.1 + z), color);
 	const y = RING_SIGN.up;
+	// Three arrows going round anticlockwise: each a bar along the circle with a head at its leading end.
 	const arrows = [0, 1, 2].flatMap((k) => {
 		const a = (k * 2 * Math.PI) / 3;
-		const at = (g: THREE.BufferGeometry, turn: number, r: number) =>
-			tint(
-				g
-					.rotateZ(a + turn)
-					.translate(Math.cos(a + turn) * 0, 0, 0)
-					.translate(-Math.sin(a) * r, y + Math.cos(a) * r, 0.05),
-				c.wall,
-			);
-		// A bar along the circle, and a head at its anticlockwise end.
+		const on = (g: THREE.BufferGeometry) =>
+			tint(g.translate(0, 0.21, 0).rotateZ(a).translate(0, y, 0.16), c.wall);
 		return [
-			at(box(0.26, 0.07, 0.02), 0, 0.2),
-			at(box(0.12, 0.16, 0.02).translate(-0.17, 0, 0), 0, 0.2),
+			on(box(0.2, 0.06, 0.02).translate(0.03, 0, 0)),
+			on(
+				cyl(0.09, 0.09, 0.02, 3)
+					.rotateX(Math.PI / 2)
+					.rotateZ(Math.PI / 2)
+					.translate(-0.11, 0, 0),
+			),
 		];
 	});
 	return merge([
@@ -643,7 +643,7 @@ function ringSign(c: PropColors) {
 			c.pole,
 		),
 		face(cyl(0.52, 0.52, 0.04, 3), y + 0.95, 0, c.warning),
-		face(cyl(0.3, 0.3, 0.04, 3), y + 0.95, 0.02, c.wall),
+		face(cyl(0.3, 0.3, 0.04, 3), y + 0.95, 0.03, c.wall),
 		face(cyl(0.42, 0.42, 0.04, 18), y, 0, c.water),
 		...arrows,
 	]);
