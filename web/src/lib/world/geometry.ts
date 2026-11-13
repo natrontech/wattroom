@@ -53,6 +53,16 @@ function roofedOf(route: Route): [number, number][] {
 	return spans;
 }
 
+/** Which of the land shader's covers a biome is dressed as: snow, rock, sparse grass, bog (styles.ts dioramaLand). */
+const COVER_OF: Partial<Record<Biome, number>> = {
+	[Biome.Snow]: 0,
+	[Biome.Frost]: 0,
+	[Biome.Rock]: 1,
+	[Biome.Alpine]: 2,
+	[Biome.Dry]: 2,
+	[Biome.Moor]: 3,
+};
+
 export function terrain(
 	route: Route,
 	mesh: TerrainMesh,
@@ -63,6 +73,8 @@ export function terrain(
 	const p = new Float32Array(n * 3);
 	const colors = new Float32Array(n * 3);
 	const ao = new Float32Array(n);
+	// What the land shader dresses each vertex as (styles.ts): snow, rock, sparse grass, bog.
+	const cover = new Uint8Array(n * 4);
 	const cache = new Map<number, THREE.Color>();
 	for (const [k, v] of Object.entries(palette))
 		cache.set(Number(k), new THREE.Color(v));
@@ -93,11 +105,14 @@ export function terrain(
 		colors[i * 3 + 1] = c.g;
 		colors[i * 3 + 2] = c.b;
 		ao[i] = Math.min(1, Math.max(0, (shade[i] - 0.72) / 0.4)); // hollows dark, crests light
+		const k = COVER_OF[b];
+		if (k !== undefined) cover[i * 4 + k] = 255;
 	}
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.BufferAttribute(p, 3));
 	g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 	g.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
+	g.setAttribute('cover', new THREE.BufferAttribute(cover, 4, true));
 	g.setIndex(new THREE.BufferAttribute(index, 1));
 	g.computeBoundingSphere();
 	return g;

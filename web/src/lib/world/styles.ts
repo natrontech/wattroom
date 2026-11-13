@@ -162,6 +162,15 @@ export const PIXEL_LAND = /* glsl */ `
 		return mix(mix(landHash(i), landHash(i + vec2(1.0, 0.0)), f.x),
 			mix(landHash(i + vec2(0.0, 1.0)), landHash(i + vec2(1.0, 1.0)), f.x), f.y);
 	}
+	// Noise on a turned lattice of triangles, flat across each: its patches have straight edges, cut as a low-poly face is.
+	float landFacet(vec2 p) {
+		p = mat2(0.94, -0.34, 0.34, 0.94) * p;
+		vec2 i = floor(p), f = fract(p);
+		float a = landHash(i), d = landHash(i + vec2(1.0, 1.0));
+		return f.x > f.y
+			? a + (landHash(i + vec2(1.0, 0.0)) - a) * f.x + (d - landHash(i + vec2(1.0, 0.0))) * f.y
+			: a + (landHash(i + vec2(0.0, 1.0)) - a) * f.y + (d - landHash(i + vec2(0.0, 1.0))) * f.x;
+	}
 	bool landGreen(vec3 base, float up) { return !(base.g < base.r * 1.05 || base.g < base.b * 1.02 || up < 0.8); }
 	// The fields, their stripes and patches.
 	vec3 landFields(vec3 base, vec3 pos, float dist) {
@@ -180,10 +189,71 @@ export const PIXEL_LAND = /* glsl */ `
 		else if (patchy < 0.36) c *= 0.86;
 		return c;
 	}
-	// Diorama 3D: flowers in the grass as dots in the world, a hand's width each, near the road.
-	vec3 dioramaLand(vec3 base, vec3 pos, float dist, float up) {
-		if (!landGreen(base, up)) return base;
-		vec3 c = landFields(base, pos, dist);
+	/** A round dot in each cell of q whose hash passes over, size of the cell across: its hash, or -1 off it. */
+	float landDot(vec2 q, float over, float size) {
+		float k = landHash(floor(q));
+		float fw = length(fwidth(q)) * 0.5;
+		float r = length(fract(q) - 0.5);
+		return k > over && r < size * 0.5 - fw ? k : -1.0;
+	}
+	// Snow: rock coming through it, more where it is steep, each outcrop in a ring of scoured,
+	// bluer snow and snow lying on its top; long drifts across the slope.
+	vec3 snowLand(vec3 c, vec3 pos, float dist, float up) {
+		float near = 1.0 - smoothstep(1200.0, 2000.0, dist);
+		float r = landFacet(pos.xz / 30.0) * 0.72 + landFacet(pos.xz / 11.0 + 17.0) * 0.28;
+		float cut = 0.72 - (1.0 - up) * 1.2;
+		float fw = fwidth(r) + 1e-4;
+		float rock = smoothstep(cut - fw, cut + fw, r) * near;
+		float rim = smoothstep(cut - 0.07 - fw, cut - 0.07 + fw, r) * near;
+		float drift = landNoise(vec2(pos.x * 0.045 + pos.z * 0.02, pos.z * 0.11 - pos.x * 0.035)) * (1.0 - smoothstep(500.0, 800.0, dist));
+		float fd = fwidth(drift) + 1e-4;
+		c = mix(c, c * vec3(0.93, 0.93, 1.0), smoothstep(0.64 - fd, 0.64 + fd, drift));
+		c = mix(c, c * vec3(0.86, 0.86, 0.97), rim);
+		vec3 stone = mix(uRock, c, 0.18);
+		float cap = landFacet(pos.xz / 3.0 + 5.0);
+		float fc = fwidth(cap) + 1e-4;
+		float capped = smoothstep(0.6 - fc, 0.6 + fc, cap) * (1.0 - smoothstep(200.0, 400.0, dist));
+		return mix(c, mix(stone, c, capped * 0.8), rock);
+	}
+	// Rock: a cliff in strata, a darker band every few metres of its height; at its foot, scree.
+	vec3 rockLand(vec3 c, vec3 pos, float dist, float up, float bare) {
+		float s = pos.y / 3.4 + landNoise(pos.xz / 18.0) * 1.6;
+		float fs = fwidth(s) + 1e-4;
+		float strata = (1.0 - smoothstep(0.22 - fs, 0.22 + fs, fract(s))) * smoothstep(0.86, 0.7, up) * (1.0 - smoothstep(500.0, 800.0, dist));
+		c *= 1.0 - 0.13 * strata;
+		float k = landDot(pos.xz / 1.3, 0.5, 0.36 + 0.1 * landHash(floor(pos.xz / 1.3) + 3.0));
+		float scree = step(0.0, k) * bare * smoothstep(0.7, 0.86, up) * (1.0 - smoothstep(90.0, 140.0, dist));
+		return mix(c, c * (k > 0.78 ? 1.18 : 0.84), scree);
+	}
+	// Alpine pasture and dry ground: heather in lilac patches, a stone now and then.
+	vec3 sparseLand(vec3 c, vec3 pos, float dist) {
+		float h = landFacet(pos.xz / 8.0 + 41.0);
+		float fh = fwidth(h) + 1e-4;
+		float heather = smoothstep(0.66 - fh, 0.66 + fh, h) * (1.0 - smoothstep(400.0, 700.0, dist));
+		c = mix(c, c * vec3(0.92, 0.84, 0.96), heather);
+		float k = landDot(pos.xz / 3.0, 0.9, 0.24);
+		return mix(c, mix(uRock, vec3(0.92, 0.9, 1.0), 0.22), step(0.0, k) * (1.0 - smoothstep(80.0, 130.0, dist)));
+	}
+	// A bog: dark pools, tussocks, and cotton grass white over it near the road.
+	vec3 moorLand(vec3 c, vec3 pos, float dist) {
+		// Its grass gone olive and rust, not the grey of the map's bog.
+		c *= vec3(1.1, 1.08, 0.84);
+		float pool = landFacet(pos.xz / 3.6 + 31.0);
+		float fp = fwidth(pool) + 1e-4;
+		c = mix(c, vec3(0.1, 0.16, 0.3), smoothstep(0.8 - fp, 0.8 + fp, pool) * (1.0 - smoothstep(250.0, 400.0, dist)));
+		c = mix(c, c * 1.12, step(landNoise(pos.xz / 2.2), 0.3) * 0.6 * (1.0 - smoothstep(150.0, 300.0, dist)));
+		float k = landDot(pos.xz / 0.8, 0.9, 0.28);
+		return mix(c, vec3(0.96, 0.95, 0.9), step(0.0, k) * step(pool, 0.7) * (1.0 - smoothstep(35.0, 60.0, dist)));
+	}
+	// Diorama 3D: each cover its own (cover: snow, rock, alpine or dry, bog), flowers in the grass as dots in the world, a hand's width each, near the road.
+	vec3 dioramaLand(vec3 base, vec3 pos, float dist, float up, vec4 cover, float steep) {
+		vec3 c = base;
+		if (cover.x > 0.5) return snowLand(c, pos, dist, up);
+		if (cover.y > 0.5 || steep > 0.5) c = rockLand(c, pos, dist, up, cover.y);
+		if (cover.w > 0.5) return moorLand(c, pos, dist);
+		if (cover.z > 0.5) return sparseLand(c, pos, dist);
+		if (!landGreen(base, up)) return c;
+		c = landFields(base, pos, dist);
 		if (dist < 70.0) {
 			vec2 q = pos.xz / 0.7;
 			float k = landHash(floor(q));
@@ -242,9 +312,10 @@ export function terrainMaterial(
 		vertexColors: true,
 		vertexShader: /* glsl */ `
 			attribute float ao;
-			varying vec3 vColor; varying vec3 vPos; varying float vAo;
+			attribute vec4 cover;
+			varying vec3 vColor; varying vec3 vPos; varying float vAo; varying vec4 vCover;
 			void main() {
-				vColor = color; vAo = ao;
+				vColor = color; vAo = ao; vCover = cover;
 				vec4 world = modelMatrix * vec4(position, 1.0);
 				vPos = world.xyz;
 				gl_Position = projectionMatrix * viewMatrix * world;
@@ -252,7 +323,7 @@ export function terrainMaterial(
 		fragmentShader: /* glsl */ `
 			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
 			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uDiorama;
-			varying vec3 vColor; varying vec3 vPos; varying float vAo;
+			varying vec3 vColor; varying vec3 vPos; varying float vAo; varying vec4 vCover;
 			${POOL}
 			${PIXEL_LAND}
 			void main() {
@@ -262,7 +333,7 @@ export function terrainMaterial(
 				// solid rock by the earthworks' 45 (n.y 0.71), never the ground's colour smeared down a vertical.
 				float steep = smoothstep(0.86, 0.66, n.y);
 				vec3 base = mix(vColor, mix(uRock, vColor, 0.18), steep);
-				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n.y);
+				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n.y, vCover, steep);
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
