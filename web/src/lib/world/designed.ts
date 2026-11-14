@@ -1071,8 +1071,11 @@ function laneCorners(
 	const kept = lanes.get(lane);
 	if (kept) return kept;
 	const own = build(d).line;
+	// Its own loop and the loops it shares its land with, in the map's order: the Valley has no others.
 	const loops = [
-		...DESIGNS.filter((k) => k.others).map((k) => build(k).line),
+		...DESIGNS.filter((k) => k === d || d.others?.includes(k.id)).map(
+			(k) => build(k).line,
+		),
 		...(d.spurs ?? []).flatMap((s) => (isLane(s) ? [] : [spur(s, own)])),
 	];
 	const snap = ([x, y]: Spot): [Spot, boolean] => {

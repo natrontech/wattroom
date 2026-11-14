@@ -1,17 +1,17 @@
 <script lang="ts">
 	/**
 	 * A world from above, as a map draws one (the route lab's Map). A loop of
-	 * the designed map (designs.ts) shows the whole map, Wattalp
-	 * (WattalpMap.svelte), with its own loop on top. Any other road is drawn
-	 * from its world:
+	 * a designed land with a map (designs.ts LANDS) shows the whole land,
+	 * Wattalp or the Valley's Rahmental (LandMap.svelte), with its own loop on
+	 * top. Any other road is drawn from its world:
 	 * the road ridden and the roads that leave it, the water, the bridges and
 	 * galleries, the villages and passes by name. North is up.
 	 */
 	import { at } from '#lib/road/along.ts';
 	import type { Route } from '#lib/road/route.ts';
 	import { sceneOf } from './designed';
-	import { WATTALP } from './wattalp';
-	import WattalpMap from './WattalpMap.svelte';
+	import { mapOf } from './land-map';
+	import LandMap from './LandMap.svelte';
 	import type { World } from './world';
 
 	let { route, world, m }: { route: Route; world: World; m: number } = $props();
@@ -27,10 +27,8 @@
 	const ring = (pts: readonly (readonly [number, number])[]) =>
 		`M${pts.map(([x, z]) => `${x.toFixed(1)},${z.toFixed(1)}`).join('L')}Z`;
 
-	/** The map's picture shows this road: one of its loops, in its frame. */
-	const onMap = $derived(
-		route.scene !== undefined && WATTALP.loops.includes(route.scene),
-	);
+	/** A land's picture shows this road: one of its loops, in its frame. */
+	const onMap = $derived(mapOf(route.scene));
 	const you = $derived(at(route, m));
 
 	// The fallback: a road the map does not show, fitted round its own roads.
@@ -62,7 +60,7 @@
 </script>
 
 {#if onMap}
-	<WattalpMap line={route} {m} />
+	<LandMap map={onMap} line={route} {m} />
 {:else}
 	<svg
 		viewBox="{box.x} {box.z} {box.w} {box.h}"

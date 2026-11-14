@@ -755,19 +755,6 @@ const LAND: Feature[] = [
 	{ kind: 'land', cover: 'wood', at: [-1000, 4600], radius: 420 },
 ];
 
-/**
- * The map's name, and the rectangle a picture of it shows, in the map's own
- * metres (east, north): every spur and the river run off its edge, none
- * stops short inside it.
- */
-export const MAP_NAME = 'Wattalp';
-export const MAP_BOUNDS = {
-	west: -9600,
-	east: 4500,
-	south: -6600,
-	north: 8000,
-};
-
 /** The map's loops, by id: each draws the others' roads where they leave it, so every loop rides one land. */
 const LOOP_IDS = ['urnsee', 'aare', 'lac', 'berne', 'kette'];
 
@@ -973,7 +960,7 @@ const VALLEY_LAND: Feature[] = [
 		level: 512,
 		gorge: { bank: 25, slope: 0.3 },
 	},
-	// The pond by the first straight, and the stream out of it.
+	// The pond by the first straight, shallow all over, and the stream out of it.
 	{
 		kind: 'lake',
 		level: 515,
@@ -987,6 +974,7 @@ const VALLEY_LAND: Feature[] = [
 			[1280, 430],
 			[1150, 330],
 		],
+		shallows: [{ at: [1310, 290], radius: 220 }],
 	},
 	{
 		kind: 'stream',
@@ -1012,7 +1000,7 @@ const VALLEY_LAND: Feature[] = [
 	{
 		kind: 'stream',
 		course: [
-			[3900, -1200],
+			[3950, -1600],
 			[3700, -300],
 			[3500, 700],
 			[3550, 1500],
@@ -1025,8 +1013,168 @@ const VALLEY_LAND: Feature[] = [
 	peak([6800, 3600], 150, 900),
 	peak([3300, -2200], 120, 800),
 	peak([1900, 1300], 45, 260, [40, 200]),
+	// Ground laid by hand. The pond's reeds, and a wet meadow by the river.
+	{ kind: 'land', cover: 'moor', at: [1310, 300], radius: 230 },
 	{ kind: 'land', cover: 'moor', at: [600, 2350], radius: 420 },
+	// Woods by the farms: round the knoll, behind the north road's farms, on the east bank.
+	{ kind: 'land', cover: 'wood', at: [2050, 1450], radius: 230 },
+	{ kind: 'land', cover: 'wood', at: [3550, 3250], radius: 200 },
+	{ kind: 'land', cover: 'wood', at: [1750, 4650], radius: 260 },
+	{ kind: 'land', cover: 'wood', at: [-250, 1500], radius: 180 },
+	{ kind: 'land', cover: 'wood', at: [5500, 600], radius: 220 },
+	// Fields: the floor inside the loop either side of the river, south of the first straight, and over the north road.
+	{
+		kind: 'land',
+		cover: 'fields',
+		area: [
+			[-250, 1900],
+			[150, 1150],
+			[150, 450],
+			[950, 350],
+			[1000, 1000],
+			[1250, 1750],
+			[1050, 1950],
+			[300, 1950],
+		],
+	},
+	{
+		kind: 'land',
+		cover: 'fields',
+		area: [
+			[2300, 300],
+			[3300, 400],
+			[3400, 1200],
+			[2900, 1700],
+			[2350, 1700],
+			[2150, 900],
+		],
+	},
+	{
+		kind: 'land',
+		cover: 'fields',
+		area: [
+			[1500, 2600],
+			[2000, 3000],
+			[3000, 2550],
+			[3900, 2250],
+			[4600, 2150],
+			[4500, 2900],
+			[3800, 3600],
+			[2600, 3950],
+			[1500, 3650],
+		],
+	},
+	{
+		kind: 'land',
+		cover: 'fields',
+		area: [
+			[100, -200],
+			[2600, -250],
+			[3000, -700],
+			[2400, -1200],
+			[600, -1100],
+			[-200, -600],
+		],
+	},
+	{
+		kind: 'land',
+		cover: 'fields',
+		area: [
+			[300, 4100],
+			[1200, 4250],
+			[2600, 4550],
+			[3700, 4300],
+			[3900, 4900],
+			[2300, 5200],
+			[600, 4900],
+		],
+	},
 ];
+
+/** The Valley's roads it does not ride: gravel farm lanes out across its fields, to its farms, over its river and up its hills. */
+const VALLEY_LANES: Lane[] = [
+	// South off the first straight, out through its fields.
+	lane([900, 0], [1000, -500], [800, -1100], [900, -1700]),
+	// North off it past the pond, up to the farm under the knoll.
+	lane([1700, 0], [1650, 500], [1750, 900], [1800, 1080]),
+	// Across the floor inside the loop, over the river on a farm bridge, to the north road.
+	lane(
+		[500, 0],
+		[450, 600],
+		[650, 1200],
+		[850, 1800],
+		[900, 2300],
+		[1100, 2900],
+		[1300, 3500],
+		[1350, 3965],
+	),
+	// East off the river road's climb, and north-east up the hill.
+	lane([4620, 1200], [5200, 1050], [5800, 900], [6400, 800]),
+	lane([4600, 3050], [5200, 3300], [5700, 3900], [6400, 4300]),
+	// North off the high road, into the woods.
+	lane([3300, 4014], [3400, 4500], [3200, 5100], [3300, 5800]),
+	// Across the east of the loop to a farm by the bend.
+	lane([4900, 2250], [4300, 2400], [3700, 2700], [3300, 3050]),
+	// West off the river road, and north-west off the way down.
+	lane([-540, 1600], [-1100, 1500], [-1700, 1250], [-2100, 1300]),
+	lane([100, 3200], [-300, 3700], [-800, 4300], [-1300, 4900], [-2000, 5300]),
+	// South-east off the ramp's road, and south-west by the start.
+	lane([4000, 565], [4300, 0], [4500, -600], [4400, -1700]),
+	lane([-250, 500], [-800, 300], [-1300, -100], [-2100, -500]),
+];
+
+/** A rectangle on a map, in its own metres east and north. */
+export type Bounds = {
+	west: number;
+	east: number;
+	south: number;
+	north: number;
+};
+
+/**
+ * A designed land that has a map: its name, the rectangle its picture shows
+ * (every road and river that leaves it runs off its edge, none stops short
+ * inside it), the loops through it (one picture, every loop on it), and the
+ * loop whose world draws the picture: its other roads are every road there.
+ * `mpp` is the metres a pixel of the picture covers, `scale` how big the
+ * page draws its names, marks and scale bar against Wattalp's, so a smaller
+ * land, shown as large, reads alike.
+ */
+export type Land = {
+	id: string;
+	name: string;
+	bounds: Bounds;
+	loops: readonly string[];
+	drawnFrom: string;
+	mpp: number;
+	scale: number;
+};
+
+/** WattRoom's lands with a map: Wattalp, and the Valley loop's Rahmental. */
+export const LANDS: readonly Land[] = [
+	{
+		id: 'wattalp',
+		name: 'Wattalp',
+		bounds: { west: -9600, east: 4500, south: -6600, north: 8000 },
+		loops: LOOP_IDS,
+		drawnFrom: 'berne',
+		mpp: 10,
+		scale: 1,
+	},
+	{
+		id: 'rahmental',
+		name: 'Rahmental',
+		bounds: { west: -1800, east: 6200, south: -1300, north: 5500 },
+		loops: ['valley'],
+		drawnFrom: 'valley',
+		mpp: 5,
+		scale: 0.5,
+	},
+];
+
+/** The land a designed loop runs through, if it has a map. */
+export const landOf = (id: string | undefined): Land | undefined =>
+	id === undefined ? undefined : LANDS.find((l) => l.loops.includes(id));
 
 /**
  * A road's way through a node's roundabout, from the corner it comes from
@@ -1113,5 +1261,6 @@ export const DESIGNS: readonly Designed[] = [
 		lengthM: 16036.55,
 		shape: { corners: VALLEY, seed: 4248, drawn: true },
 		features: VALLEY_LAND,
+		spurs: VALLEY_LANES,
 	},
 ];

@@ -7,10 +7,11 @@
 	 * a thin muted line, you are a ring, the riders around you are ink dots
 	 * with their names, each classed climb names its class at its top, and the
 	 * road's end says how far there is to go. No north, no names of places, no
-	 * coordinates: the shape a crew is sent (ADR-0063). One of the Wattalp
-	 * map's loops is the exception: WattRoom's own land, no place of anyone's,
-	 * so it is drawn on the whole map it runs through (WattalpMap.svelte), its
-	 * loop on top: every loop of the map shows the same map.
+	 * coordinates: the shape a crew is sent (ADR-0063). A loop of one of
+	 * WattRoom's designed lands (Wattalp, the Valley's Rahmental) is the
+	 * exception: WattRoom's own land, no place of anyone's, so it is drawn on
+	 * the whole map it runs through (LandMap.svelte), its loop on top: every
+	 * loop of a land shows the same map.
 	 */
 	import Flag from '@lucide/svelte/icons/flag';
 	import { untrack } from 'svelte';
@@ -32,31 +33,31 @@
 
 	// ponytail: the road in 160 even pieces, each its grade; finer if a short
 	// steep ramp ever disappears in a long piece.
-	// A loop of the Wattalp map, once its road is known: the line it is drawn
-	// on there, loaded with the map's picture only for such a road.
+	// A loop of a land's map, once its road is known: the map and the line it
+	// is drawn on there, loaded with the maps' pictures only for such a road.
 	let placed = $state.raw<{
 		road: Road;
+		map: import('#lib/world/land-map.ts').LandMapOf;
 		line: Route;
 		reverse: boolean;
-		Map: typeof import('#lib/world/WattalpMap.svelte').default;
+		Map: typeof import('#lib/world/LandMap.svelte').default;
 	} | null>(null);
 	$effect(() => {
 		const road = view.road;
 		if (untrack(() => placed?.road) === road) return;
 		let gone = false;
-		void import('#lib/world/wattalp.ts').then(async ({ onWattalp }) => {
-			const on = onWattalp(road);
-			const Map = on && (await import('#lib/world/WattalpMap.svelte')).default;
+		void import('#lib/world/land-map.ts').then(async ({ onLandMap }) => {
+			const on = onLandMap(road);
+			const Map = on && (await import('#lib/world/LandMap.svelte')).default;
 			if (!gone) placed = on && Map ? { road, ...on, Map } : null;
 		});
 		return () => {
 			gone = true;
 		};
 	});
-	const wattalp = $derived(placed?.road === view.road ? placed : null);
+	const land = $derived(placed?.road === view.road ? placed : null);
 	/** Metres along the road as ridden, as metres along the map's line. */
-	const onLine = (m: number) =>
-		wattalp?.reverse ? wattalp.line.length - m : m;
+	const onLine = (m: number) => (land?.reverse ? land.line.length - m : m);
 
 	const PIECES = 160;
 	const PAD = 28;
@@ -111,11 +112,12 @@
 	bind:clientWidth={w}
 	bind:clientHeight={h}
 >
-	{#if wattalp}
-		<wattalp.Map
-			line={wattalp.line}
+	{#if land}
+		<land.Map
+			map={land.map}
+			line={land.line}
 			m={onLine(view.m)}
-			reverse={wattalp.reverse}
+			reverse={land.reverse}
 			mates={mates.map((mate) => ({ ...mate, m: onLine(mate.m) }))}
 			you="ink"
 			{toGo}

@@ -1,8 +1,8 @@
 /**
- * The map as one picture (map-render.golden.test.ts writes it): the whole
- * of MAP_BOUNDS drawn once from the world the Col de Berne loop builds, the
- * land in flat areas of the colours the 3D world paints it, as a game's
- * island map is drawn, and the water over it. What a page draws live over the
+ * A land's map as one picture (map-render.golden.test.ts writes it): the
+ * whole of its bounds (designs.ts LANDS) drawn once from the world its
+ * `drawnFrom` loop builds, the land in flat areas of the colours the 3D
+ * world paints it, as a game's island map is drawn, and the water over it. What a page draws live over the
  * picture (the roads, the names, where you are) is worked out here too, as
  * data, in the world's frame: x east, z south (−north). Node and browser
  * alike: no I/O here, the test writes the files.
@@ -11,22 +11,18 @@ import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
 import { Biome } from './biome';
 import { designedLine, roundaboutsOf, sceneOf } from './designed';
-import { DESIGNS, MAP_BOUNDS, MAP_NAME } from './designs';
+import { DESIGNS, type Bounds, type Land } from './designs';
 import { CHUNK_M, FINE_M } from './place/lattice';
 import { villageSites } from './props/scatter';
 import { makeGround } from './terrain/ground';
 import type { World } from './world';
 
-/** Metres a pixel of the picture covers. */
-export const MAP_MPP = 10;
 /** Metres between the ground's vertices the picture is drawn from: the fine ground, so an edge of snow or rock is no 40 m staircase. */
 const GROUND_M = FINE_M;
-/** The loops drawn as the map's main roads, by design id. */
-export const MAP_LOOPS = DESIGNS.filter((d) => d.others).map((d) => d.id);
 
 export type MapData = {
 	name: string;
-	bounds: typeof MAP_BOUNDS;
+	bounds: Bounds;
 	/** The picture: its pixels and the metres each covers. */
 	image: { w: number; h: number; mpp: number };
 	/** Every loop id the picture's roads are. */
@@ -46,7 +42,9 @@ export type MapData = {
 	/** Each roundabout's centre: the page draws a ring there as a map's symbol, bigger than the 18 m ring itself. */
 	rings: { x: number; z: number }[];
 	/** The font sizes, in the map's metres, the names were placed for. */
-	type: typeof MAP_TYPE;
+	type: { village: number; pass: number };
+	/** How big the page draws its names, marks and scale bar against Wattalp's (Land.scale): 1 where not given. */
+	scale?: number;
 };
 
 export type Label = {
@@ -158,10 +156,12 @@ function strokeLine(
 export function renderLand(
 	world: World,
 	colours: Record<string, [number, number, number]>,
+	land: Land,
 ): { rgb: Uint8Array; w: number; h: number } {
-	const { west, east, south, north } = MAP_BOUNDS;
-	const w = Math.round((east - west) / MAP_MPP);
-	const h = Math.round((north - south) / MAP_MPP);
+	const { west, east, south, north } = land.bounds;
+	const mpp = land.mpp;
+	const w = Math.round((east - west) / mpp);
+	const h = Math.round((north - south) / mpp);
 	const c = (t: string) => colours[`world-px-${t}`];
 	// The covers the map paints, each a flat colour.
 	const COVERS = [
@@ -256,8 +256,8 @@ export function renderLand(
 	};
 
 	const toPx = (x: number, z: number): [number, number] => [
-		(x - west) / MAP_MPP,
-		(z - z0) / MAP_MPP,
+		(x - west) / mpp,
+		(z - z0) / mpp,
 	];
 	// The water: lakes and rivers filled, streams a line at least 1.6 px wide.
 	const wet = new Float32Array(w * h);
@@ -279,11 +279,11 @@ export function renderLand(
 			mid.push(toPx((ax + bx) / 2, (az + bz) / 2));
 			wide = Math.max(wide, Math.hypot(ax - bx, az - bz));
 		}
-		strokeLine(flowing, w, h, mid, Math.max(1.6, wide / MAP_MPP));
+		strokeLine(flowing, w, h, mid, Math.max(1.6, wide / mpp));
 	}
 	// An island is land.
 	for (let k = 0; k < wet.length; k++) wet[k] = Math.max(0, wet[k] - isles[k]);
-	// How far each pixel of a lake or river lies from its shore, in pixels: the shallows are drawn by it.
+	// How far each pixel of a lake or river lies from its shore, in pixels: the shallows are drawn by it, 40 m and 100 m out.
 	const shoreDist = chamfer(wet, w, h);
 
 	const water = c('biome-water');
@@ -299,8 +299,8 @@ export function renderLand(
 	for (let y = 0; y < h; y++)
 		for (let x = 0; x < w; x++) {
 			const k = y * w + x;
-			const fx = (west + (x + 0.5) * MAP_MPP - gx0) / GROUND_M;
-			const fz = (z0 + (y + 0.5) * MAP_MPP - gz0) / GROUND_M;
+			const fx = (west + (x + 0.5) * mpp - gx0) / GROUND_M;
+			const fz = (z0 + (y + 0.5) * mpp - gz0) / GROUND_M;
 			// The strongest cover, its edge with the next one a pixel soft.
 			let first = 0;
 			let second = 0;
@@ -328,9 +328,9 @@ export function renderLand(
 			if (sheet > 0) {
 				const s = shoreDist[k];
 				const body = lerp3(
-					lerp3(water, shoal, 1 - step(10, 11, s)),
+					lerp3(water, shoal, 1 - step(100 / mpp, 110 / mpp, s)),
 					shallow,
-					1 - step(4, 5, s),
+					1 - step(40 / mpp, 50 / mpp, s),
 				);
 				col = lerp3(col, body, sheet);
 			}
@@ -458,22 +458,29 @@ const pathOf = (lines: [number, number][][], close = false) =>
 		)
 		.join('');
 
-/** Rough width of a name in metres at `size` metres a letter, in capitals spaced as WattalpMap.svelte writes them: for keeping two names apart. */
+/** Rough width of a name in metres at `size` metres a letter, in capitals spaced as LandMap.svelte writes them: for keeping two names apart. */
 const widthOf = (name: string, size: number) => name.length * size * 0.8;
 
-/** Font sizes in the map's metres, as WattalpMap.svelte draws them. */
+/** Font sizes in Wattalp's metres, as LandMap.svelte draws them: a land's are these times its scale. */
 export const MAP_TYPE = { village: 180, pass: 190 } as const;
 
 /**
- * What the page draws over the picture: the roads, the names and where each
- * is written, so no two overlap. `world` is the Col de Berne loop's: its
- * other roads are every road on the map.
+ * What the page draws over a land's picture: the roads, the names and where
+ * each is written, so no two overlap. `world` is the land's `drawnFrom`
+ * loop's: its other roads are every road on the map.
  */
-export function mapData(world: World, route: Route): MapData {
-	const { west, east, south, north } = MAP_BOUNDS;
-	const loops = MAP_LOOPS.map((id) =>
+export function mapData(world: World, route: Route, land: Land): MapData {
+	const { west, east, south, north } = land.bounds;
+	const loops = land.loops.map((id) =>
 		designedLine(DESIGNS.find((d) => d.id === id)!),
 	);
+	const type =
+		land.scale === 1
+			? MAP_TYPE
+			: {
+					village: Math.round(MAP_TYPE.village * land.scale),
+					pass: Math.round(MAP_TYPE.pass * land.scale),
+				};
 	const spurs = world.sides.filter(
 		(s) => s.route.name === 'spur' && !s.route.gravel,
 	);
@@ -503,16 +510,18 @@ export function mapData(world: World, route: Route): MapData {
 		route,
 		loops,
 		[...spurs, ...lanes].map((s) => s.route),
+		land,
+		type,
 	);
 	return {
-		name: MAP_NAME,
-		bounds: MAP_BOUNDS,
+		name: land.name,
+		bounds: land.bounds,
 		image: {
-			w: Math.round((east - west) / MAP_MPP),
-			h: Math.round((north - south) / MAP_MPP),
-			mpp: MAP_MPP,
+			w: Math.round((east - west) / land.mpp),
+			h: Math.round((north - south) / land.mpp),
+			mpp: land.mpp,
 		},
-		loops: MAP_LOOPS,
+		loops: [...land.loops],
 		roads: {
 			loops: pathOf(
 				loops.map((l) => pointsOf(l, 0, l.length, 6)),
@@ -529,7 +538,8 @@ export function mapData(world: World, route: Route): MapData {
 			x: Math.round(r.x),
 			z: Math.round(r.z),
 		})),
-		type: MAP_TYPE,
+		type,
+		...(land.scale !== 1 && { scale: land.scale }),
 	};
 }
 
@@ -552,30 +562,35 @@ function placeLabels(
 	route: Route,
 	loops: Route[],
 	spurs: Route[],
+	land: Land,
+	type: MapData['type'],
 ): Label[] {
 	// Every road every 40 m: a name is written beside a road, not over it.
 	const roadPts = [...loops, ...spurs].flatMap((r) =>
 		pointsOf(r, 0, r.length, 40),
 	);
-	const { west, east, south, north } = MAP_BOUNDS;
+	const { west, east, south, north } = land.bounds;
+	// The page's marks are drawn this many times Wattalp's size, and kept clear of at that size.
+	const k = land.scale;
 	const taken: Box[] = [];
-	// The map's name's corner, the north arrow's and the scale bar's: no name there.
-	taken.push([west, -north, west + 2900, -north + 900]);
-	taken.push([east - 800, -north, east, -north + 1150]);
-	taken.push([west, -south - 700, west + 2700, -south]);
+	// The map's name's corner (Wattalp's seven letters 2,900 m wide), the north arrow's and the scale bar's: no name there.
+	const named = 2900 + 380 * (land.name.length - 7);
+	taken.push([west, -north, west + named * k, -north + 900 * k]);
+	taken.push([east - 800 * k, -north, east, -north + 1150 * k]);
+	taken.push([west, -south - 700 * k, west + 2700 * k, -south]);
 	// And none over a roundabout's ring.
 	for (const r of roundaboutsOf(route.scene))
-		taken.push([r.x - 130, r.z - 130, r.x + 130, r.z + 130]);
-	// Nor over the start's flag, planted north of each loop's start (WattalpMap.svelte).
+		taken.push([r.x - 130 * k, r.z - 130 * k, r.x + 130 * k, r.z + 130 * k]);
+	// Nor over the start's flag, planted north of each loop's start (LandMap.svelte).
 	for (const l of loops) {
 		const p = at(l, 0);
-		taken.push([p.x - 60, p.z - 490, p.x + 280, p.z + 60]);
+		taken.push([p.x - 60 * k, p.z - 490 * k, p.x + 280 * k, p.z + 60 * k]);
 	}
 	const inside = (b: Box) =>
-		b[0] > west + 80 &&
-		b[2] < east - 80 &&
-		b[1] > -north + 80 &&
-		b[3] < -south - 80;
+		b[0] > west + 80 * k &&
+		b[2] < east - 80 * k &&
+		b[1] > -north + 80 * k &&
+		b[3] < -south - 80 * k;
 	const out: Label[] = [];
 	const place = (
 		base: Omit<Label, 'tx' | 'tz' | 'anchor'>,
@@ -584,6 +599,7 @@ function placeLabels(
 	) => {
 		const wide = widthOf(base.name, size);
 		const tall = size * 1.05;
+		const pad = 20 * k;
 		const tries: [number, number, Label['anchor']][] = [
 			[base.x + gap, base.z + size * 0.35, 'start'],
 			[base.x - gap, base.z + size * 0.35, 'end'],
@@ -597,10 +613,10 @@ function placeLabels(
 		const boxOf = ([tx, tz, a]: (typeof tries)[number]): Box => {
 			const x0 = a === 'start' ? tx : a === 'end' ? tx - wide : tx - wide / 2;
 			return [
-				x0 - 20,
+				x0 - pad,
 				tz - size * 0.85,
-				x0 + wide + 20,
-				tz - size * 0.85 + tall + 10,
+				x0 + wide + pad,
+				tz - size * 0.85 + tall + pad / 2,
 			];
 		};
 		const mark: Box = [
@@ -633,7 +649,7 @@ function placeLabels(
 	};
 
 	// The passes, at their road's highest point near where the scene names them.
-	const passes = sceneOf(route.scene)!.names.passes.map((p) => {
+	const passes = (sceneOf(route.scene)?.names.passes ?? []).map((p) => {
 		let top = { x: p.x, z: p.z, ele: world.groundAt(p.x, p.z) };
 		let best = Infinity;
 		for (const l of loops)
@@ -649,7 +665,7 @@ function placeLabels(
 	});
 	// Marks first: no name over a marker.
 	for (const p of passes)
-		taken.push([p.x - 100, p.z - 110, p.x + 100, p.z + 80]);
+		taken.push([p.x - 100 * k, p.z - 110 * k, p.x + 100 * k, p.z + 80 * k]);
 	for (const p of passes)
 		place(
 			{
@@ -658,22 +674,22 @@ function placeLabels(
 				x: Math.round(p.x),
 				z: Math.round(p.z),
 			},
-			MAP_TYPE.pass,
-			130,
+			type.pass,
+			130 * k,
 		);
 
-	for (const v of villagesOf(world, route))
+	for (const v of villagesOf(world, route, land.bounds))
 		place(
 			{ kind: 'village', name: v.name, x: Math.round(v.x), z: Math.round(v.z) },
-			MAP_TYPE.village,
-			110,
+			type.village,
+			110 * k,
 		);
 
 	return out;
 }
 
 /** The villages where they stand: the sites the world's props are built round, each by its name. */
-function villagesOf(world: World, route: Route) {
+function villagesOf(world: World, route: Route, bounds: Bounds) {
 	const ground = makeGround(world.roads, {
 		salt: world.salt,
 		scene: sceneOf(route.scene),
@@ -684,7 +700,7 @@ function villagesOf(world: World, route: Route) {
 		heightAt: world.heightAt,
 		biomeAt: world.biomeAt,
 	});
-	const { west, east, south, north } = MAP_BOUNDS;
+	const { west, east, south, north } = bounds;
 	return sites.filter(
 		(v) => v.x > west && v.x < east && v.z > -north && v.z < -south,
 	);
