@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type * as THREE from 'three';
 import type { Route } from '#lib/road/route.ts';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
-import type { Water } from './designed';
+import { wetWithin, type Water } from './designed';
+import { landOf } from './designs';
 import { routeOfRoad } from './road-route';
 import { generate, type World } from './world';
 import {
@@ -208,4 +209,125 @@ describe('the water of a designed road', () => {
 		for (let i = 0; i < pos.count; i += 7)
 			expect(world.clearOf(pos.getX(i), pos.getZ(i), FORMATION + 1)).toBe(true);
 	});
+});
+
+/**
+ * Every stream and river on both lands, from its source down: unbroken to
+ * the water it feeds or off the map, the drawn ground never standing over it,
+ * and nothing standing in it.
+ */
+describe.each(['urnsee', 'valley'])('the water of %s’s land', (id) => {
+	let world: World;
+	let route: Route;
+	beforeAll(async () => {
+		const road = (await homeRoute(HOME_ROADS.find((r) => r.id === id)!)).road;
+		route = routeOfRoad(road);
+		world = generate(route);
+	}, BUILD_MS);
+
+	type Line = readonly (readonly [number, number])[];
+	/** A stream's centre at cross-section i, and its half width there. */
+	const mid = (w: Water, i: number) => {
+		const o = w.outline;
+		const [l, r] = [o[i], o[o.length - 1 - i]];
+		return {
+			x: (l[0] + r[0]) / 2,
+			z: (l[1] + r[1]) / 2,
+			half: Math.hypot(l[0] - r[0], l[1] - r[1]) / 2,
+		};
+	};
+	/** Metres from (x, z) to a line. */
+	const offLine = (pts: Line, x: number, z: number) => {
+		let best = Infinity;
+		for (let i = 0; i + 1 < pts.length; i++) {
+			const [a, b] = [pts[i], pts[i + 1]];
+			const sx = b[0] - a[0];
+			const sz = b[1] - a[1];
+			const t = Math.min(
+				1,
+				Math.max(
+					0,
+					((x - a[0]) * sx + (z - a[1]) * sz) / (sx * sx + sz * sz || 1),
+				),
+			);
+			best = Math.min(best, Math.hypot(a[0] + sx * t - x, a[1] + sz * t - z));
+		}
+		return best;
+	};
+	const inside = (ring: Line, x: number, z: number) => {
+		let k = false;
+		for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+			const [xi, zi] = ring[i];
+			const [xj, zj] = ring[j];
+			if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi)
+				k = !k;
+		}
+		return k;
+	};
+	/** Whether (x, z) lies in water `w`. */
+	const isIn = (w: Water, x: number, z: number) => {
+		if (w.run) {
+			const line = w.run.levels.map(
+				(_, i) => [mid(w, i).x, mid(w, i).z] as const,
+			);
+			return offLine(line, x, z) <= mid(w, 0).half + 0.5;
+		}
+		if (w.course) return offLine(w.course, x, z) <= mid(w, 0).half + 0.5;
+		return (
+			inside(w.outline, x, z) && !(w.islands ?? []).some((i) => inside(i, x, z))
+		);
+	};
+
+	it('runs every stream into the water it feeds, or off the map', () => {
+		const { west, east, south, north } = landOf(id)!.bounds;
+		const streams = world.waters.filter((w) => w.run);
+		expect(streams.length).toBeGreaterThan(id === 'valley' ? 2 : 12);
+		const short: string[] = [];
+		for (const w of streams) {
+			const { x, z } = mid(w, w.run!.levels.length - 1);
+			const [mx, my] = [x, -z];
+			if (Math.min(mx - west, east - mx, my - south, north - my) < 30) continue;
+			if (!world.waters.some((o) => o !== w && isIn(o, x, z)))
+				short.push(`${Math.round(mx)}, ${Math.round(my)}`);
+		}
+		expect(short, 'streams ending short of any water').toEqual([]);
+	});
+
+	it('draws no ground over a stream from its source to its mouth, under its bridges too', () => {
+		const gaps: string[] = [];
+		for (const w of world.waters.filter((v) => v.run)) {
+			const levels = w.run!.levels;
+			levels.forEach((level, i) => {
+				const { x, z } = mid(w, i);
+				const over = world.groundAt(x, z) - level;
+				if (over > 0.05)
+					gaps.push(
+						`${Math.round(x)}, ${Math.round(-z)}: ${over.toFixed(2)} m`,
+					);
+			});
+		}
+		expect(gaps, 'ground over running water').toEqual([]);
+	});
+
+	it(
+		'stands nothing in the water: no tree, bush, cow or building',
+		async () => {
+			const { roadsidePlacer, BLOCK_M, ART } = await import('./roadside-place');
+			const wet: string[] = [];
+			const stood = world.everything;
+			for (const p of [...stood.props, ...stood.pieces])
+				if (wetWithin(world.waterAt, p.x, p.z, 0))
+					wet.push(`${p.kind} at ${Math.round(p.x)}, ${Math.round(-p.z)}`);
+			const placer = roadsidePlacer(route, world);
+			for (let b = 0; b < Math.ceil(route.length / BLOCK_M); b++)
+				for (const s of placer.spots(b))
+					if (wetWithin(world.waterAt, s.x, s.z, 0))
+						wet.push(
+							`${ART[s.art].name} at ${Math.round(s.x)}, ${Math.round(-s.z)}`,
+						);
+			expect(stood.props.length).toBeGreaterThan(100);
+			expect(wet, 'things standing in the water').toEqual([]);
+		},
+		BUILD_MS,
+	);
 });

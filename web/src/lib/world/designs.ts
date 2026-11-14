@@ -628,7 +628,8 @@ const LAND: Feature[] = [
 	{
 		kind: 'stream',
 		course: [
-			[-2400, 2950],
+			// Its spring below the lane's end, not under the bank it stands on.
+			[-2340, 2935],
 			[-1800, 2800],
 			[-1300, 2500],
 			[-900, 2380],

@@ -54,6 +54,7 @@ import {
 	roundaboutsOf,
 	sceneOf,
 	type Water,
+	wetWithin,
 } from './designed';
 import { offRoad, sideRoads, type Mouth, type SideRoad } from './side-roads';
 import { JOINED, JOINS } from './crossings';
@@ -463,7 +464,8 @@ export function generate(
 		undefined,
 		// Nor under a gallery's roof.
 		scene &&
-			((x, z, reach) => scene.waterAt(x, z) !== null || roofedAt(x, z, reach)),
+			((x, z, reach) =>
+				wetWithin(scene.waterAt, x, z, reach) || roofedAt(x, z, reach)),
 		scene && ((x, z, reach) => roofedAt(x, z, reach)),
 	);
 	let all: Stood | null = null;
@@ -859,7 +861,7 @@ export function spansAlong(
 }
 
 /** A stream's bridge (a culvert's, where none carries the road already): its deck this far over the water at the least, and as long as the water is wide and this much more each side, past a road's formation and the fill's fall to the bank. */
-const CULVERT = { over: 1, beyond: FORMATION + 2.5 };
+const CULVERT = { over: 0.5, beyond: FORMATION + 2.5 };
 
 /**
  * Where a stream runs under the road and the road is not carried over it
@@ -938,7 +940,9 @@ export function culvertsOf(
 				const u = (rx * dz - rz * dx) / den;
 				if (t < 0 || t > 1 || u < 0 || u > 1) continue;
 				const ele = rows[k].ele + (rows[k + 1].ele - rows[k].ele) * t;
-				if (ele - run.levels[i] < CULVERT.over) continue;
+				// The water's level where it passes under, not at the cross-section above: a falling stream drops a metre and more in one.
+				const level = run.levels[i] + (run.levels[i + 1] - run.levels[i]) * u;
+				if (ele - level < CULVERT.over) continue;
 				const m = (k + t) * ROW_M;
 				// Square across the road or askew, the water's width along it.
 				const cos =
