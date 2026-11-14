@@ -1130,6 +1130,37 @@ describe('a roundabout', () => {
 		expect(bad.slice(0, 5)).toEqual([]);
 	});
 
+	it('runs each road on from an arm’s far end with no ground between the two', () => {
+		const bad: string[] = [];
+		let joined = 0;
+		for (const ring of rings())
+			for (const arm of ring.arms) {
+				const r = arm.route;
+				const last = r.x.length - 1;
+				const end = { x: r.x[last], z: r.z[last] };
+				for (const s of world.sides) {
+					if (s.square) continue;
+					const n = s.route.x.length - 1;
+					for (const k of [0, n]) {
+						const gap = Math.hypot(s.route.x[k] - end.x, s.route.z[k] - end.z);
+						if (gap > 5) continue;
+						joined++;
+						// Its end at the arm's or a hair under the arm's asphalt, on the arm's line: not short of it.
+						const out =
+							(s.route.x[k] - ring.x) * arm.v[0] +
+							(s.route.z[k] - ring.z) * arm.v[1] -
+							ring.r;
+						if (out > ARM_M + 0.01 || gap > 1)
+							bad.push(
+								`${ring.statue}: ${(out - ARM_M).toFixed(2)} m past the arm's end, ${gap.toFixed(2)} m off it`,
+							);
+					}
+				}
+			}
+		expect(joined).toBeGreaterThan(0);
+		expect(bad).toEqual([]);
+	});
+
 	it('dashes the ring’s edge line across the whole of each mouth', () => {
 		const bad: string[] = [];
 		const line = ROAD_W / 2 - 0.25;
