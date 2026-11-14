@@ -8,7 +8,12 @@
 	import { formatClock } from '#lib/format.ts';
 	import type { RideRecord } from '#lib/history.svelte.ts';
 	import { kmAndClimb } from '#lib/road/profile.ts';
-	import { ridePlace, rideTitle, type ServerRide } from '#lib/ride/list.ts';
+	import {
+		ridePlace,
+		rideRoadName,
+		rideTitle,
+		type ServerRide,
+	} from '#lib/ride/list.ts';
 	import { rideRowMenu } from '#lib/ride/row-menu.ts';
 	import ShareToggle from '#lib/ride/ShareToggle.svelte';
 
@@ -29,6 +34,7 @@
 		open?: () => void;
 	} = $props();
 	const title = $derived(rideTitle(server ?? ride));
+	const roadName = $derived(server && rideRoadName(server));
 	// The whole row is the tap target, its link or its button alike.
 	const overlay =
 		'focus-visible:ring-neon/60 absolute inset-0 rounded-lg focus-visible:ring-2 focus-visible:outline-none';
@@ -82,6 +88,10 @@
 		     it and a narrow row wraps it whole. -->
 		{#if server?.crew}
 			<span class="text-muted text-xs">{ridePlace(server)}</span>
+		{/if}
+		<!-- A workout on a road keeps its own name; the road is said here (#4248). -->
+		{#if roadName}
+			<span class="text-muted truncate text-xs">on {roadName}</span>
 		{/if}
 		<!-- How far a road ride went and what it climbed (#3053): the server's
 		     replay, on a ride that had a road. -->

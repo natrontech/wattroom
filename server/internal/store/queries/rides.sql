@@ -33,7 +33,7 @@ returning id;
 -- no foreign key, so it outlives a crew whose deletion sets the other two null.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title, rides.workout_own_name,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -53,7 +53,7 @@ limit $2;
 -- columns as ListUserRides so one JSON mapping serves both.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title, rides.workout_own_name,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -77,7 +77,7 @@ limit 1;
 -- owns. Same columns as ListUserRides so one JSON mapping serves all three.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title, rides.workout_own_name,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name

@@ -116,7 +116,7 @@ func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID)
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title, rides.workout_own_name,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -154,6 +154,7 @@ type BestUserRideOfWorkoutRow struct {
 	ClimbedM        *int32
 	OnRoad          *bool
 	Title           *string
+	WorkoutOwnName  *string
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -192,6 +193,7 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 		&i.ClimbedM,
 		&i.OnRoad,
 		&i.Title,
+		&i.WorkoutOwnName,
 		&i.ExportState,
 		&i.CrewID,
 		&i.CrewName,
@@ -204,7 +206,7 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 const bestUserRideOnRoad = `-- name: BestUserRideOnRoad :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title, rides.workout_own_name,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -246,6 +248,7 @@ type BestUserRideOnRoadRow struct {
 	ClimbedM        *int32
 	OnRoad          *bool
 	Title           *string
+	WorkoutOwnName  *string
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -283,6 +286,7 @@ func (q *Queries) BestUserRideOnRoad(ctx context.Context, arg BestUserRideOnRoad
 		&i.ClimbedM,
 		&i.OnRoad,
 		&i.Title,
+		&i.WorkoutOwnName,
 		&i.ExportState,
 		&i.CrewID,
 		&i.CrewName,
@@ -1420,7 +1424,7 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksPa
 const listUserRides = `-- name: ListUserRides :many
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
-       rides.distance_m, rides.climbed_m, rides.on_road, rides.title,
+       rides.distance_m, rides.climbed_m, rides.on_road, rides.title, rides.workout_own_name,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -1460,6 +1464,7 @@ type ListUserRidesRow struct {
 	ClimbedM        *int32
 	OnRoad          *bool
 	Title           *string
+	WorkoutOwnName  *string
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -1512,6 +1517,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.ClimbedM,
 			&i.OnRoad,
 			&i.Title,
+			&i.WorkoutOwnName,
 			&i.ExportState,
 			&i.CrewID,
 			&i.CrewName,

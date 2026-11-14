@@ -103,12 +103,16 @@ type rideJSON struct {
 	// The rider's own name for the ride (#4209), on their own reads only:
 	// free text can name any place, so a personal token, which is how an AI
 	// reads (ADR-0017, ADR-0063), never carries it.
-	Title     string  `json:"title,omitempty"`
-	StartedAt string  `json:"startedAt"`
-	Seconds   int     `json:"seconds"`
-	AvgWatts  int     `json:"avgWatts"`
-	Kj        int     `json:"kj"`
-	Execution float64 `json:"execution"`
+	Title string `json:"title,omitempty"`
+	// The workout's own name where the road named the ride (#3055): what the
+	// ride is titled by, the road said beside it. On the account's own reads
+	// only, as the title is.
+	WorkoutOwnName string  `json:"workoutOwnName,omitempty"`
+	StartedAt      string  `json:"startedAt"`
+	Seconds        int     `json:"seconds"`
+	AvgWatts       int     `json:"avgWatts"`
+	Kj             int     `json:"kj"`
+	Execution      float64 `json:"execution"`
 	// #1143: false when the workout prescribed nothing to score, so a client
 	// shows "not scored" rather than a percentage that means nothing.
 	ExecutionScored bool `json:"executionScored"`
@@ -195,6 +199,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		s.nameOwnRoads(r.Context(), user.ID, ids, out)
 		for i, row := range rows {
 			out[i].Title = titleOf(row.Title)
+			out[i].WorkoutOwnName = titleOf(row.WorkoutOwnName)
 		}
 	}
 	body := map[string]any{"rides": out, "more": len(rows) == listPage}
@@ -301,6 +306,7 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 	best := rideJSONOf(row)
 	if !tokens.Bearer(r) {
 		best.Title = titleOf(row.Title)
+		best.WorkoutOwnName = titleOf(row.WorkoutOwnName)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": best})
 }

@@ -55,3 +55,15 @@ func fromLibrary(routeID string) (libraryRoad, bool) {
 	r, ok := library[routeID]
 	return r, ok
 }
+
+// LibraryName says whether name is one of WattRoom's roads' names (#4248):
+// invented, so a ride saved under one may carry it wherever the ride goes,
+// a Strava title and a posted card included, as no rider's route may.
+func LibraryName(name string) bool {
+	for _, r := range library {
+		if r.name == name {
+			return true
+		}
+	}
+	return false
+}

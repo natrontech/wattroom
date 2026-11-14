@@ -1,6 +1,6 @@
 import { api } from '#lib/api.ts';
 import { toasts } from '#lib/toast.svelte.ts';
-import { riddenName, type RideRoad } from './list';
+import { plainTitle, type RideRoad } from './list';
 
 /**
  * Give a finished ride a name of its own (#4209), or "" for what was ridden
@@ -10,7 +10,13 @@ import { riddenName, type RideRoad } from './list';
  * ride re-renders. Returns why it was refused, or null.
  */
 export async function renameRide(
-	ride: { id: string; workoutName: string; road?: RideRoad; title?: string },
+	ride: {
+		id: string;
+		workoutName: string;
+		road?: RideRoad;
+		title?: string;
+		workoutOwnName?: string;
+	},
 	title: string,
 	undoable = true,
 ): Promise<string | null> {
@@ -24,7 +30,7 @@ export async function renameRide(
 	toasts.push(
 		res.data.title
 			? `Renamed to “${res.data.title}”.`
-			: `Named “${riddenName(ride)}” again.`,
+			: `Named “${plainTitle(ride)}” again.`,
 		undoable
 			? {
 					undo: () =>

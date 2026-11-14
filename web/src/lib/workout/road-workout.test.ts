@@ -76,6 +76,15 @@ describe('a road workout (#3499)', () => {
 			steps: [],
 		});
 	});
+
+	it('sends one of WattRoom’s roads up by the id the server names it by (#4248)', () => {
+		const onKette = byReference({
+			name: 'Sweet spot',
+			steps: [],
+			road: { routeId: 'kette', fromM: 0, toM: 20_000 },
+		});
+		expect(onKette.road?.routeId).toBe('7a77b0ad-0007-4000-8000-000000004248');
+	});
 });
 
 describe('the Skyline on a road workout (#3641)', () => {

@@ -137,7 +137,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/vnd.ant.fit")
 	// The activity file keeps what was ridden, not the rider's own name for
 	// it (#4209): it is what Strava and the rest read, and they keep theirs.
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", exportFilename(row.StartedAt.Time, row.WorkoutName)))
+	// A workout ridden over a road is the workout's, as its Strava title is.
+	ridden := row.WorkoutName
+	if row.WorkoutOwnName != nil {
+		ridden = *row.WorkoutOwnName
+	}
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", exportFilename(row.StartedAt.Time, ridden)))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(http.StatusOK)
@@ -151,13 +156,16 @@ type rideDetailJSON struct {
 	WorkoutName string `json:"workoutName"`
 	// The rider's own name for the ride (#4209), what the page titles it
 	// with; absent where they gave none.
-	Title     string  `json:"title,omitempty"`
-	StartedAt string  `json:"startedAt"`
-	Seconds   int     `json:"seconds"`
-	AvgWatts  int     `json:"avgWatts"`
-	NormWatts int     `json:"normWatts"`
-	Kj        int     `json:"kj"`
-	Execution float64 `json:"execution"`
+	Title string `json:"title,omitempty"`
+	// The workout's own name where the road named the ride (#3055): what it
+	// is titled by, the road said beside it.
+	WorkoutOwnName string  `json:"workoutOwnName,omitempty"`
+	StartedAt      string  `json:"startedAt"`
+	Seconds        int     `json:"seconds"`
+	AvgWatts       int     `json:"avgWatts"`
+	NormWatts      int     `json:"normWatts"`
+	Kj             int     `json:"kj"`
+	Execution      float64 `json:"execution"`
 	// #1143: false when the workout prescribed nothing to score, so a client
 	// shows "not scored" rather than a percentage that means nothing.
 	ExecutionScored bool `json:"executionScored"`
@@ -261,8 +269,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 
 	out := rideDetailJSON{
 		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName, Title: titleOf(row.Title),
-		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
-		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts),
+		WorkoutOwnName: titleOf(row.WorkoutOwnName),
+		StartedAt:      row.StartedAt.Time.Format(time.RFC3339),
+		Seconds:        int(row.Seconds), AvgWatts: int(row.AvgWatts),
 		NormWatts: normWatts(row), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Medals:            make([]medalJSON, 0, len(medalRows)),

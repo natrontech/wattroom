@@ -14,6 +14,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/road"
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -140,6 +141,9 @@ func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) o
 	if row.Title != nil && !onRoad && row.RouteKey == nil && (row.OnRoad == nil || !*row.OnRoad) {
 		name = *row.Title
 	}
+	// One of WattRoom's own roads is no place (#4248): its name titles the
+	// poster and is said under a workout, where a rider's route says numbers.
+	library := routes.LibraryName(row.WorkoutName)
 	if onRoad {
 		card.Metres = make([]float64, len(samples))
 		card.Heights = make([]float64, len(samples))
@@ -149,7 +153,9 @@ func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) o
 		// Named by what was ridden, in the generated name's own numbers: a
 		// workout over a 38 km road titled its 13 km poster with the road's
 		// 38 (#4229). The drawing below it is the same metres.
-		name = road.NameOf(ridden(samples))
+		if !library {
+			name = road.NameOf(ridden(samples))
+		}
 		stored, err := s.store.Queries.GetRideRoad(ctx, db.GetRideRoadParams{ID: row.ID, UserID: user.ID})
 		if err != nil {
 			s.log.Warn("ride card road unreadable", "err", err, "ride", store.UUIDString(row.ID))
@@ -163,7 +169,7 @@ func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) o
 		// A free ride's poster is titled as its Strava activity is, by the
 		// length ridden alone, and its tiles say the length and the climb.
 		card.RoadM, card.ClimbM = ridden(samples)
-		if !card.Workout {
+		if !card.Workout && !library {
 			name = road.VirtualRouteRideOf(card.RoadM)
 		}
 	}
@@ -173,7 +179,11 @@ func (s *Service) cardOf(ctx context.Context, user db.User, row db.GetRideRow) o
 	// saved before the column — the road's numbers already are the title.
 	if card.Workout && row.WorkoutOwnName != nil {
 		name = *row.WorkoutOwnName
-		if onRoad {
+		switch {
+		case onRoad && library:
+			lengthM, gainM := ridden(samples)
+			card.RoadLine = road.RouteOf(row.WorkoutName, lengthM, gainM)
+		case onRoad:
 			card.RoadLine = road.VirtualRouteOf(ridden(samples))
 		}
 	}

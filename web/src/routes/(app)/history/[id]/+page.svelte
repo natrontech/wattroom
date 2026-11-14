@@ -20,7 +20,7 @@
 	import RecapTiles from '#lib/ride/RecapTiles.svelte';
 	import { recapEyebrow, recapTiles, rideKind } from '#lib/ride/recap-frame.ts';
 	import RideDelivery from '#lib/ride/RideDelivery.svelte';
-	import { rideTitle } from '#lib/ride/list.ts';
+	import { rideRoadName, rideTitle } from '#lib/ride/list.ts';
 	import { rideRowMenu } from '#lib/ride/row-menu.ts';
 	import { contextMenu } from '#lib/context-menu.svelte.ts';
 	import { rideBackLink } from '#lib/back-link.ts';
@@ -56,6 +56,8 @@
 		rideBackLink(page.url.searchParams.get('back'), ride?.road),
 	);
 	const title = $derived(ride ? rideTitle(ride) : null);
+	// A workout on a road is titled by the workout; the road is said under it (#4248).
+	const roadName = $derived(ride ? rideRoadName(ride) : undefined);
 	// The rename box (#4209), opened from the header or the ride's menu.
 	let renaming = $state(false);
 	let error = $state<string | null>(null);
@@ -244,6 +246,7 @@
 						dateStyle: 'medium',
 						timeStyle: 'short',
 					})}
+					{#if roadName}· on {roadName}{/if}
 					<!-- The crew is the link (#2457), the channel the words. The
 					     eyebrow names the crew; a crew the rider left is not
 					     linked, its page is not theirs to open (#2630). -->

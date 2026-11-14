@@ -1,6 +1,7 @@
 import { zoneOfSegment } from '#lib/components/zones.ts';
 import { packRoad, unpackRoad, type Road } from '#lib/road/road.ts';
 import type { BandBlock, SkylineView } from '#lib/road/skyline.ts';
+import { homeRoad } from '#lib/ride/home-roads.ts';
 import { base64Of } from './import/route';
 import type { Segment, Workout } from './types';
 
@@ -79,14 +80,20 @@ export function withProfile(
 /**
  * The workout as it goes back up: its road by reference only. The server
  * attaches the reader's cut of the road on read, and refuses one sent back
- * (workout.RoadOf, ADR-0063).
+ * (workout.RoadOf, ADR-0063). One of WattRoom's roads goes up under the id
+ * the server knows it by, so a ride on it is saved under its name (#4248).
  */
 export function byReference(workout: Workout): Workout {
 	if (!workout.road) return workout;
 	const { routeId, fromM, toM, stepEndM } = workout.road;
 	return {
 		...workout,
-		road: { routeId, fromM, toM, ...(stepEndM && { stepEndM }) },
+		road: {
+			routeId: homeRoad(routeId)?.routeId ?? routeId,
+			fromM,
+			toM,
+			...(stepEndM && { stepEndM }),
+		},
 	};
 }
 

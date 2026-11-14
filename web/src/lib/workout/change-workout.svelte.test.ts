@@ -88,7 +88,11 @@ describe('a workout changed mid-ride', () => {
 		const saved = JSON.parse(upload.workoutJson) as Workout;
 		// Each workout as far as it was ridden: the saved one ends with the ride.
 		expect(durationSeconds(saved)).toBe(clocks.at(-1)! + 1);
-		expect(saved.road).toMatchObject({ routeId: 'intro', fromM: 0 });
+		// WattRoom's road goes up by the id the server names it by (#4248).
+		expect(saved.road).toMatchObject({
+			routeId: '7a77b0ad-0001-4000-8000-000000004248',
+			fromM: 0,
+		});
 		expect(saved.road?.stepEndM).toBeUndefined();
 	});
 
