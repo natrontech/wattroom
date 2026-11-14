@@ -278,6 +278,35 @@ function offLine(
 	return Math.sqrt(best);
 }
 
+/** Metres of bank a thing keeps off the water past its own reach. */
+export const BANK_M = 1;
+
+/**
+ * Whether any water lies within `reach` of (x, z), and a bank's width more:
+ * asked at the middle and round a ring there, so a tree's crown never hangs
+ * over a 7 m stream its trunk stands beside.
+ */
+export function wetWithin(
+	waterAt: (x: number, z: number) => number | null,
+	x: number,
+	z: number,
+	reach: number,
+): boolean {
+	if (waterAt(x, z) !== null) return true;
+	const r = reach + BANK_M;
+	// Eight round it, and as many again half way in where the ring is wider than a stream.
+	for (const k of r > 3 ? [r, r / 2] : [r])
+		for (let a = 0; a < 8; a++)
+			if (
+				waterAt(
+					x + k * Math.cos((a * Math.PI) / 4),
+					z + k * Math.sin((a * Math.PI) / 4),
+				) !== null
+			)
+				return true;
+	return false;
+}
+
 /** Whether (x, z) lies inside a closed outline: a ray east crosses it an odd number of times. */
 function inside(pts: readonly [number, number][], x: number, z: number) {
 	if (pts.length < INSIDE_CELLS_FROM) return crossesOdd(pts, x, z);
@@ -358,6 +387,10 @@ const STREAM_STEP_M = 10;
 /** A stream's bed lies this far under the land it runs down, and its water this far over its bed. */
 const STREAM_CUT_M = 1.4;
 const STREAM_DEEP_M = 0.6;
+/** Metres past its last drawn spot a stream runs on to meet the water it feeds. */
+const STREAM_ON_M = 400;
+/** Cross-sections over which a stream falls to the water it runs into. */
+const STREAM_MOUTH = 3;
 /** Metres past its banks the ground is levelled to its bed: a terrain vertex stands every 10 m, and one at the least must stand in it. */
 const SWALE_M = 9;
 /** Past the swale its gully's sides rise no steeper than this. */
@@ -419,8 +452,26 @@ function stream(
 	standing: (x: number, z: number) => number | null,
 ): Part | null {
 	const all = stepped(rounded(f.course.map(world), false), STREAM_STEP_M);
-	// To the first standing water: a stream ends in its lake.
-	const end = all.findIndex((p, i) => i > 0 && standing(p[0], p[1]) !== null);
+	const wet = (p: readonly [number, number]) => standing(p[0], p[1]) !== null;
+	// Drawn short of the water it runs into, it runs on the way it was going until it meets it: never a dry gap at its mouth.
+	if (all.length > 1 && !all.some((p, i) => i > 0 && wet(p))) {
+		const [a, b] = all.slice(-2);
+		const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+		const on: [number, number][] = [];
+		for (let s = STREAM_STEP_M; s <= STREAM_ON_M; s += STREAM_STEP_M) {
+			const p: [number, number] = [
+				b[0] + ((b[0] - a[0]) / len) * s,
+				b[1] + ((b[1] - a[1]) / len) * s,
+			];
+			on.push(p);
+			if (wet(p)) {
+				all.push(...on);
+				break;
+			}
+		}
+	}
+	// To the first standing water: a stream ends in its lake, or in the river it feeds.
+	const end = all.findIndex((p, i) => i > 0 && wet(p));
 	const course = end < 0 ? all : all.slice(0, end + 1);
 	if (course.length < 3) return null;
 	const n = course.length;
@@ -438,8 +489,16 @@ function stream(
 	);
 	// And never lower than the water it runs into: there it would have ponded.
 	const into = end < 0 ? null : standing(course[n - 1][0], course[n - 1][1]);
-	if (into !== null)
+	if (into !== null) {
 		for (let i = 0; i < n; i++) levels[i] = Math.max(levels[i], into);
+		// And down to it over its last stretch, where it meets it from above: a valley's river lies in its own cut, under the land a stream comes down.
+		const top = levels[Math.max(0, n - 1 - STREAM_MOUTH)];
+		for (let k = 0; k < Math.min(n, STREAM_MOUTH); k++)
+			levels[n - 1 - k] = Math.min(
+				levels[n - 1 - k],
+				into + ((top - into) * k) / STREAM_MOUTH,
+			);
+	}
 	const foam = levels.map((_, i) => {
 		const a = Math.max(0, i - 1);
 		const b = Math.min(n - 1, i + 1);
@@ -844,9 +903,21 @@ function build(d: Designed): Built {
 				if (streams.length === 0) return dry;
 				let scene = laid.get(key);
 				if (scene) return scene;
-				const run = streams.flatMap(
-					(f) => stream(f, world, ground, dry.waterAt) ?? [],
-				);
+				// In order: one drawn after a valley's river ends in it, as in a lake.
+				const run: Part[] = [];
+				const standing = (x: number, z: number) => {
+					const lake = dry.waterAt(x, z);
+					if (lake !== null) return lake;
+					for (const p of run) {
+						const w = p.waterAt!(x, z);
+						if (w !== null) return w;
+					}
+					return null;
+				};
+				for (const f of streams) {
+					const p = stream(f, world, ground, standing);
+					if (p) run.push(p);
+				}
 				// The streams are cut into the ground they were laid on, and the standing water they run into is asked first.
 				const whole = sceneFrom(
 					[...parts, ...run],

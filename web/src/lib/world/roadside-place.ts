@@ -13,6 +13,7 @@
 import { at, leftOf } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
 import { Biome } from './biome';
+import { wetWithin } from './designed';
 import { EXAG, yOf } from './geometry';
 import { kitSpec, PIECE_MODELS, PROP_KINDS, type KitKind } from './props/kit';
 import { tileOf } from './props/tiles';
@@ -322,6 +323,8 @@ export function roadsidePlacer(route: Route, world: World) {
 				(name === 'spruce' || name === 'leafy')
 			)
 				return false;
+			// Its foot on land and its crown over it: none leaning out over a stream it stands beside.
+			if (wetWithin(world.waterAt, c.x, c.z, reach(c.art))) return false;
 			if (!world.clearOf(c.x, c.z, FORMATION + reach(c.art))) return false;
 			// Nothing grows under a gallery's roof, nor near enough to reach through its wall or in between its pillars.
 			if (world.roofedAt?.(c.x, c.z, reach(c.art))) return false;

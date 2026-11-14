@@ -31,6 +31,8 @@ const MERGE_DEEP_M = 1;
 /** A river's flow, metres a second; a stream's from its fall. */
 const RIVER_MPS = 1.1;
 const STREAM_MPS = [1.6, 9] as const;
+/** Metres of a ripple on running water, slow water's and white water's: short, so none reads as a painted line. */
+const STREAK_M = [2.6, 1.6] as const;
 /** A stream's water at its middle, metres: its foam line hugs its banks. */
 const STREAM_MID_M = 1.1;
 
@@ -625,21 +627,26 @@ export function waterMaterial(
 				float line = 1.0 - smoothstep(lap - fo, lap + fo, out_);
 				float near = 1.0 - smoothstep(220.0, 320.0, dist);
 				if (speed > 0.0) {
-					// Running water: streaks in lanes, moving down its course; white where it falls, its streaks darker.
-					float lane = floor(vFlow.y / 1.6);
-					float inLane = abs(fract(vFlow.y / 1.6) - 0.5);
+					// Running water: short ripples drifting down its course, never paint in lanes. Each wavers across it, sits off its row by its own amount and tapers to its ends; white where it falls.
 					float white = smoothstep(0.3, 0.7, vFoam);
-					// Slow water: a few long thin streaks; white water: short ones, many, fast.
-					float len = mix(9.0, 3.0, white);
-					float q = (vFlow.x - uTime * speed) / len + h21(vec2(lane, 7.0)) * 9.0;
-					float k = h21(vec2(lane, floor(q)));
-					float dash = step(mix(0.8, 0.45, white), k) * step(fract(q), mix(0.45, 0.6, white)) * step(inLane, mix(0.12, 0.3, white)) * near;
+					float s = vFlow.x - uTime * speed;
+					float across = vFlow.y + 0.45 * sin(s * 0.7 + vFlow.y * 1.9) + 0.25 * sin(s * 1.9 - vFlow.y);
+					float row = floor(across / 1.3);
+					float len = mix(${STREAK_M[0].toFixed(2)}, ${STREAK_M[1].toFixed(2)}, white);
+					float q = s / len + h21(vec2(row, 7.0)) * 9.0;
+					float k = h21(vec2(row, floor(q)));
+					float f = fract(q) / mix(0.55, 0.7, white);
+					float off = (h21(vec2(floor(q), row + 3.0)) - 0.5) * 0.6;
+					float thick = mix(0.09, 0.2, white) * sin(3.1416 * clamp(f, 0.0, 1.0)) * step(f, 1.0);
+					float inRow = abs(fract(across / 1.3) - 0.5 - off);
+					float dash = step(mix(0.62, 0.4, white), k) * (1.0 - smoothstep(thick * 0.4, thick, inRow)) * near;
 					// White water in cascades: a white lip every few metres down it, pale water between.
 					float at = fract((vFlow.x + 1.2 * sin(vFlow.y * 1.3)) / 7.0);
 					float lip = smoothstep(0.0, 0.06, at) * (1.0 - smoothstep(0.32, 0.4, at));
 					lip = mix(0.5, lip, 1.0 - smoothstep(300.0, 600.0, dist));
 					c = mix(c, mix(uShallow, uFoam, 0.4 + 0.55 * lip), white);
-					c = mix(c, white > 0.5 ? uFoam : mix(c, uFoam, 0.6), dash);
+					// Slow water's ripples a shade paler than it, white water's white.
+					c = mix(c, mix(mix(c, uShallow, 0.55), uFoam, 0.25 + 0.6 * white), dash);
 				}
 				c = mix(c, uFoam, line);
 				// Lit as the ground is, its face flat: the room's four steps in Diorama 3D.
