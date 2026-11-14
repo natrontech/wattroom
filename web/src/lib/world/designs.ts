@@ -575,14 +575,16 @@ const LAND: Feature[] = [
 			[-7250, 1000],
 		],
 	},
+	// North of the hollow under the range, never across it: there the land lies 100 m under the river, and the stream stood on a wall over it.
 	{
 		kind: 'stream',
 		course: [
 			[-5200, -3200],
-			[-5800, -2900],
-			[-6400, -2600],
-			[-7000, -2300],
-			[-7300, -2330],
+			[-5700, -2900],
+			[-6100, -2420],
+			[-6450, -1980],
+			[-6800, -1800],
+			[-7130, -1780],
 		],
 	},
 
@@ -792,9 +794,9 @@ const MAP = {
 			'Isenkette',
 			'Urnried',
 		],
-		// The hamlet on the east shore, its harbour where the road comes off the inlet's bridge onto the shore, ahead of a rider all the way over it (the bay's bank hid it from the road); and the Kettental's village.
+		// The hamlet on the east shore, its harbour on its terrace on the shore ahead and to the left of the inlet's bridge, in a rider's sight over the water most of the way over it (the bay's bank hid it from the road, and at the bridge's end it stood half in the bank); and the Kettental's village.
 		hamlets: [
-			{ name: 'Schifftritt', at: [960, 1240], harbour: [870, 3485] },
+			{ name: 'Schifftritt', at: [960, 1240], harbour: [797, 3585] },
 			{ name: 'Nabenwil', at: [-7350, 600] },
 		],
 	},

@@ -402,7 +402,8 @@ export function roadsidePlacer(route: Route, world: World) {
 	/**
 	 * Stands a thing on the ground. A cow stands on the lower of its ends
 	 * across the eye's view, so neither end floats; one on a steeper bank
-	 * than COW_SLOPE_M does not graze there. Anything else stands at its foot.
+	 * than COW_SLOPE_M, whichever way it falls, does not graze there.
+	 * Anything else stands at its foot.
 	 */
 	function onGround(c: Candidate): Spot | null {
 		const h = world.heightAt(c.x, c.z);
@@ -411,7 +412,11 @@ export function roadsidePlacer(route: Route, world: World) {
 			const half = reach(c.art) * 0.8;
 			const a = world.heightAt(c.x + c.lx * half, c.z + c.lz * half);
 			const b = world.heightAt(c.x - c.lx * half, c.z - c.lz * half);
-			if (Math.max(a, b, h) - Math.min(a, b, h) > COW_SLOPE_M) return null;
+			// And toward the eye and away from it: a bank falling away behind it is as steep, if not seen side on.
+			const f = world.heightAt(c.x - c.lz * half, c.z + c.lx * half);
+			const k = world.heightAt(c.x + c.lz * half, c.z - c.lx * half);
+			if (Math.max(a, b, f, k, h) - Math.min(a, b, f, k, h) > COW_SLOPE_M)
+				return null;
 			ground = Math.min(a, b, h);
 		}
 		const e = 0.75;

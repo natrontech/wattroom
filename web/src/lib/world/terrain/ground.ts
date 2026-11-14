@@ -21,6 +21,8 @@ import type { Layout } from '../designed';
 
 const BENCH = 7; // flat verge before a cutting starts — keeps a 10 m mesh off the asphalt
 const CUT = 1.0; // 1:1 cut slope
+/** Metres from a bridge's line within which a stream's swale under it is kept open. */
+const UNDER_DECK_M = 30;
 const FILL = 0.667; // 1.5:1 fill slope
 export const SUBGRADE = 0.45; // ground under the road sits this far below the surface
 export const EARTHWORKS_M = 60;
@@ -201,8 +203,9 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 			noise('ground', DETAIL, x, z) * 7 * smoothstep(15, 120, dist(x, z));
 		return opts.scene!.shape(x, z, h, dist(x, z));
 	}
+	// Keyed by the roads too: the land a stream is laid on rises and falls with the roads it lies near, and laid on another set's (world.ts drape's) it stood on a wall over this one's.
 	const scene = opts.scene?.laid(
-		`${opts.salt}:${opts.origin ?? ''}`,
+		`${opts.salt}:${opts.origin ?? ''}:${given.map((l) => `${l.key}/${l.x.length}/${l.x[0]}/${l.z[0]}`).join(',')}`,
 		unwatered,
 	);
 
@@ -233,7 +236,8 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	 * stacked switchbacks share one slope and a hairpin's inside is one bank.
 	 */
 	function heightAt(x: number, z: number): number {
-		const hit = onGround(index.nearest(x, z, 2));
+		const near = index.nearest(x, z, 2);
+		const hit = onGround(near);
 		const hill = bored(hit);
 		if (hit && hit.d <= FORMATION && !hill) return hit.h - SUBGRADE;
 		let lower = -Infinity;
@@ -269,8 +273,14 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 				hit!.h - SUBGRADE + BORE.cover - CUT * Math.max(0, hit!.d - BORE.top),
 			);
 		if (lower === -Infinity) return ground;
-		if (lower > upper) return (lower + upper) / 2; // two roads disagree: a retaining wall's worth, split
-		return smoothClamp(ground, lower, upper, 1.5);
+		const kept =
+			lower > upper
+				? (lower + upper) / 2 // two roads disagree: a retaining wall's worth, split
+				: smoothClamp(ground, lower, upper, 1.5);
+		// Beside and under a bridge, a stream's swale is left as the stream cut it: the fill stops at the abutments, so its water runs on under the deck with air over it.
+		if (near && !hit && near.d <= UNDER_DECK_M && scene?.channelAt?.(x, z))
+			return Math.min(kept, ground);
+		return kept;
 	}
 
 	/**

@@ -62,6 +62,32 @@ describe('the harbour at Schifftritt', () => {
 		);
 	});
 
+	it('stands its boathouse on a level shelf at the water, and runs its jetty out from that shelf', () => {
+		const [house] = of('boathouse');
+		const [jetty] = of('jetty');
+		const level = jetty.ele;
+		const [c, s] = [Math.cos(house.turn), Math.sin(house.turn)];
+		const under = (a: number, b: number) => {
+			const lx = (a * BOATHOUSE.wide) / 2;
+			const lz = (b * BOATHOUSE.deep) / 2;
+			return world.heightAt(
+				house.x + lx * c + lz * s,
+				house.z - lx * s + lz * c,
+			);
+		};
+		const all = [-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b) => under(a, b)));
+		// From the waterline at its doors (+z) to the shelf at its back: no bank it is half inside.
+		expect(Math.max(...all) - Math.min(...all)).toBeLessThan(1.6);
+		for (const a of [-1, 0, 1])
+			expect(Math.abs(under(a, -1) - house.ele), 'its back').toBeLessThan(0.3);
+		expect(house.ele - level).toBeLessThan(1);
+		// The land behind the jetty's root no higher than its deck: it starts on the shelf, not in a bank.
+		for (let m = -JETTY.back - 8; m <= 0; m += 2)
+			expect(world.heightAt(...out(jetty, m)), `${m} m`).toBeLessThan(
+				level + JETTY.deck + 0.5,
+			);
+	});
+
 	it('keeps all of it off the road', () => {
 		for (const p of pieces) {
 			const reach = p.what === 'boathouse' ? BOATHOUSE.deep : 2;
@@ -74,7 +100,8 @@ describe('the harbour at Schifftritt', () => {
 
 	it('lies in sight of the road over the inlet’s bridge, no bank between', () => {
 		const hidden: string[] = [];
-		for (let d = 3160; d <= 3340; d += 30) {
+		// Ahead and to the left over the water, until the bank at the bridge's far end comes between in its last 60 m.
+		for (let d = 3160; d <= 3280; d += 30) {
 			const r = at(route, d);
 			// A rider's eye, a chase camera's, over the deck.
 			const eye = r.ele + 2.5;

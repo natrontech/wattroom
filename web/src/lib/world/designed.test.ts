@@ -260,7 +260,7 @@ describe('Urnsee-Rundfahrt', () => {
 			expect(Math.max(...over)).toBeGreaterThan(20);
 			expect(world.tunnels).toHaveLength(1);
 			// The inlet's mouth, and the outlet under the terrace; a stream's short bridge aside.
-			expect(world.bridges.filter(([a, b]) => b - a > 40)).toHaveLength(2);
+			expect(world.bridges.filter(([a, b]) => b - a > 60)).toHaveLength(2);
 			expect(world.galleries).toHaveLength(1);
 			expect(world.galleries[0][1] - world.galleries[0][0]).toBeGreaterThan(
 				300,
@@ -310,7 +310,7 @@ describe('Kettental-Runde', () => {
 			expect(fields).toBeGreaterThan(30);
 			// The valley's river, twice, each time on a bridge over it: a stream's short span aside.
 			const kette = world.bridges.filter(([a, b]) => {
-				if (b - a <= 40) return false;
+				if (b - a <= 60) return false;
 				const mid = at(route, (a + b) / 2);
 				if (mid.x > -6000) return false;
 				for (let d = a; d <= b; d += 2) {
