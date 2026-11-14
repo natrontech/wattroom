@@ -153,21 +153,30 @@ const OKLAB = /* glsl */ `
 
 /**
  * Where rock comes through Diorama 3D's snow: where the land's facets (0 to 1)
- * rise over this cut, lower the more a face leans and on a crest. Over gentle
- * ground it stands over every facet, so the snow there is closed: an outcrop
- * on a flat, seen from above, read as a hole down to the stones under it.
+ * rise over this cut, lower the more a face leans past `from` (its up, n.y:
+ * 35°) and on a crest. Up to 35° it stands over every facet, so the snow
+ * there is closed: an outcrop on a flat, seen from above, read as a hole down
+ * to the stones under it, and a road's cut and fill in the snow (1:1.5, 34°)
+ * as stones showing through it. Rock is a crag's, from 45°.
  */
 export const SNOW_ROCK_CUT = {
 	flat: '1.04',
-	lean: '2.4',
+	from: '0.82',
+	lean: '3.4',
 	crest: '0.5',
 } as const;
-/** The lean (|n.xz|) over which a snow face takes the sun's warmth or the shade's lilac: none on a flat, so it is not a patchwork of its faces. */
-export const SNOW_TINT_LEAN = ['0.15', '0.45'] as const;
+/**
+ * The lean (|n.xz|) over which a snow face takes the sun's warmth or the
+ * shade's lilac: none on a flat, so it is not a patchwork of its faces, and
+ * full only on a mountain's wall (44°): a road's cut and fill under it, faces
+ * of 10 to 25° turned every way, read as one sheet, not as pink and lilac
+ * triangles.
+ */
+export const SNOW_TINT_LEAN = ['0.15', '0.7'] as const;
 /** The cut at a face's up (n.y) and crest (0 to 1), as the shader reads it. */
 export const snowRockCut = (up: number, crest = 0) =>
 	+SNOW_ROCK_CUT.flat -
-	(1 - up) * +SNOW_ROCK_CUT.lean -
+	Math.max(0, +SNOW_ROCK_CUT.from - up) * +SNOW_ROCK_CUT.lean -
 	crest * +SNOW_ROCK_CUT.crest;
 
 /**
@@ -235,7 +244,7 @@ export const PIXEL_LAND = /* glsl */ `
 		vec3 tint = mix(vec3(1.0), face > 0.0 ? warm : cool, abs(face) * (face > 0.0 ? 0.16 : 0.3));
 		float near = 1.0 - smoothstep(1200.0, 2000.0, dist);
 		float r = landFacet(pos.xz / 30.0) * 0.72 + landFacet(pos.xz / 11.0 + 17.0) * 0.28;
-		float cut = ${SNOW_ROCK_CUT.flat} - (1.0 - up) * ${SNOW_ROCK_CUT.lean} - crest * ${SNOW_ROCK_CUT.crest};
+		float cut = ${SNOW_ROCK_CUT.flat} - max(${SNOW_ROCK_CUT.from} - up, 0.0) * ${SNOW_ROCK_CUT.lean} - crest * ${SNOW_ROCK_CUT.crest};
 		float fw = fwidth(r) + 1e-4;
 		float rock = max(smoothstep(cut - fw, cut + fw, r) * near, crest * (1.0 - near) * 0.55);
 		float rim = smoothstep(cut - 0.07 - fw, cut - 0.07 + fw, r) * near;
@@ -280,10 +289,11 @@ export const PIXEL_LAND = /* glsl */ `
 		return mix(c, vec3(0.96, 0.95, 0.9), step(0.0, k) * step(pool, 0.7) * (1.0 - smoothstep(35.0, 60.0, dist)));
 	}
 	// Diorama 3D: each cover its own (cover: snow, rock, alpine or dry, bog), flowers in the grass as dots in the world, a hand's width each, near the road.
-	vec3 dioramaLand(vec3 base, vec3 pos, float dist, vec3 n, vec4 cover, float steep, float crest) {
+	// Snow on its own colour (own), not the rock a face from 30° up is painted (base): rock only on a crag from 45°, so a road's cut and fill in the snow is snow.
+	vec3 dioramaLand(vec3 base, vec3 own, vec3 pos, float dist, vec3 n, vec4 cover, float steep, float crest) {
 		float up = n.y;
 		vec3 c = base;
-		if (cover.x > 0.5) return snowLand(c, pos, dist, n, crest);
+		if (cover.x > 0.5) return snowLand(mix(own, mix(uRock, own, 0.18), smoothstep(0.71, 0.5, up)), pos, dist, n, crest);
 		if (cover.y > 0.5 || steep > 0.5) c = rockLand(c, pos, dist, up, cover.y);
 		if (cover.w > 0.5) return moorLand(c, pos, dist);
 		if (cover.z > 0.5) return sparseLand(c, pos, dist);
@@ -393,7 +403,7 @@ export function terrainMaterial(
 				vec3 base = mix(vColor, mix(uRock, vColor, 0.18), steep);
 				// A crest: the ground standing over its neighbours (land.ts shadeOf, carried as vAo), where the wind leaves rock bare.
 				float crest = smoothstep(0.8, 0.97, vAo);
-				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n, vCover, steep, crest);
+				if (uDiorama > 0.5) base = dioramaLand(base, vColor, vPos, dist, n, vCover, steep, crest);
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
@@ -402,7 +412,9 @@ export function terrainMaterial(
 					float lam = dot(n, uFrom) * 0.5 + 0.5; // half-Lambert, from the sun or, once it has set, the zenith
 					if (uBands > 1.5 || uDiorama > 0.5) {
 						float nb = uBands > 1.5 ? uBands : 4.0; // Diorama 3D: the room's four steps, with soft edges
-						float fw = fwidth(lam) * (1.0 + dist / 800.0); // soft band edges, blurred with distance so far facets never crawl
+						// Soft band edges, blurred with distance so far facets never crawl; never sharper than 0.02 of light, or a face lit
+						// right on an edge speckled between two bands, its normal (from screen derivatives) jittering pixel to pixel.
+						float fw = max(fwidth(lam), 0.02) * (1.0 + dist / 800.0);
 						float q = lam * nb;
 						lam = (floor(q) + smoothstep(0.5 - fw * nb, 0.5 + fw * nb, fract(q))) / nb;
 					} else if (uBands > 0.5) lam = 0.72;

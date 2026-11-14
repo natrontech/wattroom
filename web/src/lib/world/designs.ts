@@ -473,7 +473,7 @@ const LAND: Feature[] = [
 	// The west side's mountains, behind the terrace; and over the head of the lake, east of the side valley.
 	peak([-2700, 2300], 750, 850),
 	peak([-2400, 4400], 500, 800),
-	// And between them and the ridge, the high valleys they stand over: the alp's stream runs down one.
+	// And between them and the ridge, the high valleys they stand over.
 	peak([-3500, 3500], -300, 800),
 	peak([-3700, 1100], -320, 900),
 	peak([-4300, -900], -200, 800),
@@ -485,7 +485,7 @@ const LAND: Feature[] = [
 	peak([900, -3900], 180, 800),
 	peak([-1700, -1900], 70, 220, [40, 160]),
 
-	// The alp: its lake at 1,838 m under the ridge, and the stream out of it down to the head of the lake.
+	// The alp: its lake at 1,838 m under the ridge, and a stream off the mountain below it down to the head of the lake.
 	{
 		kind: 'lake',
 		level: 1838,
@@ -503,13 +503,11 @@ const LAND: Feature[] = [
 			[-2300, 6900],
 		],
 	},
+	// Off the mountain's flank down to the head of the lake. The alp's lake, in a basin under a rim 60 m and more over its high valley, drains under the ground: a stream drawn from it cut a trench up to 190 m deep through the mountain's shoulder.
 	{
 		kind: 'stream',
 		course: [
-			[-3380, 6290],
-			[-3100, 5700],
-			[-2600, 5300],
-			[-1900, 5000],
+			[-1430, 4825],
 			[-1100, 4700],
 			[-600, 4350],
 			[-330, 4060],
@@ -557,12 +555,11 @@ const LAND: Feature[] = [
 		plain: { bank: 380, slope: 0.35 },
 		gravel: 15,
 	},
-	// Streams off the ranges into it.
+	// Streams off the ranges into it, each from under the range's last shoulder: one drawn from behind it cut a trench 160 m deep through it.
 	{
 		kind: 'stream',
 		course: [
-			[-5300, 2700],
-			[-5900, 2300],
+			[-6250, 2020],
 			[-6400, 1900],
 			[-6900, 1700],
 			[-7400, 1750],
@@ -599,10 +596,12 @@ const LAND: Feature[] = [
 			[2900, -600],
 			[2930, -1200],
 			[3050, -1650],
-			[2700, -2300],
-			[2200, -2800],
-			[1650, -3000],
-			[1450, -3050],
+			// Square under the valley road, then down the dry valley's low side and over its sill into the river: run on south-west, it cut through the hill between them in a trench 120 m deep.
+			[3000, -1880],
+			[2600, -1930],
+			[2250, -2030],
+			[1950, -1960],
+			[1640, -1880],
 		],
 	},
 	// Off both of the lake's walls, white where they are steep, under the road and into the lake.
@@ -628,7 +627,7 @@ const LAND: Feature[] = [
 	{
 		kind: 'stream',
 		course: [
-			// Its spring below the lane's end, not under the bank it stands on.
+			// Its spring on the terrace's alp, not under the bank of the lane that once climbed to it.
 			[-2340, 2935],
 			[-1800, 2800],
 			[-1300, 2500],
@@ -648,11 +647,10 @@ const LAND: Feature[] = [
 			[25, 4150],
 		],
 	},
-	// Off the hills into the river: under the gorge road.
+	// Off the hills into the river: under the gorge road. From the hills' foot: from behind them it ran level through them.
 	{
 		kind: 'stream',
 		course: [
-			[-3200, -300],
 			[-2300, -600],
 			[-1500, -700],
 			[-900, -600],
@@ -855,40 +853,18 @@ const MAP = {
 			{ x: -7380, y: -5800, ele: 1310, r: 0 },
 			{ x: -7250, y: -6800, ele: 1302, r: 0 },
 		],
-		// Gravel: up the Kettental to its head, and farm tracks across its fields, to its farms and over its river.
-		lane(
-			[-7000, 5450],
-			[-7050, 6150],
-			[-7350, 7050],
-			[-7700, 7800],
-			[-7900, 8300],
-		),
-		lane([-7950, 4000], [-8450, 3900], [-9000, 4250], [-9800, 4450]),
-		lane([-6950, 3060], [-7300, 2950], [-7700, 2850], [-8050, 2650]),
-		lane([-7350, 600], [-6800, 760], [-6300, 1150], [-5850, 1300]),
-		lane([-7350, 600], [-8000, 350], [-8600, 500], [-9800, 250]),
-		lane([-7700, -500], [-8400, -800], [-8950, -1550]),
-		lane([-7500, -3000], [-8200, -3250], [-8750, -3750]),
-		// Forest roads up the valley's sides and off the climb back to the plateau.
-		lane([-7200, -1800], [-6600, -1700], [-6100, -1200], [-5700, -700]),
-		lane([-3500, -3400], [-4100, -3050], [-4800, -2700], [-5400, -2000]),
-		// Over the plateau: south off the gorge road, and north off its way home.
-		lane([-1500, -3100], [-1300, -3800], [-1000, -4600], [-800, -6900]),
-		lane([-1800, -1000], [-2200, -500], [-2900, -200], [-3500, 300]),
+		// Gravel lanes, each ending where the land steepens past what a farm track climbs (designed.test.ts: none steeper than LANE_GRADE): Wattalp's valleys are narrow and their sides steep, and a lane run on drove straight up them, one to the snow under the col.
+		// A forest road into the foot of the Kettental's side.
+		lane([-7200, -1800], [-6880, -1740]),
 		// By the village: out through its fields, and down to its beach.
 		lane([300, -350], [750, -480], [1100, -650]),
 		lane([450, 590], [260, 620], [90, 650]),
-		// A farm lane north off the valley road.
-		lane([1250, -200], [1500, 250], [2000, 600]),
-		// Up from the terrace to its alp, and down to the west headland's shore.
-		lane([-1500, 2100], [-2000, 2400], [-2400, 2900]),
-		lane([-900, 1500], [-600, 1700], [-350, 1850]),
-		// Across the side valley from the Kettental road to the col's, over the delta's stream.
-		lane([-180, 5350], [150, 5450], [500, 5150], [550, 4955]),
-		// Up the north valley's forest, through the dry valley, and on up the alp.
-		lane([1400, 4700], [1600, 5400], [1800, 6200]),
-		lane([2700, -2600], [2500, -3400], [2700, -4300], [2600, -6900]),
-		lane([-3100, 7050], [-3000, 7600], [-2800, 8300]),
+		// Off the terrace towards the west headland's shore, to the farm above the bank.
+		lane([-900, 1500], [-780, 1590]),
+		// Off the Kettental road into the side valley, to the farm by the delta's stream.
+		lane([-180, 5350], [-30, 5400]),
+		// Into the north valley's forest.
+		lane([1400, 4700], [1480, 4990]),
 	],
 	rings: [HUB, HEAD, WEST].map((node) => ({
 		at: [node.x, node.y] as const,
