@@ -529,7 +529,7 @@ const LAND: Feature[] = [
 	peak([-5600, 1600], 520, 900, [120, 600]),
 	peak([-5300, -1500], 380, 800, [120, 600]),
 	peak([-6000, 6600], 420, 700, [120, 600]),
-	// Its river, wide and slow, from the valley's head off south beside the valley road, under it twice: its floor the valley's fields.
+	// Its river, 15 m of water between bars of gravel, from the valley's head off south beside the valley road, under it twice: its floor the valley's fields.
 	{
 		kind: 'stream',
 		course: [
@@ -552,9 +552,10 @@ const LAND: Feature[] = [
 			1532, 1494, 1462, 1435, 1413, 1397, 1383, 1371, 1360, 1347, 1333, 1323,
 			1313, 1292,
 		],
-		width: 26,
+		width: 15,
 		cut: 5,
 		plain: { bank: 380, slope: 0.35 },
+		gravel: 15,
 	},
 	// Streams off the ranges into it.
 	{
@@ -794,7 +795,7 @@ const MAP = {
 		],
 		// The harbour on the east shore, and the Kettental's village.
 		hamlets: [
-			{ name: 'Schifftritt', at: [960, 1240] },
+			{ name: 'Schifftritt', at: [960, 1240], harbour: [860, 1250] },
 			{ name: 'Nabenwil', at: [-7350, 600] },
 		],
 	},

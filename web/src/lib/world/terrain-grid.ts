@@ -17,7 +17,26 @@ export type Grid = {
 	biome: Uint8Array;
 	shade: Float32Array;
 	forest: Float32Array;
+	/**
+	 * The far level's only (one quad a chunk): what grows at BLEND points
+	 * round each vertex, BLEND bytes a vertex, so its colour is the ground's
+	 * round it and not one field's, crop or patch, picked at a point.
+	 */
+	blend?: Uint8Array;
 };
+
+/** Points round a far vertex its cover is blended from, besides its own: a ring half its step out, so a vertex reads the ground of the whole cell round it. */
+export const BLEND = 8;
+const BLEND_AT = [
+	[-0.5, 0],
+	[0.5, 0],
+	[0, -0.5],
+	[0, 0.5],
+	[-0.35, -0.35],
+	[0.35, -0.35],
+	[-0.35, 0.35],
+	[0.35, 0.35],
+] as const;
 
 /** The shade's reach, in metres: hollows darker, crests lighter over about this. */
 const SHADE_M = 3 * FINE_M;
@@ -69,6 +88,8 @@ export function chunkVertices(
 	const biome = new Uint8Array(row * row);
 	const shade = new Float32Array(row * row);
 	const forest = new Float32Array(row * row);
+	// The far level, one quad a chunk: each vertex 160 m from the next, wider than a field or an alp's patch.
+	const blend = step >= CHUNK_M ? new Uint8Array(row * row * BLEND) : undefined;
 	const hasHeight = new Uint8Array(row * row);
 	const hasCover = new Uint8Array(row * row);
 	let known = 0;
@@ -122,6 +143,18 @@ export function chunkVertices(
 		biome[k] = c.biome;
 		forest[k] = c.forest;
 		shade[k] = shadeOf(hk, l, r, u, dn, SHADE_M);
+		// Round a far vertex, at its own height and slope: the land use alone varies, so the points cost no ground.
+		if (blend)
+			BLEND_AT.forEach(([a, b], n) => {
+				blend[k * BLEND + n] = land(
+					x + a * step,
+					z + b * step,
+					hk,
+					(r - l) / (2 * FINE_M),
+					(dn - u) / (2 * FINE_M),
+					Infinity,
+				).biome;
+			});
 		return k;
 	}
 
@@ -146,7 +179,7 @@ export function chunkVertices(
 		/** Every vertex worked out: the chunk's grid. */
 		grid(): Grid {
 			for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) cover(i, j);
-			return { step, row, h, biome, shade, forest };
+			return { step, row, h, biome, shade, forest, ...(blend && { blend }) };
 		},
 	};
 }

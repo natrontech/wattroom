@@ -42,6 +42,7 @@ self.onmessage = (e: MessageEvent<ToWorker | ToGroundWorker>) => {
 				grid.biome.buffer,
 				grid.shade.buffer,
 				grid.forest.buffer,
+				...(grid.blend ? [grid.blend.buffer] : []),
 			]);
 		}
 		return;

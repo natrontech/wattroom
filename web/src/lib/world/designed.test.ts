@@ -308,9 +308,45 @@ describe('Kettental-Runde', () => {
 			const kette = world.bridges.filter(([a, b]) => {
 				if (b - a <= 40) return false;
 				const mid = at(route, (a + b) / 2);
-				return mid.x < -6000 && world.waterAt(mid.x, mid.z) !== null;
+				if (mid.x > -6000) return false;
+				for (let d = a; d <= b; d += 2) {
+					const p = at(route, d);
+					if (world.waterAt(p.x, p.z) !== null) return true;
+				}
+				return false;
 			});
 			expect(kette).toHaveLength(2);
+			// A mountain river, some 15 m of water, not a lowland one: its widest cross-section.
+			const river = world.waters.find(
+				(w) => w.run && w.outline.some(([x]) => x < -7000),
+			)!;
+			const n = river.outline.length;
+			let widest = 0;
+			for (let i = 0; i < n / 2; i++) {
+				const [lx, lz] = river.outline[i];
+				const [rx, rz] = river.outline[n - 1 - i];
+				widest = Math.max(widest, Math.hypot(lx - rx, lz - rz));
+			}
+			expect(widest).toBeLessThan(16);
+			// And seen from each bridge, a bar of gravel on either bank between the water and the fields.
+			for (const [a, b] of kette) {
+				const wet: number[] = [];
+				for (let d = a; d <= b; d += 0.5) {
+					const p = at(route, d);
+					if (world.waterAt(p.x, p.z) !== null) wet.push(d);
+				}
+				for (const [from, by] of [
+					[wet[0], -1],
+					[wet[wet.length - 1], 1],
+				]) {
+					let gravel = 0;
+					for (let e = 0; e <= 30; e += 1) {
+						const p = at(route, from + by * e);
+						if (world.biomeAt(p.x, p.z) === Biome.Rock) gravel++;
+					}
+					expect(gravel, `gravel by the bridge at ${a} m`).toBeGreaterThan(3);
+				}
+			}
 		},
 		2 * BUILD_MS,
 	);

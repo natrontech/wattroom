@@ -53,7 +53,8 @@ export type Water = {
  * scree under a cliff, a valley floor's fields, and a wood where the
  * generator would mow.
  */
-export type Cover = 'moor' | 'dry' | 'alp' | 'scree' | 'fields' | 'wood';
+export type Cover =
+	'moor' | 'dry' | 'alp' | 'scree' | 'fields' | 'wood' | 'gravel';
 /** Where a scene's snow lies from and its trees stand to, metres above sea: the generator's own where not given. */
 export type Climate = { snowline?: number; treeline?: number };
 
@@ -64,7 +65,13 @@ export type PlaceNames = {
 	/** Villages, by the 5 km tile each stands in: sixteen names, so no two tiles within 20 km share one. */
 	villages: readonly string[];
 	/** Hamlets and villages that stand where the map draws them, on the road nearest each, by their own names. */
-	hamlets?: { name: string; x: number; z: number }[];
+	hamlets?: {
+		name: string;
+		x: number;
+		z: number;
+		/** Its harbour's spot on the bank, in the world's frame (harbour.ts). */
+		harbour?: [number, number];
+	}[];
 };
 
 export type Scene = {
@@ -133,6 +140,8 @@ export type Feature =
 			levels?: readonly number[];
 			/** Its floor: within `bank` metres of its banks the land lies flat, `cut` less 1.5 m over its water, and rises from there no steeper than `slope`. A wide valley's fields. */
 			plain?: { bank: number; slope: number };
+			/** Metres of gravel either side of its water, the bars a mountain river lays down: none where not given. */
+			gravel?: number;
 	  }
 	| {
 			kind: 'land';
@@ -169,7 +178,8 @@ export type Designed = {
 	names?: {
 		passes: readonly { name: string; at: Spot }[];
 		villages: readonly string[];
-		hamlets?: readonly { name: string; at: Spot }[];
+		/** A hamlet's name where it stands, and a harbour's spot on its lake's bank: a jetty, boats and a boathouse (harbour.ts). */
+		hamlets?: readonly { name: string; at: Spot; harbour?: Spot }[];
 	};
 	/** The map's other loops, by id: their roads are drawn where they leave this one. */
 	others?: readonly string[];
@@ -336,6 +346,8 @@ const ISLE_M = 14;
 type Part = {
 	shape(x: number, z: number, h: number, d: number): number;
 	waterAt?(x: number, z: number): number | null;
+	/** The ground it lays by hand at (x, z), over the design's own covers: a river's gravel bars. */
+	coverAt?(x: number, z: number): Cover | null;
 	water?: Water;
 };
 type Solid = Exclude<Feature, { kind: 'stream' | 'land' }>;
@@ -541,6 +553,10 @@ function stream(
 			const s = near(x, z, half);
 			return s && s.level;
 		},
+		...(f.gravel && {
+			coverAt: (x: number, z: number) =>
+				near(x, z, half + f.gravel!) ? ('gravel' as const) : null,
+		}),
 		water: {
 			level: levels[n - 1],
 			outline: [...left, ...right.reverse()],
@@ -702,6 +718,7 @@ function sceneFrom(
 	tunnels: Scene['tunnels'],
 ): Scene {
 	const wet = parts.filter((p) => p.waterAt);
+	const laid = parts.filter((p) => p.coverAt);
 	return {
 		shape(x, z, h, dist) {
 			let out = h;
@@ -715,7 +732,16 @@ function sceneFrom(
 			}
 			return null;
 		},
-		coverAt: covers,
+		coverAt:
+			laid.length === 0
+				? covers
+				: (x, z) => {
+						for (const p of laid) {
+							const c = p.coverAt!(x, z);
+							if (c !== null) return c;
+						}
+						return covers(x, z);
+					},
 		climate,
 		names,
 		galleries,
@@ -792,7 +818,12 @@ function build(d: Designed): Built {
 		villages: d.names?.villages ?? [],
 		hamlets: (d.names?.hamlets ?? []).map((h) => {
 			const [x, z] = world(h.at);
-			return { name: h.name, x, z };
+			return {
+				name: h.name,
+				x,
+				z,
+				...(h.harbour && { harbour: world(h.harbour) }),
+			};
 		}),
 	};
 	const galleries = (d.galleries ?? []).map(

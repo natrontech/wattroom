@@ -76,6 +76,8 @@ export function landUse(
 			// Scree: rock with the odd tongue of turf through it.
 			if (laid === 'scree')
 				return bare(patch > 0.3 ? Biome.Alpine : Biome.Rock);
+			// A river's gravel bars: bare stone, nothing grows on them.
+			if (laid === 'gravel') return bare(Biome.Rock);
 			// A wood: forest, its edge the cover's own.
 			if (laid === 'wood') return { biome: Biome.Forest, forest: 1 };
 			return bare(fieldAt(x, z, noise));

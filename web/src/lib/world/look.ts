@@ -258,6 +258,7 @@ export function rideLook(
 			warning: w('prop-warning'),
 			water: w('prop-water'),
 			snowpole: w('prop-snowpole'),
+			marker: w('prop-marker'),
 			flags: [w('flag-1'), w('flag-2'), w('flag-3'), w('flag-4')],
 			rock: w('prop-rock'),
 		},
