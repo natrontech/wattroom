@@ -8,6 +8,7 @@ import {
 	JETTY,
 	type HarbourPiece,
 } from './harbour';
+import { at } from '#lib/road/along.ts';
 import { routeOfRoad } from './road-route';
 import { FORMATION } from './terrain/road-profile';
 import { RIDE } from './look.test-helper';
@@ -18,7 +19,8 @@ import type { Route } from '#lib/road/route.ts';
 /**
  * Schifftritt's harbour on the Urnersee loop (harbour.ts): a jetty run out
  * into the lake, its boats on the water beside it, its boathouse on the
- * bank, and none of it on the road the hamlet stands on.
+ * bank, none of it on the road, and all of it in a rider's sight from the
+ * bridge over the inlet.
  */
 describe('the harbour at Schifftritt', () => {
 	let route: Route;
@@ -68,5 +70,29 @@ describe('the harbour at Schifftritt', () => {
 		expect(harbour(route, pieces)!.attributes.position.count).toBeGreaterThan(
 			0,
 		);
+	});
+
+	it('lies in sight of the road over the inlet’s bridge, no bank between', () => {
+		const hidden: string[] = [];
+		for (let d = 3160; d <= 3340; d += 30) {
+			const r = at(route, d);
+			// A rider's eye, a chase camera's, over the deck.
+			const eye = r.ele + 2.5;
+			for (const p of pieces) {
+				const top = p.ele + (p.what === 'boathouse' ? 3 : 0.6);
+				for (let k = 1; k < 40; k++) {
+					const t = k / 40;
+					const g = world.groundAt(
+						r.x + (p.x - r.x) * t,
+						r.z + (p.z - r.z) * t,
+					);
+					if (g > eye + (top - eye) * t) {
+						hidden.push(`${p.what} from ${d} m`);
+						break;
+					}
+				}
+			}
+		}
+		expect(hidden).toEqual([]);
 	});
 });

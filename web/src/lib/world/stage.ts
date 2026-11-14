@@ -33,6 +33,7 @@ import {
 import type { Piece } from './setpieces';
 import {
 	GRAVEL_EDGE,
+	asLand,
 	GRAVEL_W,
 	plinth,
 	ribbonOf,
@@ -371,6 +372,8 @@ export function buildStage(
 			snow: palette[Biome.Snow] ?? c.wall,
 		};
 		const works = new Pieces();
+		// A gallery's earth and snow, drawn as the land is: its colour, cover and light at each point, the slope going on over the roof.
+		const dressing = new Pieces();
 		if (world.scene !== undefined) {
 			bridges(
 				works,
@@ -407,6 +410,7 @@ export function buildStage(
 					snowline,
 					colors,
 					lift,
+					dressing,
 				);
 			});
 			galleries(
@@ -417,6 +421,8 @@ export function buildStage(
 				world.galleries,
 				snowline,
 				colors,
+				undefined,
+				dressing,
 			);
 		}
 		roadEdges(
@@ -441,6 +447,26 @@ export function buildStage(
 			});
 			for (const [k, g] of pieces) pool.add(k, g);
 			group.add(tag('road', pool.mesh));
+		}
+		const banked = dressing.geometries();
+		if (banked.size > 0) {
+			let vertices = 0;
+			for (const g of banked.values()) vertices += g.attributes.position.count;
+			// The ground's own material and light, seen from either side, and drawn over the ground where the hill runs into it.
+			const landMat = groundMat.clone();
+			landMat.uniforms = groundMat.uniforms;
+			landMat.side = THREE.DoubleSide;
+			landMat.polygonOffset = true;
+			landMat.polygonOffsetFactor = -1;
+			landMat.polygonOffsetUnits = -4;
+			const pool = piecePool(landMat, {
+				pieces: banked.size,
+				vertices,
+				indices: 0,
+			});
+			for (const [k, g] of banked)
+				pool.add(k, asLand(g, world.biomeAt, style.palette));
+			group.add(tag('terrain', pool.mesh));
 		}
 	}
 	if (world.scene !== undefined) {
