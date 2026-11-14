@@ -152,6 +152,25 @@ const OKLAB = /* glsl */ `
 	}`;
 
 /**
+ * Where rock comes through Diorama 3D's snow: where the land's facets (0 to 1)
+ * rise over this cut, lower the more a face leans and on a crest. Over gentle
+ * ground it stands over every facet, so the snow there is closed: an outcrop
+ * on a flat, seen from above, read as a hole down to the stones under it.
+ */
+export const SNOW_ROCK_CUT = {
+	flat: '1.04',
+	lean: '2.4',
+	crest: '0.5',
+} as const;
+/** The lean (|n.xz|) over which a snow face takes the sun's warmth or the shade's lilac: none on a flat, so it is not a patchwork of its faces. */
+export const SNOW_TINT_LEAN = ['0.15', '0.45'] as const;
+/** The cut at a face's up (n.y) and crest (0 to 1), as the shader reads it. */
+export const snowRockCut = (up: number, crest = 0) =>
+	+SNOW_ROCK_CUT.flat -
+	(1 - up) * +SNOW_ROCK_CUT.lean -
+	crest * +SNOW_ROCK_CUT.crest;
+
+/**
  * The land up close in Diorama 3D, so no floor is ever empty: fields on a turned
  * grid, each its own green, mottled in flat patches, with flowers near the
  * road. Painted on the ground by where it is, so it stays put as you ride.
@@ -201,20 +220,22 @@ export const PIXEL_LAND = /* glsl */ `
 	// Snow: rock coming through it, more where it is steep and along the crests the wind scours,
 	// each outcrop in a ring of scoured, bluer snow and snow lying on its top; long drifts across
 	// the slope. A face turned to the sun warmer, one turned away cooler and lilac, in the sky's own
-	// colours, so the mountain's form reads from overhead in any light.
+	// colours, so the mountain's form reads from overhead in any light: the whole face, rock and
+	// snow alike, so an outcrop lies on the face and never shows through it as through a sheet.
+	// Gentle ground is one closed sheet: no rock, and no tint until a face leans like a slope.
 	vec3 snowLand(vec3 c, vec3 pos, float dist, vec3 n, float crest) {
 		float up = n.y;
 		float lean = length(n.xz);
 		float sunLean = length(uSun.xz);
 		float face = lean > 1e-3 && sunLean > 1e-3
-			? dot(n.xz / lean, uSun.xz / sunLean) * smoothstep(0.04, 0.3, lean)
+			? dot(n.xz / lean, uSun.xz / sunLean) * smoothstep(${SNOW_TINT_LEAN[0]}, ${SNOW_TINT_LEAN[1]}, lean)
 			: 0.0;
 		vec3 warm = uWarm / max(max(uWarm.r, uWarm.g), max(uWarm.b, 1e-3));
 		vec3 cool = uShade / max(max(uShade.r, uShade.g), max(uShade.b, 1e-3));
-		c = mix(c, c * (face > 0.0 ? warm : cool), abs(face) * (face > 0.0 ? 0.16 : 0.3));
+		vec3 tint = mix(vec3(1.0), face > 0.0 ? warm : cool, abs(face) * (face > 0.0 ? 0.16 : 0.3));
 		float near = 1.0 - smoothstep(1200.0, 2000.0, dist);
 		float r = landFacet(pos.xz / 30.0) * 0.72 + landFacet(pos.xz / 11.0 + 17.0) * 0.28;
-		float cut = 0.72 - (1.0 - up) * 1.2 - crest * 0.42;
+		float cut = ${SNOW_ROCK_CUT.flat} - (1.0 - up) * ${SNOW_ROCK_CUT.lean} - crest * ${SNOW_ROCK_CUT.crest};
 		float fw = fwidth(r) + 1e-4;
 		float rock = max(smoothstep(cut - fw, cut + fw, r) * near, crest * (1.0 - near) * 0.55);
 		float rim = smoothstep(cut - 0.07 - fw, cut - 0.07 + fw, r) * near;
@@ -226,7 +247,7 @@ export const PIXEL_LAND = /* glsl */ `
 		float cap = landFacet(pos.xz / 3.0 + 5.0);
 		float fc = fwidth(cap) + 1e-4;
 		float capped = smoothstep(0.6 - fc, 0.6 + fc, cap) * (1.0 - smoothstep(200.0, 400.0, dist));
-		return mix(c, mix(stone, c, capped * 0.8), rock);
+		return mix(c, mix(stone, c, capped * 0.8), rock) * tint;
 	}
 	// Rock: a cliff in strata, a darker band every few metres of its height; at its foot, scree.
 	vec3 rockLand(vec3 c, vec3 pos, float dist, float up, float bare) {
