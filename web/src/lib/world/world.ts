@@ -857,6 +857,43 @@ export function culvertsOf(
 	streams: readonly Water[],
 ): [number, number][] {
 	const out: [number, number][] = [];
+	// The road's segments by the 50 m cells their boxes touch: a stream's stretch meets only those near it, not every row of the road.
+	const CELL = 50;
+	const cellKey = (i: number, j: number) => i * 100_003 + j;
+	const byCell = new Map<number, number[]>();
+	for (let k = 0; k < rows.length - 1; k++) {
+		const [a, b] = [rows[k], rows[k + 1]];
+		for (
+			let i = Math.floor(Math.min(a.x, b.x) / CELL);
+			i <= Math.floor(Math.max(a.x, b.x) / CELL);
+			i++
+		)
+			for (
+				let j = Math.floor(Math.min(a.z, b.z) / CELL);
+				j <= Math.floor(Math.max(a.z, b.z) / CELL);
+				j++
+			) {
+				const list = byCell.get(cellKey(i, j));
+				if (list) list.push(k);
+				else byCell.set(cellKey(i, j), [k]);
+			}
+	}
+	/** The road's segments whose boxes share a cell with the box from (ax, az) to (bx, bz), in order. */
+	const segmentsNear = (ax: number, az: number, bx: number, bz: number) => {
+		const found = new Set<number>();
+		for (
+			let i = Math.floor(Math.min(ax, bx) / CELL);
+			i <= Math.floor(Math.max(ax, bx) / CELL);
+			i++
+		)
+			for (
+				let j = Math.floor(Math.min(az, bz) / CELL);
+				j <= Math.floor(Math.max(az, bz) / CELL);
+				j++
+			)
+				for (const k of byCell.get(cellKey(i, j)) ?? []) found.add(k);
+		return [...found].sort((p, q) => p - q);
+	};
 	for (const w of streams) {
 		const run = w.run!;
 		const n = run.levels.length;
@@ -875,7 +912,7 @@ export function culvertsOf(
 			const [bx, bz] = mid(i + 1);
 			const ex = bx - ax;
 			const ez = bz - az;
-			for (let k = 0; k < rows.length - 1; k++) {
+			for (const k of segmentsNear(ax, az, bx, bz)) {
 				const dx = rows[k + 1].x - rows[k].x;
 				const dz = rows[k + 1].z - rows[k].z;
 				const den = dx * ez - dz * ex;

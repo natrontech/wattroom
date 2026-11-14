@@ -270,6 +270,48 @@ function offLine(
 
 /** Whether (x, z) lies inside a closed outline: a ray east crosses it an odd number of times. */
 function inside(pts: readonly [number, number][], x: number, z: number) {
+	if (pts.length < INSIDE_CELLS_FROM) return crossesOdd(pts, x, z);
+	let cells = insideCells.get(pts);
+	if (!cells) insideCells.set(pts, (cells = cellsOf(pts)));
+	const key =
+		Math.floor(x / INSIDE_CELL) * 100_003 + Math.floor(z / INSIDE_CELL);
+	// A cell the outline never touches is all inside or all out: asked once.
+	if (cells.edged.has(key)) return crossesOdd(pts, x, z);
+	let known = cells.known.get(key);
+	if (known === undefined)
+		cells.known.set(key, (known = crossesOdd(pts, x, z)));
+	return known;
+}
+
+/** Metres a side of the cells an outline's inside is known by; an outline of fewer points than INSIDE_CELLS_FROM is walked whole each time. */
+const INSIDE_CELL = 25;
+const INSIDE_CELLS_FROM = 24;
+/** Per outline: the cells its edges touch, and what is known of the rest. A world's ground asks a lake's or a cover's shore some millions of times. */
+const insideCells = new WeakMap<
+	readonly [number, number][],
+	{ edged: Set<number>; known: Map<number, boolean> }
+>();
+function cellsOf(pts: readonly [number, number][]) {
+	const edged = new Set<number>();
+	for (let i = 0; i < pts.length; i++) {
+		const a = pts[i];
+		const b = pts[(i + 1) % pts.length];
+		for (
+			let ci = Math.floor(Math.min(a[0], b[0]) / INSIDE_CELL);
+			ci <= Math.floor(Math.max(a[0], b[0]) / INSIDE_CELL);
+			ci++
+		)
+			for (
+				let cj = Math.floor(Math.min(a[1], b[1]) / INSIDE_CELL);
+				cj <= Math.floor(Math.max(a[1], b[1]) / INSIDE_CELL);
+				cj++
+			)
+				edged.add(ci * 100_003 + cj);
+	}
+	return { edged, known: new Map<number, boolean>() };
+}
+
+function crossesOdd(pts: readonly [number, number][], x: number, z: number) {
 	let odd = false;
 	for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
 		const [xi, zi] = pts[i];
@@ -396,17 +438,47 @@ function stream(
 		);
 	});
 	const half = (f.width ?? 7) / 2;
+	const plain = f.plain;
+	/** The most `near` is asked to reach: the ground's shape, out to its swale's or its plain's edge. */
+	const REACH = half + (plain ? plain.bank + PLAIN_EASE_M : SWALE_M + 40);
 	// Its stretches, each in its own box: a spot far from a stretch never walks it.
 	const SPAN = 12;
 	const boxes: Box[] = [];
 	for (let i = 0; i < n - 1; i += SPAN)
 		boxes.push(boxOf(course.slice(i, Math.min(n, i + SPAN + 1))));
+	// And the boxes each cell of the land lies within REACH of, in order: a spot walks only those, not every stretch of every stream on the map (a world's build spent half its ground there).
+	const CELL = 64;
+	const cellKey = (i: number, j: number) => i * 100_003 + j;
+	const byCell = new Map<number, number[]>();
+	boxes.forEach((b, k) => {
+		for (
+			let i = Math.floor((b[0] - REACH) / CELL);
+			i <= Math.floor((b[2] + REACH) / CELL);
+			i++
+		)
+			for (
+				let j = Math.floor((b[1] - REACH) / CELL);
+				j <= Math.floor((b[3] + REACH) / CELL);
+				j++
+			) {
+				const list = byCell.get(cellKey(i, j));
+				if (list) list.push(k);
+				else byCell.set(cellKey(i, j), [k]);
+			}
+	});
+	const every = boxes.map((_, k) => k);
+	const none: number[] = [];
 	/** The stream's nearest point to (x, z) within `reach`: metres off its centre, and its level and fall there. */
 	const near = (x: number, z: number, reach: number) => {
 		let best = reach * reach;
 		let at = -1;
 		let share = 0;
-		for (let b = 0; b < boxes.length; b++) {
+		const listed =
+			reach <= REACH
+				? (byCell.get(cellKey(Math.floor(x / CELL), Math.floor(z / CELL))) ??
+					none)
+				: every;
+		for (const b of listed) {
 			if (offBox(boxes[b], x, z) > reach) continue;
 			const to = Math.min(n - 1, (b + 1) * SPAN);
 			for (let i = b * SPAN; i < to; i++) {
@@ -443,15 +515,10 @@ function stream(
 		left.push([p[0] + nx * half, p[1] + nz * half]);
 		right.push([p[0] - nx * half, p[1] - nz * half]);
 	});
-	const plain = f.plain;
 	const floor = (f.cut ?? STREAM_CUT_M) - 1.5;
 	return {
 		shape(x, z, h) {
-			const s = near(
-				x,
-				z,
-				half + (plain ? plain.bank + PLAIN_EASE_M : SWALE_M + 40),
-			);
+			const s = near(x, z, REACH);
 			if (!s) return h;
 			// Its bed, deeper where it falls: the ground between two vertices is a straight line, and the water must lie over it.
 			const bed = s.level - STREAM_DEEP_M - 2 * s.fall;
