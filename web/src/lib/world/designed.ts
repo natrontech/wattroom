@@ -53,7 +53,8 @@ export type Water = {
  * scree under a cliff, a valley floor's fields, and a wood where the
  * generator would mow.
  */
-export type Cover = 'moor' | 'dry' | 'alp' | 'scree' | 'fields' | 'wood';
+export type Cover =
+	'moor' | 'dry' | 'alp' | 'scree' | 'fields' | 'wood' | 'gravel';
 /** Where a scene's snow lies from and its trees stand to, metres above sea: the generator's own where not given. */
 export type Climate = { snowline?: number; treeline?: number };
 
@@ -133,6 +134,8 @@ export type Feature =
 			levels?: readonly number[];
 			/** Its floor: within `bank` metres of its banks the land lies flat, `cut` less 1.5 m over its water, and rises from there no steeper than `slope`. A wide valley's fields. */
 			plain?: { bank: number; slope: number };
+			/** Metres of gravel either side of its water, the bars a mountain river lays down: none where not given. */
+			gravel?: number;
 	  }
 	| {
 			kind: 'land';
@@ -336,6 +339,8 @@ const ISLE_M = 14;
 type Part = {
 	shape(x: number, z: number, h: number, d: number): number;
 	waterAt?(x: number, z: number): number | null;
+	/** The ground it lays by hand at (x, z), over the design's own covers: a river's gravel bars. */
+	coverAt?(x: number, z: number): Cover | null;
 	water?: Water;
 };
 type Solid = Exclude<Feature, { kind: 'stream' | 'land' }>;
@@ -541,6 +546,10 @@ function stream(
 			const s = near(x, z, half);
 			return s && s.level;
 		},
+		...(f.gravel && {
+			coverAt: (x: number, z: number) =>
+				near(x, z, half + f.gravel!) ? ('gravel' as const) : null,
+		}),
 		water: {
 			level: levels[n - 1],
 			outline: [...left, ...right.reverse()],
@@ -702,6 +711,7 @@ function sceneFrom(
 	tunnels: Scene['tunnels'],
 ): Scene {
 	const wet = parts.filter((p) => p.waterAt);
+	const laid = parts.filter((p) => p.coverAt);
 	return {
 		shape(x, z, h, dist) {
 			let out = h;
@@ -715,7 +725,16 @@ function sceneFrom(
 			}
 			return null;
 		},
-		coverAt: covers,
+		coverAt:
+			laid.length === 0
+				? covers
+				: (x, z) => {
+						for (const p of laid) {
+							const c = p.coverAt!(x, z);
+							if (c !== null) return c;
+						}
+						return covers(x, z);
+					},
 		climate,
 		names,
 		galleries,
