@@ -170,6 +170,7 @@ describe('the world', () => {
 		const furniture = [
 			'delineator',
 			'snowpole',
+			'marker',
 			'lamp',
 			'steep',
 			'cattle',

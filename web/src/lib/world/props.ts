@@ -363,6 +363,17 @@ export function snowpole(c: PropColors) {
 	]);
 }
 
+// A pass road's snow marker above the snowline: a yellow pole banded black, so a
+// plough finds the road's edge under the snow. Square: four boxes, the far model too.
+export function marker(c: PropColors) {
+	return merge([
+		tint(box(0.09, 2.6, 0.09).translate(0, 1.3, 0), c.marker),
+		...[1.0, 1.7, 2.45].map((y) =>
+			tint(box(0.1, 0.3, 0.1).translate(0, y, 0), c.band),
+		),
+	]);
+}
+
 // The Swiss delineator: white round post, black band, reflector.
 export function delineator(c: PropColors) {
 	return merge([

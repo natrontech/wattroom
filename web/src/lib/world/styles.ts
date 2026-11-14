@@ -44,6 +44,7 @@ export type PropColors = {
 	hiking: string; // the yellow Swiss hiking sign
 	water: string;
 	snowpole: string;
+	marker: string; // a pass road's yellow snow marker, banded black
 	warning: string; // the red border of a Swiss danger sign (#4240), never in a watt's band
 	flags: readonly string[]; // one per summit flagpole
 	rock: string;
@@ -197,14 +198,25 @@ export const PIXEL_LAND = /* glsl */ `
 		float r = length(fract(q) - 0.5);
 		return k > over && r < size * 0.5 - fw ? k : -1.0;
 	}
-	// Snow: rock coming through it, more where it is steep, each outcrop in a ring of scoured,
-	// bluer snow and snow lying on its top; long drifts across the slope.
-	vec3 snowLand(vec3 c, vec3 pos, float dist, float up) {
+	// Snow: rock coming through it, more where it is steep and along the crests the wind scours,
+	// each outcrop in a ring of scoured, bluer snow and snow lying on its top; long drifts across
+	// the slope. A face turned to the sun warmer, one turned away cooler and lilac, in the sky's own
+	// colours, so the mountain's form reads from overhead in any light.
+	vec3 snowLand(vec3 c, vec3 pos, float dist, vec3 n, float crest) {
+		float up = n.y;
+		float lean = length(n.xz);
+		float sunLean = length(uSun.xz);
+		float face = lean > 1e-3 && sunLean > 1e-3
+			? dot(n.xz / lean, uSun.xz / sunLean) * smoothstep(0.04, 0.3, lean)
+			: 0.0;
+		vec3 warm = uWarm / max(max(uWarm.r, uWarm.g), max(uWarm.b, 1e-3));
+		vec3 cool = uShade / max(max(uShade.r, uShade.g), max(uShade.b, 1e-3));
+		c = mix(c, c * (face > 0.0 ? warm : cool), abs(face) * (face > 0.0 ? 0.16 : 0.3));
 		float near = 1.0 - smoothstep(1200.0, 2000.0, dist);
 		float r = landFacet(pos.xz / 30.0) * 0.72 + landFacet(pos.xz / 11.0 + 17.0) * 0.28;
-		float cut = 0.72 - (1.0 - up) * 1.2;
+		float cut = 0.72 - (1.0 - up) * 1.2 - crest * 0.42;
 		float fw = fwidth(r) + 1e-4;
-		float rock = smoothstep(cut - fw, cut + fw, r) * near;
+		float rock = max(smoothstep(cut - fw, cut + fw, r) * near, crest * (1.0 - near) * 0.55);
 		float rim = smoothstep(cut - 0.07 - fw, cut - 0.07 + fw, r) * near;
 		float drift = landNoise(vec2(pos.x * 0.045 + pos.z * 0.02, pos.z * 0.11 - pos.x * 0.035)) * (1.0 - smoothstep(500.0, 800.0, dist));
 		float fd = fwidth(drift) + 1e-4;
@@ -247,9 +259,10 @@ export const PIXEL_LAND = /* glsl */ `
 		return mix(c, vec3(0.96, 0.95, 0.9), step(0.0, k) * step(pool, 0.7) * (1.0 - smoothstep(35.0, 60.0, dist)));
 	}
 	// Diorama 3D: each cover its own (cover: snow, rock, alpine or dry, bog), flowers in the grass as dots in the world, a hand's width each, near the road.
-	vec3 dioramaLand(vec3 base, vec3 pos, float dist, float up, vec4 cover, float steep) {
+	vec3 dioramaLand(vec3 base, vec3 pos, float dist, vec3 n, vec4 cover, float steep, float crest) {
+		float up = n.y;
 		vec3 c = base;
-		if (cover.x > 0.5) return snowLand(c, pos, dist, up);
+		if (cover.x > 0.5) return snowLand(c, pos, dist, n, crest);
 		if (cover.y > 0.5 || steep > 0.5) c = rockLand(c, pos, dist, up, cover.y);
 		if (cover.w > 0.5) return moorLand(c, pos, dist);
 		if (cover.z > 0.5) return sparseLand(c, pos, dist);
@@ -295,6 +308,8 @@ export function terrainMaterial(
 			uSkyTop: { value: col(style.sky.top) },
 			uHorizon: { value: col(style.sky.horizon) },
 			uSunward: { value: col(style.sky.sunward) },
+			// The sun's own colour: what a snowfield turned to it is warmed by (PIXEL_LAND snowLand).
+			uWarm: { value: col(style.sun.color) },
 			uFogK: { value: style.fogK },
 			uBands: { value: style.bands },
 			uSkyFill: { value: style.skyFill },
@@ -331,7 +346,7 @@ export function terrainMaterial(
 				gl_Position = projectionMatrix * viewMatrix * world;
 			}`,
 		fragmentShader: /* glsl */ `
-			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
+			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uWarm, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
 			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uDiorama;
 			uniform vec4 uBoreA[${BORE_BOXES}]; uniform vec4 uBoreB[${BORE_BOXES}]; uniform int uBores; uniform vec4 uBoreBox;
 			varying vec3 vColor; varying vec3 vPos; varying float vAo; varying vec4 vCover;
@@ -355,7 +370,9 @@ export function terrainMaterial(
 				// solid rock by the earthworks' 45 (n.y 0.71), never the ground's colour smeared down a vertical.
 				float steep = smoothstep(0.86, 0.66, n.y);
 				vec3 base = mix(vColor, mix(uRock, vColor, 0.18), steep);
-				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n.y, vCover, steep);
+				// A crest: the ground standing over its neighbours (land.ts shadeOf, carried as vAo), where the wind leaves rock bare.
+				float crest = smoothstep(0.8, 0.97, vAo);
+				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n, vCover, steep, crest);
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);

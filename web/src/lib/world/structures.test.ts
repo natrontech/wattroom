@@ -5,6 +5,7 @@ import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
 import { sceneOf } from './designed';
 import { yOf } from './geometry';
+import { roadIndex } from './field';
 import { makeRig } from './rig';
 import { routeOfRoad } from './road-route';
 import type { SimRider } from './sim';
@@ -313,6 +314,41 @@ describe('Col de Berne', () => {
 			expect(g.boundingSphere!.radius).toBeLessThan(400);
 		// The road's works stay a modest share of the frame's 400k triangles, whole.
 		expect(out.triangles).toBeLessThan(80_000);
+	});
+
+	it('marks the pass road above the snowline with yellow and black poles, the ridden road only, and its orange poles below', () => {
+		const snowline = sceneOf(route.scene)!.climate.snowline!;
+		const seen = new Map<string, [number, number]>();
+		for (let d = 9000; d < 18_000; d += 100) {
+			const p = at(route, d);
+			for (const t of world.tilesWithin(p.x, p.z, 300))
+				seen.set(`${t[0]}:${t[1]}`, t);
+		}
+		const pieces = [...seen.values()].flatMap(
+			([ti, tj]) => world.tile(ti, tj).pieces,
+		);
+		const { nearest } = roadIndex(route);
+		const onRoad = (x: number, z: number) => {
+			const hit = nearest(x, z);
+			return hit && hit.d < 6 ? at(route, (hit.i + hit.t) * route.step) : null;
+		};
+		const markers = pieces.filter((p) => p.kind === 'marker');
+		expect(markers.length).toBeGreaterThan(40);
+		for (const m of markers) {
+			const p = onRoad(m.x, m.z);
+			expect(
+				p,
+				`a marker off the ridden road at ${m.x}, ${m.z}`,
+			).not.toBeNull();
+			expect(p!.ele).toBeGreaterThan(snowline - 5);
+		}
+		// Beside the ridden road over the snow, no orange pole: the markers stand there instead.
+		const orange = pieces.filter((p) => {
+			if (p.kind !== 'snowpole') return false;
+			const at = onRoad(p.x, p.z);
+			return at !== null && at.ele > snowline + 20;
+		});
+		expect(orange).toEqual([]);
 	});
 
 	it('draws the gallery on the east shore’s road, another loop’s, roofed as the ridden road’s, and nothing grows under it', () => {

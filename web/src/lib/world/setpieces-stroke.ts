@@ -710,9 +710,14 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 	}
 
 	// Road furniture from the stroke's start, a stretch at a time: snow poles every 25 m above 1,100 m
-	// where the ground falls away, delineators every 50 m, both sides, 0.5 m outside the edge line,
+	// where the ground falls away, and on the ridden road above a scene's snowline the yellow and
+	// black markers instead, every 25 m a side in turn; delineators every 50 m, both sides, 0.5 m
+	// outside the edge line,
 	// and every 25 m on a side whose ground 8 m past the shoulder lies over 4 m below the road
 	// (#3838): from below, they mark a stacked leg as road when its ledge hides the asphalt.
+	// The road ridden (world.ts names its line 'route'), and the scene's snowline: a pass road's markers are the ridden road's only.
+	const ridden = line.key === 'route';
+	const snowline = ground.scene?.climate.snowline;
 	const dropsAway = (p: ReturnType<typeof w.at>, side: number) =>
 		p.h -
 			heightAt(
@@ -726,6 +731,11 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			for (let s = a; s < a + STRETCH_M && s <= r.length; s += 25) {
 				const p = w.at(s);
 				if (p.h <= 1100) continue;
+				if (ridden && snowline !== undefined && p.h >= snowline) {
+					const side = Math.round(s / 25) % 2 === 0 ? 1 : -1;
+					put(g, 'marker', 'furniture', s, side, 4.4, 0, 8e6 + s, null);
+					continue;
+				}
 				const fall =
 					heightAt(p.x + p.lx * 8, p.z + p.lz * 8) <
 					heightAt(p.x - p.lx * 8, p.z - p.lz * 8)

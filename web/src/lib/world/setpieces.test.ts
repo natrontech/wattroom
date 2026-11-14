@@ -133,7 +133,7 @@ describe('the same place stands the same set pieces (#3226)', () => {
 	it('keeps road furniture off the edge of every road near it, not only its own', () => {
 		const near = roadsNear(A.lines);
 		for (const p of A.pieces) {
-			if (p.kind !== 'delineator' && p.kind !== 'snowpole') continue;
+			if (!['delineator', 'snowpole', 'marker'].includes(p.kind)) continue;
 			for (const r of near(p.x, p.z)) {
 				let gap = Infinity;
 				for (let i = 0; i < r.points.length - 1; i++)
