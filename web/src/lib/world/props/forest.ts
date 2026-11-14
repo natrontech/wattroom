@@ -50,6 +50,7 @@ export function forest(seed: number) {
 			b !== Biome.Rock &&
 			b !== Biome.Snow &&
 			b !== Biome.Water &&
+			b !== Biome.Moor &&
 			far >= FRAME_NEAR &&
 			far <= FRAME_FAR,
 		/** The chance a cell holds a tree, `far` metres from the road in stand `g`. */
@@ -57,6 +58,10 @@ export function forest(seed: number) {
 			const group = Math.min(2, Math.max(0, 1 + 1.4 * g));
 			if (b === Biome.Forest)
 				return far > DEEP_M ? (g > DEEP_CUT ? 0.78 : 0) : 0.78 * group;
+			// Snow under the trees: small groups close together, open snow between; a bog grows a birch here and there, dry ground a pine.
+			if (b === Biome.Frost) return 0.5 * group;
+			if (b === Biome.Moor) return 0.025 * group;
+			if (b === Biome.Dry) return 0.07 * group;
 			if (frame) return FRAME_P * Math.max(FRAME_FLOOR, group);
 			if (b === Biome.Meadow)
 				return g > EDGE_CUT
@@ -78,7 +83,9 @@ export function forest(seed: number) {
 			g: number,
 			u: number,
 		) =>
-			frame || (b === Biome.Meadow && far >= EDGE_FROM && far <= EDGE_GONE)
+			frame ||
+			b === Biome.Frost ||
+			(b === Biome.Meadow && far >= EDGE_FROM && far <= EDGE_GONE)
 				? 1 + Math.floor(u * 3)
 				: g >= 0.3 && far <= PAIR_M
 					? 1

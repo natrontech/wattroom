@@ -12,6 +12,7 @@ import { CHUNK_M, COARSE_M, FINE_M } from './place/lattice';
 import type { Ground } from './terrain/ground';
 import type { Line } from './terrain/lines';
 import {
+	BLEND,
 	chunkVertices,
 	onGrid,
 	type ChunkVertices,
@@ -25,6 +26,8 @@ export type TerrainMesh = {
 	biome: Uint8Array;
 	shade: Float32Array;
 	forest: Float32Array;
+	/** BLEND biomes a vertex round a far chunk's vertices (Grid.blend); 255 where the vertex is its own. */
+	blend: Uint8Array;
 	index: Uint32Array;
 };
 
@@ -43,6 +46,8 @@ export type Edges = readonly [w: number, e: number, n: number, s: number];
 
 /** Chunks nearer a road than this are drawn fine: the road's earthworks all lie within it. */
 export const FINE_WITHIN = 60;
+/** And within this of a stream: its swale's reach (designed.ts). */
+const STREAM_WITHIN = 14;
 
 /** Metres from a point to a chunk's square. */
 export function toChunk(x: number, z: number, ci: number, cj: number) {
@@ -119,8 +124,14 @@ export function corridor(lines: readonly Line[], reach: number, fill = 6000) {
  * only ever adds and drops chunks — none changes under the rider, no seam
  * opens — and a prop stands on exactly the ground drawn under it.
  */
-export function placeLevel(lines: readonly Line[]): Coverage {
+export function placeLevel(
+	lines: readonly Line[],
+	/** Lines the ground is cut along as finely as along a road: a designed scene's streams (designed.ts), a few metres wide. */
+	cut: readonly Pick<Line, 'x' | 'z'>[] = [],
+): Coverage {
 	const fine = roadReach(lines, FINE_WITHIN, () => true);
+	for (const id of roadReach(cut as Line[], STREAM_WITHIN, () => true).keys())
+		fine.set(id, fine.get(id)!);
 	return (ci, cj) => (fine.has(`${ci}:${cj}`) ? 'fine' : 'coarse');
 }
 
@@ -214,6 +225,7 @@ export function meshOf(
 	const biome = new Uint8Array(verts);
 	const shade = new Float32Array(verts);
 	const forest = new Float32Array(verts);
+	const blend = new Uint8Array(verts * BLEND).fill(255);
 	const index = new Uint32Array(tris * 3);
 	let v = 0;
 	let t = 0;
@@ -229,6 +241,7 @@ export function meshOf(
 		biome.set(b.biome, v);
 		shade.set(b.shade, v);
 		forest.set(b.forest, v);
+		if (b.blend) blend.set(b.blend, v * BLEND);
 		for (let j = 0; j < row - 1; j++)
 			for (let i = 0; i < row - 1; i++) {
 				// Written in place: an array a quad was garbage on every chunk streamed in.
@@ -242,7 +255,7 @@ export function meshOf(
 			}
 		v += row * row;
 	}
-	return { pos, biome, shade, forest, index };
+	return { pos, biome, shade, forest, blend, index };
 }
 
 export function createTerrain(

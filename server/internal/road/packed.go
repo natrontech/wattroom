@@ -98,7 +98,13 @@ func NameOf(lengthM, gainM float64) string {
 // VirtualRouteOf is the same numbers as a workout's picture says them under
 // its title: the workout is the name, the road only where it was ridden.
 func VirtualRouteOf(lengthM, gainM float64) string {
-	return fmt.Sprintf("Virtual route · %.1f km · %s m", lengthM/1000, thousands(int64(gainM+0.5)))
+	return RouteOf("Virtual route", lengthM, gainM)
+}
+
+// RouteOf is a named road's numbers under a workout's title: one of
+// WattRoom's own roads, whose name is no place, says its name there.
+func RouteOf(name string, lengthM, gainM float64) string {
+	return fmt.Sprintf("%s · %.1f km · %s m", name, lengthM/1000, thousands(int64(gainM+0.5)))
 }
 
 // VirtualRouteRideOf is a ride the road alone names, as its picture and its

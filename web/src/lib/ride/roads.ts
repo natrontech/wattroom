@@ -80,8 +80,8 @@ export function carryOnOf(
 	return m + 1 < length ? m : null;
 }
 
-/** /ride?road=intro (#3218): the first-run card's road, built in, on no account. */
-export const INTRO_ROAD_ID = 'intro';
+/** /ride?road=urnsee (#3218): the first-run card's road and a free ride's first, built in, on no account: the map's half hour round the lake. */
+export const INTRO_ROAD_ID = 'urnsee';
 
 /**
  * One route and its road. The owner's own read carries the whole road,

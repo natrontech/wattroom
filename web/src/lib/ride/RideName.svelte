@@ -5,7 +5,7 @@
 	 * and pressing Rename gives the ride its workout's name back.
 	 */
 	import { MaxWorkoutNameChars } from '#lib/protocol.ts';
-	import { riddenName, type RideRoad } from './list';
+	import { plainTitle, riddenName, type RideRoad } from './list';
 	import { renameRide } from './title';
 
 	let {
@@ -13,7 +13,13 @@
 		onclose,
 	}: {
 		/** Mutated in place, as the page's share toggle mutates it. */
-		ride: { id: string; workoutName: string; road?: RideRoad; title?: string };
+		ride: {
+			id: string;
+			workoutName: string;
+			road?: RideRoad;
+			title?: string;
+			workoutOwnName?: string;
+		};
 		onclose: () => void;
 	} = $props();
 
@@ -23,6 +29,8 @@
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 	const ridden = $derived(riddenName(ride));
+	// What clearing the box gives back: a workout's own name over a road.
+	const plain = $derived(plainTitle(ride));
 	const changed = $derived(name.trim() !== (ride.title ?? ''));
 	// Characters, as the server counts them (#1986) — `maxlength` counts
 	// UTF-16 units and would stop an emoji name at half the bound.
@@ -50,7 +58,7 @@
 		<input
 			id="ride-name"
 			bind:value={name}
-			placeholder={ridden}
+			placeholder={plain}
 			aria-invalid={!!error || over > 0}
 			aria-describedby="ride-name-hint"
 			class="input min-w-0 flex-1"

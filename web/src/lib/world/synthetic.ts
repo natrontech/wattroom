@@ -13,8 +13,8 @@ import type { TrackPoint } from '#lib/road/parse.ts';
 export const SYNTHETIC_NAME = 'Synthetic pass loop';
 
 export type Corner = { x: number; y: number; ele: number; r: number }; // metres; y is north
-/** A made-up loop: its corners, and the seed of its GPS noise. */
-export type Shape = { corners: Corner[]; seed: number };
+/** A made-up loop: its corners, and the seed of its GPS noise. `drawn`, it is a line as a draughtsman drew it, with no noise to see and no fault: a designed road's (designed.ts), which the world draws sample for sample. */
+export type Shape = { corners: Corner[]; seed: number; drawn?: boolean };
 
 const HAIRPIN_R = 14;
 export const PASS_LOOP_CORNERS: Corner[] = [
@@ -44,6 +44,12 @@ const LAT0 = 46.6;
 const LON0 = 7.6;
 const M_PER_DEG = (Math.PI / 180) * 6371008.8;
 
+/** A spot of a made-up map, metres east and north of its origin, as a GPS would log it. */
+export const designPoint = (x: number, y: number) => ({
+	lat: LAT0 + y / M_PER_DEG,
+	lon: LON0 + x / (M_PER_DEG * Math.cos((LAT0 * Math.PI) / 180)),
+});
+
 type Pt = { x: number; y: number };
 const sub = (a: Pt, b: Pt): Pt => ({ x: a.x - b.x, y: a.y - b.y });
 const unit = (a: Pt): Pt => {
@@ -64,7 +70,8 @@ function centreline(corners: Corner[]) {
 		const a = { x: v.x - d1.x * t, y: v.y - d1.y * t };
 		const b = { x: v.x + d2.x * t, y: v.y + d2.y * t };
 		const centre = { x: a.x - d1.y * v.r * turn, y: a.y + d1.x * v.r * turn };
-		return { a, b, centre, phi, turn, r: v.r };
+		// A corner on the straight line between its neighbours is no corner: its arc has no side to turn to, and was drawn its radius off to the east.
+		return { a, b, centre, phi, turn, r: turn === 0 ? 0 : v.r };
 	});
 	const out: Pt[] = [];
 	const knots: number[] = []; // distance of each corner's arc midpoint
@@ -138,35 +145,59 @@ function heightAlong(corners: Corner[], knots: number[], length: number) {
 export const PASS_LOOP: Shape = { corners: PASS_LOOP_CORNERS, seed: 3021 };
 
 export function syntheticPoints(shape: Shape = PASS_LOOP): TrackPoint[] {
-	const { points, knots, length } = centreline(shape.corners);
-	const ele = heightAlong(shape.corners, knots, length);
+	// A designed road's corners are computed (designs.ts), its roundabouts' by sine and cosine: rounded to a micrometre, every CPU starts the line from the same ones.
+	const corners = shape.drawn
+		? shape.corners.map((c) => ({
+				...c,
+				x: snap(c.x, 1e6),
+				y: snap(c.y, 1e6),
+				ele: snap(c.ele, 1e6),
+				r: snap(c.r, 1e6),
+			}))
+		: shape.corners;
+	const { points, knots, length } = centreline(corners);
+	const ele = heightAlong(corners, knots, length);
 	const noise = prng(shape.seed);
+	// A drawn line keeps a hair of it, 3 cm: on a true arc every turn is the same, and one that sits on a rounding edge would be stored a degree off at every step (road/profile.ts).
+	const off = shape.drawn ? 0.04 : 1;
 	const track: { x: number; y: number; ele: number }[] = [];
 	let s = 0;
 	points.forEach((p, i) => {
 		if (i > 0) s += Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y);
 		const last = i === points.length - 1;
 		track.push({
-			x: p.x + (last ? 0 : (noise() - 0.5) * 1.6),
-			y: p.y + (last ? 0 : (noise() - 0.5) * 1.6),
-			ele: ele(Math.min(s, length)) + (noise() - 0.5) * 1.2,
+			x: p.x + (last ? 0 : (noise() - 0.5) * 1.6 * off),
+			y: p.y + (last ? 0 : (noise() - 0.5) * 1.6 * off),
+			ele: ele(Math.min(s, length)) + (noise() - 0.5) * 1.2 * off,
 		});
 	});
 	// A fix logged twice, and a 15 m out-and-back — both on the valley floor.
-	track.splice(40, 0, { ...track[40] });
-	const at = track[80];
-	track.splice(
-		81,
-		0,
-		{ x: at.x + 30, y: at.y, ele: at.ele },
-		{ x: at.x + 15, y: at.y + 0.5, ele: at.ele },
-	);
-	return track.map((p) => ({
+	if (!shape.drawn) {
+		track.splice(40, 0, { ...track[40] });
+		const at = track[80];
+		track.splice(
+			81,
+			0,
+			{ x: at.x + 30, y: at.y, ele: at.ele },
+			{ x: at.x + 15, y: at.y + 0.5, ele: at.ele },
+		);
+	}
+	const out = track.map((p) => ({
 		lat: LAT0 + p.y / M_PER_DEG,
 		lon: LON0 + p.x / (M_PER_DEG * Math.cos((LAT0 * Math.PI) / 180)),
 		ele: p.ele,
 	}));
+	// A designed road is known by its length to the centimetre (designed.ts), on every machine: an x86 CPU's sine can differ from an ARM's in the last bit, and that bit tipped a resampling step 0.5 m. Rounded to a tenth of a millimetre, both build the same road.
+	return shape.drawn
+		? out.map((p) => ({
+				lat: snap(p.lat, 1e9),
+				lon: snap(p.lon, 1e9),
+				ele: snap(p.ele, 1e4),
+			}))
+		: out;
 }
+
+const snap = (v: number, per: number) => Math.round(v * per) / per;
 
 export function syntheticGpx(): string {
 	const pts = syntheticPoints()

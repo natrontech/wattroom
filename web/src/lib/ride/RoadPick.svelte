@@ -10,7 +10,6 @@
 	import Banner from '#lib/components/Banner.svelte';
 	import RouteRow from '#lib/components/RouteRow.svelte';
 	import WattRoomRoads from '#lib/ride/WattRoomRoads.svelte';
-	import { HOME_ROADS } from '#lib/ride/home-roads.ts';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import type { StoredRoute } from '#lib/road/stored.ts';
 	import type { FreeRide } from '#lib/ride/free-ride.svelte.ts';
@@ -21,6 +20,7 @@
 		loadRoad,
 		myRoutes,
 		type RideableRoute,
+		INTRO_ROAD_ID,
 	} from '#lib/ride/roads.ts';
 
 	let {
@@ -75,7 +75,7 @@
 	// A free ride starts on a road, so the world is there without a pick
 	// (Shell Rethink). Once per mount: a rider who leaves the road stays off it.
 	if (untrack(() => free && !onpick && !free.road))
-		void loadRoad(HOME_ROADS[0].id).then((result) => {
+		void loadRoad(INTRO_ROAD_ID).then((result) => {
 			if (result.ok && !free?.road) free?.ride(result.route, 0);
 		});
 

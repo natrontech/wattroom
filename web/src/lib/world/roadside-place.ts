@@ -32,8 +32,8 @@ export const ART: readonly { name: ArtName; w: number; h: number }[] = [
 	{ name: 'leafy', w: 84, h: 116 },
 	{ name: 'leafy', w: 84, h: 104 },
 	{ name: 'bush', w: 28, h: 20 },
-	{ name: 'cow', w: 52, h: 36 }, // grazing
-	{ name: 'cow', w: 52, h: 36 }, // head up
+	// Three herds' worth: the patched white, a brown and a black, each grazing and head up.
+	...[0, 1, 2, 3, 4, 5].map(() => ({ name: 'cow' as const, w: 52, h: 36 })),
 	...[0, 1, 2, 3, 4, 5].map(() => ({ name: 'person' as const, w: 24, h: 36 })),
 ];
 const of = (name: ArtName) =>
@@ -235,7 +235,11 @@ export function roadsidePlacer(route: Route, world: World) {
 							put(
 								d + k * 4,
 								edge + 6 + noise(n + k) * 14,
-								pick(COWS, n + k + 1),
+								// One coat a herd, each cow grazing or looking up.
+								COWS[
+									2 * Math.min(2, Math.floor(noise(n + 20) * 3)) +
+										(noise(n + k + 1) < 0.5 ? 0 : 1)
+								],
 							);
 					// And someone out to watch the riders go by.
 					if (noise(n + 11) < 0.012)
@@ -308,13 +312,19 @@ export function roadsidePlacer(route: Route, world: World) {
 				biome === null ||
 				biome === Biome.Water ||
 				biome === Biome.Rock ||
-				biome === Biome.Snow
+				biome === Biome.Snow ||
+				biome === Biome.Frost
 			)
 				return false;
 			// Above the trees: pasture, bushes and people, no tree.
-			if (biome === Biome.Alpine && (name === 'spruce' || name === 'leafy'))
+			if (
+				(biome === Biome.Alpine || biome === Biome.Moor) &&
+				(name === 'spruce' || name === 'leafy')
+			)
 				return false;
 			if (!world.clearOf(c.x, c.z, FORMATION + reach(c.art))) return false;
+			// Nothing grows under a gallery's roof, nor near enough to reach through its wall or in between its pillars.
+			if (world.roofedAt?.(c.x, c.z, reach(c.art))) return false;
 			const foot = FOOT[name];
 			return blocks.every(
 				(o) => Math.hypot(o.x - c.x, o.z - c.z) >= o.r + foot,

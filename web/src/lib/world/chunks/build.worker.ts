@@ -10,6 +10,7 @@ import { indexStroke, type StrokeIndex } from './stroke-index';
 import type { ToWorker } from './builder';
 import type { FromGroundWorker, ToGroundWorker } from './grids';
 import type { Keying } from '../place/region';
+import { sceneOf } from '../designed';
 import { landUse } from '../land';
 import { makeGround } from '../terrain/ground';
 import { gridAt } from '../terrain-mesh';
@@ -25,8 +26,9 @@ let place: {
 self.onmessage = (e: MessageEvent<ToWorker | ToGroundWorker>) => {
 	const m = e.data;
 	if (m.type === 'ground') {
-		const ground = makeGround(m.roads, { salt: m.salt });
-		place = { ground, land: landUse(ground.noise) };
+		const scene = sceneOf(m.scene);
+		const ground = makeGround(m.roads, { salt: m.salt, scene });
+		place = { ground, land: landUse(ground.noise, ground.scene) };
 		return;
 	}
 	if (m.type === 'grids') {
@@ -40,6 +42,7 @@ self.onmessage = (e: MessageEvent<ToWorker | ToGroundWorker>) => {
 				grid.biome.buffer,
 				grid.shade.buffer,
 				grid.forest.buffer,
+				...(grid.blend ? [grid.blend.buffer] : []),
 			]);
 		}
 		return;

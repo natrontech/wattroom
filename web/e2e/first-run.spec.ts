@@ -19,7 +19,7 @@ test('a rider who has never ridden is shown the first step on Home', async ({
 		page.getByText('The ring under you is your zone.'),
 	).toBeVisible();
 	await first.click();
-	await expect(page).toHaveURL(/\/ride\?road=intro$/);
+	await expect(page).toHaveURL(/\/ride\?road=urnsee$/);
 });
 
 const MUTE = () =>

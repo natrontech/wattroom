@@ -2,10 +2,11 @@ import { keyer, unit, type Kind, type Salt } from '../place/keyed';
 import { CHUNK_M, COARSE_M } from '../place/lattice';
 import { smoothstep } from '../rand';
 import { patchJunctions } from './junctions';
-import { canonical, FAR_W, indexLines, type Line } from './lines';
+import { canonical, FAR_W, indexLines, type Hit, type Line } from './lines';
 import { roadFrame } from './road-frame';
 import type { RegionAt } from './region-relief';
 import { across, FORMATION } from './road-profile';
+import type { Layout } from '../designed';
 
 /**
  * The place's ground as one function of position (#3075, ADR-0081): the same
@@ -31,6 +32,14 @@ export const EARTHWORKS_M = 60;
 const SHELF_M = 20;
 /** Every road's cut and fill bound the ground out to here; past it no natural ground is 267 m below a road. */
 const CONE_M = 400;
+/**
+ * The hill over a tunnel (Line.bore): metres of it over the road at the
+ * least, out to `top` metres either side of its line, falling 1:1 past
+ * that. Its tube's crown stands 5.8 m over the road (structure-sizes.ts
+ * TUBE, in the scene's exaggerated heights): rock over it, and a 10 m
+ * cell's straight line across the top never dips into the vault.
+ */
+const BORE = { cover: 10, top: 16 };
 /** How far out the natural ground's relief keeps rising from a road. */
 const RISE_M = 1600;
 
@@ -44,6 +53,8 @@ export type GroundOpts = {
 	model?: (x: number, z: number) => number;
 	/** Where a private region keys the relief in its own frame (#3607); none: the world's everywhere. */
 	regions?: RegionAt;
+	/** A designed road's scene (designed.ts): its lakes, rivers and peaks shape the natural ground. */
+	scene?: Layout;
 };
 
 const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -176,12 +187,32 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		return base + rise + hills;
 	});
 
+	/** A road's nearest point, where the road lies on the ground: none where it is carried over it, on a bridge. */
+	const onGround = (hit: Hit | null) =>
+		hit && index.open[hit.i] && index.open[hit.i + 1] ? null : hit;
+	/** Whether a road's nearest point lies in a tunnel (Line.bore): the hill stands over it. */
+	const bored = (hit: Hit | null) =>
+		!!hit && index.bore[hit.i] === 1 && index.bore[hit.i + 1] === 1;
+
+	/** The generator's ground under a scene's lakes and peaks, before its streams are laid on it. */
+	function unwatered(x: number, z: number): number {
+		const h =
+			macro(x, z) +
+			noise('ground', DETAIL, x, z) * 7 * smoothstep(15, 120, dist(x, z));
+		return opts.scene!.shape(x, z, h, dist(x, z));
+	}
+	const scene = opts.scene?.laid(
+		`${opts.salt}:${opts.origin ?? ''}`,
+		unwatered,
+	);
+
 	/** The ground before any road cuts it. */
 	function natural(x: number, z: number): number {
 		if (opts.model) return opts.model(x, z);
 		const detail =
 			noise('ground', DETAIL, x, z) * 7 * smoothstep(15, 120, dist(x, z));
-		return macro(x, z) + detail;
+		const h = macro(x, z) + detail;
+		return scene ? scene.shape(x, z, h, dist(x, z)) : h;
 	}
 
 	/**
@@ -202,11 +233,14 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	 * stacked switchbacks share one slope and a hairpin's inside is one bank.
 	 */
 	function heightAt(x: number, z: number): number {
-		const hit = index.nearest(x, z, 2);
-		if (hit && hit.d <= FORMATION) return hit.h - SUBGRADE;
+		const hit = onGround(index.nearest(x, z, 2));
+		const hill = bored(hit);
+		if (hit && hit.d <= FORMATION && !hill) return hit.h - SUBGRADE;
 		let lower = -Infinity;
 		let upper = Infinity;
-		const cone = (vh: number, d: number, slack: number) => {
+		const cone = (vh: number, d: number, slack: number, g = -1) => {
+			// A bridge's vertex bears on no ground, and a tunnel's cuts none: the hill stands over it.
+			if (g >= 0 && (index.open[g] || index.bore[g])) return;
 			const dd = Math.max(0, d - FORMATION);
 			lower = Math.max(lower, vh - SUBGRADE - FILL * dd - slack);
 			upper = Math.min(
@@ -218,10 +252,22 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 		// nearest point exactly. Those are tighter by under 2 m at 60 m, so they let go by
 		// that much between 40 and 60 m before they drop out: no vertex leaves while it binds.
 		const letGo = (d: number) => 2 * smoothstep(40, EARTHWORKS_M, d);
-		index.thinWithin(x, z, CONE_M, (vh, d) => cone(vh, d, 0));
-		index.within(x, z, EARTHWORKS_M, (vh, d) => cone(vh, d, letGo(d)));
-		if (hit) cone(hit.h, hit.d, letGo(hit.d));
+		index.thinWithin(
+			x,
+			z,
+			CONE_M,
+			(vh, d, g) => (index.light[g] && d > EARTHWORKS_M) || cone(vh, d, 0, g),
+		);
+		index.within(x, z, EARTHWORKS_M, (vh, d, g) => cone(vh, d, letGo(d), g));
+		if (hit && !hill) cone(hit.h, hit.d, letGo(hit.d));
 		const ground = natural(x, z);
+		// Over a tunnel nothing cuts the hill down: it stands as it is, and a cover of rock over the tube at the least, falling away past it as a cutting rises.
+		if (hill)
+			return Math.max(
+				ground,
+				lower,
+				hit!.h - SUBGRADE + BORE.cover - CUT * Math.max(0, hit!.d - BORE.top),
+			);
 		if (lower === -Infinity) return ground;
 		if (lower > upper) return (lower + upper) / 2; // two roads disagree: a retaining wall's worth, split
 		return smoothClamp(ground, lower, upper, 1.5);
@@ -236,8 +282,8 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	 */
 	function drawnAt(x: number, z: number): number {
 		const h = heightAt(x, z);
-		const hit = index.nearest(x, z, 1);
-		if (!hit || hit.d >= SHELF_M) return h;
+		const hit = onGround(index.nearest(x, z, 1));
+		if (!hit || hit.d >= SHELF_M || bored(hit)) return h;
 		const dd = Math.max(0, hit.d - FORMATION);
 		return Math.min(h, hit.h - SUBGRADE + CUT * Math.max(0, dd - BENCH));
 	}
@@ -264,6 +310,9 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	return {
 		heightAt,
 		drawnAt,
+		natural,
+		/** The scene the ground was shaped by, its streams laid (designed.ts). */
+		scene,
 		roadSurfaceAt,
 		roadDist,
 		clearOf,

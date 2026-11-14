@@ -10,6 +10,9 @@
 	import { toRoute, type Route } from '#lib/road/route.ts';
 	import { crossingsOf, type Crossing } from '#lib/world/crossings.ts';
 	import type { CameraMode } from '#lib/world/scene.ts';
+	import type { World } from '#lib/world/world.ts';
+	import MapOverview from '#lib/world/MapOverview.svelte';
+	import Skyline from '#lib/ride/Skyline.svelte';
 
 	const params = page.url.searchParams;
 	// Look first: the place you stand at, from wherever you drag the eye. Orbit is the whole model on its table.
@@ -32,6 +35,31 @@
 	let share = $state(params.get('share') !== '0');
 	let camera = $state<CameraMode>(cameraOf(params.get('camera')) ?? 'look');
 	let kmh = $state(100);
+	// What the main pane shows: the world, the ride's flat road (the Skyline), or the map from above.
+	const VIEWS = [
+		['3d', '3D'],
+		['flat', 'Flat'],
+		['map', 'Map'],
+	] as const;
+	let view = $state<(typeof VIEWS)[number][0]>(
+		VIEWS.find(([id]) => id === params.get('view'))?.[0] ?? '3d',
+	);
+	let land = $state.raw<World | null>(null);
+	/** The road as the Flat view draws it: a loop twice round, so it runs on past its finish. */
+	const flatRoad = $derived.by(() => {
+		const road = route?.road;
+		const n = route ? route.x.length - 1 : 0;
+		// It comes home: its last sample stands where its first does.
+		const home =
+			!!route &&
+			Math.hypot(route.x[n] - route.x[0], route.z[n] - route.z[0]) < 30;
+		if (!road || !home) return road ?? { length: 0, heights: [], turns: [] };
+		return {
+			length: road.length * 2,
+			heights: [...road.heights, ...road.heights.slice(1)],
+			turns: [...road.turns, ...road.turns],
+		};
+	});
 	let playing = $state(false);
 	let m = $state(0);
 	let note = $state('');
@@ -153,7 +181,11 @@
 		}
 	}
 	let picked = $state('');
-	if (params.get('shape')) void shape(params.get('shape')!);
+	// `m` stands the lab that far along it: a link to a spot, or a script's shot of one.
+	if (params.get('shape'))
+		void shape(params.get('shape')!).then(() =>
+			seek(Number(params.get('m') ?? 0)),
+		);
 
 	function seek(to: number) {
 		if (!route) return;
@@ -171,12 +203,19 @@
 		]).then(([{ mount }, { generate }, look, { worldDiorama }]) => {
 			if (gone) return;
 			const paint = look.worldPaint(node.parentElement ?? document.body);
+			const built = generate(r);
+			land = built;
 			scene = mount(node, {
 				route: r,
-				world: generate(r),
+				world: built,
 				style: worldDiorama()
-					? look.dioramaLook(paint, { night: false, weather: 'clear' })
+					? look.dioramaLook(paint, {
+							night: params.get('night') === '1',
+							weather: 'clear',
+						})
 					: look.rideLook(paint),
+				// ?light=1: the World control's Light, the lowest rung.
+				light: params.get('light') === '1',
 				ftp: 250,
 				camera,
 				// Just sought, the world keeps drawing for a moment: a standing world draws once a second.
@@ -361,6 +400,23 @@
 			setCamera,
 			crossings: () => crossings,
 			length: () => route?.length ?? 0,
+			// Where a side road meets a road within 60 m of the road ridden, as metres along the ridden one: what a check of every junction and roundabout stands at.
+			junctions: () =>
+				(land?.sides ?? []).flatMap((s) =>
+					s.mouths.flatMap((m) => {
+						if (!m || !route) return [];
+						let best = 60;
+						let at = -1;
+						for (let i = 0; i < route.x.length; i++) {
+							const d = Math.hypot(route.x[i] - m.x, route.z[i] - m.z);
+							if (d < best) {
+								best = d;
+								at = Math.round(i * route.step);
+							}
+						}
+						return at < 0 ? [] : [at];
+					}),
+				),
 		},
 	});
 </script>
@@ -384,6 +440,25 @@
 					{@attach (node) => world(node, route!)}
 				></canvas>
 			{/key}
+			{#if view === 'flat'}
+				<!-- As a ride's Flat view stands (RidingSurface.svelte): the Skyline
+				     as a place, the world's dusk over its ridges and a meadow. The
+				     lab paints that place in the 3D world's own colours, unmixed with
+				     the theme's surface, as the Map's picture is (map-render.ts). -->
+				<div class="flat-ground world-flat bg-surface absolute inset-0">
+					<!-- A road that comes home is drawn on into its next lap, the finish marked on it: the line never stops short of the frame's edge. -->
+					<Skyline
+						road={flatRoad}
+						{m}
+						mps={playing ? kmh / 3.6 : 0}
+						finishM={route.road.length}
+					/>
+				</div>
+			{:else if view === 'map' && land}
+				<div class="bg-surface absolute inset-0 p-3">
+					<MapOverview {route} world={land} {m} />
+				</div>
+			{/if}
 		{:else}
 			<p
 				class="text-muted absolute inset-0 grid place-items-center p-8 text-center"
@@ -457,6 +532,18 @@
 					</button>
 				{/each}
 				<span class="text-muted">km/h</span>
+			</div>
+			<div class="flex flex-wrap gap-2">
+				{#each VIEWS as [id, label] (id)}
+					<button
+						class="btn btn-sm"
+						class:btn-primary={view === id}
+						aria-pressed={view === id}
+						onclick={() => (view = id)}
+					>
+						{label}
+					</button>
+				{/each}
 			</div>
 			<div class="flex flex-wrap gap-2">
 				{#each CAMERAS as [id, label] (id)}
@@ -587,3 +674,33 @@
 		{/if}
 	</aside>
 </div>
+
+<style>
+	/* The Flat view in the 3D world's own colours (Diorama's sky, ridges,
+	   meadow and forest), unmixed with the theme's surface: the colours the
+	   Map's picture is painted in. The ride's Flat view keeps its tint. */
+	.world-flat {
+		--color-sky-1: var(--world-dio-sky-zenith);
+		--color-sky-2: color-mix(
+			in oklab,
+			var(--world-dio-sky-zenith),
+			var(--world-dio-sky-horizon)
+		);
+		--color-sky-3: var(--world-dio-sky-horizon);
+	}
+	.world-flat :global(.fill-ridge-far) {
+		fill: var(--world-px-ridge);
+	}
+	.world-flat :global(.fill-ridge-near) {
+		fill: var(--world-px-ridge-rock);
+	}
+	.world-flat :global(.fill-land) {
+		fill: var(--world-px-biome-meadow);
+	}
+	.world-flat :global(.fill-land-deep) {
+		fill: var(--world-px-biome-forest);
+	}
+	.world-flat :global(.bg-land-deep) {
+		background-color: var(--world-px-biome-forest);
+	}
+</style>

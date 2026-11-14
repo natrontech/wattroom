@@ -123,7 +123,7 @@ describe('O7 sightline, with the real rig', () => {
 	const edge = (k: string) =>
 		['house', 'church', 'barn', 'hut', 'chapel'].includes(k)
 			? 8
-			: ['snowpole', 'delineator'].includes(k)
+			: ['snowpole', 'marker', 'delineator'].includes(k)
 				? 0.3
 				: 6;
 

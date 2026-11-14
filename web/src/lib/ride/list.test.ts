@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { riddenName, ridePlace, rideTitle } from './list';
+import {
+	plainTitle,
+	riddenName,
+	ridePlace,
+	rideRoadName,
+	rideTitle,
+} from './list';
 
 describe('ridePlace (#2457)', () => {
 	const crew = { id: 'c', name: 'Thursday Crew' };
@@ -58,5 +64,53 @@ describe('rideTitle (#3874)', () => {
 		expect(rideTitle({ workoutName: 'Sweet Spot 3×15', title: '' })).toBe(
 			'Sweet Spot 3×15',
 		);
+	});
+});
+
+// A ride with no workout is its road; a workout keeps its name and the road
+// is said beside it (#4248).
+describe('a ride on a road, with a workout or none (#4248)', () => {
+	const road = {
+		routeId: 'r1',
+		name: 'Home loop',
+		genName: 'Road · 7.1 km · 571 m',
+	};
+	it('titles a workout on your own road by the workout, the road beside it', () => {
+		const ride = {
+			workoutName: 'Road · 7.1 km · 571 m',
+			workoutOwnName: 'Sweet spot',
+			road,
+		};
+		expect(rideTitle(ride)).toBe('Sweet spot');
+		expect(plainTitle(ride)).toBe('Sweet spot');
+		expect(rideRoadName(ride)).toBe('Home loop');
+		// Against your best still compares the road.
+		expect(riddenName(ride)).toBe('Home loop');
+	});
+	it('titles a workout on WattRoom’s road by the workout, the road beside it', () => {
+		const ride = {
+			workoutName: 'Kettental-Runde',
+			workoutOwnName: 'Sweet spot',
+		};
+		expect(rideTitle(ride)).toBe('Sweet spot');
+		expect(rideRoadName(ride)).toBe('Kettental-Runde');
+	});
+	it('titles a ride with no workout by its road, and says it once', () => {
+		expect(rideTitle({ workoutName: 'Kettental-Runde' })).toBe(
+			'Kettental-Runde',
+		);
+		expect(rideRoadName({ workoutName: 'Kettental-Runde' })).toBeUndefined();
+		expect(rideTitle({ workoutName: 'Free ride', road })).toBe('Home loop');
+		expect(rideRoadName({ workoutName: 'Free ride', road })).toBeUndefined();
+	});
+	it('takes the rider’s own name over the workout’s, the road still beside it', () => {
+		const ride = {
+			workoutName: 'Kettental-Runde',
+			workoutOwnName: 'Sweet spot',
+			title: 'Hill day',
+		};
+		expect(rideTitle(ride)).toBe('Hill day');
+		expect(plainTitle(ride)).toBe('Sweet spot');
+		expect(rideRoadName(ride)).toBe('Kettental-Runde');
 	});
 });

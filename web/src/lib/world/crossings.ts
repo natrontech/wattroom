@@ -10,6 +10,8 @@
  * that are far apart along the route and meet at a point count.
  */
 
+import type { Route } from '#lib/road/route.ts';
+
 /** Metres along the route two samples lie apart at least to be two passes, not one bend. */
 const APART_M = 100;
 
@@ -32,10 +34,26 @@ export const CLEAR_M = 12;
 /** A shallow crossing reads the other pass for longer, to this at most either side. */
 const REACH_MAX_M = 80;
 
+/** Metres from an earlier road's centre line within which a road that joins it gives way to it, whatever else it meets there: that road's formation. */
+const JOINS_WITHIN_M = 4.8;
+
 /** A crossroads, both passes alike; a pass joining an earlier one, which gives way to it; and the earlier one it joins. */
 export const CROSSES = 0;
 export const JOINS = 1;
 export const JOINED = -1;
+/** A side road running into the road it meets at a junction (Route.meets with `onto`): it joins, seated on that road (road-surface.ts), and its distance is signed, negative past that road's line. */
+export const SEATED = 2;
+/** And the road it meets there, which reads its line as JOINED does. */
+export const SEATED_ON = -2;
+/** The role a meeting is read as: a junction's own where it has a side to it (Route.meets `near`). */
+const roleOf = (o: { role: number; near?: unknown }) =>
+	!o.near
+		? o.role
+		: o.role === JOINS
+			? SEATED
+			: o.role === JOINED
+				? SEATED_ON
+				: o.role;
 
 /**
  * A stretch of the route, in metres along it, that meets another pass at one
@@ -95,6 +113,8 @@ export function meetingsOf(
 
 type Met = {
 	bare?: readonly Meeting[];
+	/** Other roads it meets at a junction (side-roads.ts), each as its own line. */
+	meets?: Route['meets'];
 	x: ArrayLike<number>;
 	z: ArrayLike<number>;
 	step: number;
@@ -119,11 +139,53 @@ export function meetingAt(
 	x: number,
 	z: number,
 ): [off: number, as: number] {
-	if (!route.bare) return [CLEAR_M, CROSSES];
+	if (!route.bare && !route.meets) return [CLEAR_M, CROSSES];
 	const L = route.length;
 	const dd = d < 0 || d > L ? ((d % L) + L) % L : d;
 	let best = CLEAR_M;
 	let as = CROSSES;
+	let joins = Infinity;
+	let joinsAs = JOINS;
+	let sign = 1;
+	for (const o of route.meets ?? []) {
+		if (dd < o.from || dd > o.to) continue;
+		let near = Infinity;
+		let at = 0;
+		let past = false;
+		let mine = CLEAR_M;
+		const last = o.x.length - 2;
+		for (let i = 0; i <= last; i++) {
+			const sx = o.x[i + 1] - o.x[i];
+			const sz = o.z[i + 1] - o.z[i];
+			const px = x - o.x[i];
+			const pz = z - o.z[i];
+			const along = (px * sx + pz * sz) / (sx * sx + sz * sz || 1);
+			const t = Math.min(1, Math.max(0, along));
+			const off = Math.hypot(px - sx * t, pz - sz * t);
+			if (off < near) {
+				near = off;
+				at = i;
+				past = (i === 0 && along < 0) || (i === last && along > 1);
+			}
+			mine = Math.min(mine, off);
+		}
+		// The road met, read past its end, is no road there: a side road running on from a roundabout's arm, end to end, is drawn on past it.
+		if (o.near && o.role === JOINS && past) continue;
+		if (mine < best) {
+			best = mine;
+			as = roleOf(o);
+		}
+		if (o.role === JOINS && near < joins) {
+			joins = near;
+			joinsAs = o.near ? SEATED : JOINS;
+			sign = o.near
+				? sideOf(o, at, x, z) * sideOf(o, nearestOf(o, ...o.near), ...o.near)
+				: 1;
+		}
+	}
+	// At a node a road both joins the roads before it and is joined by those after: inside an earlier road's formation it joins, whatever lies nearer.
+	if (joins < JOINS_WITHIN_M) return [joins * sign, joinsAs];
+	if (!route.bare) return [best, as];
 	const last = route.x.length - 2;
 	for (const [from, to, otherFrom, otherTo, role] of route.bare) {
 		if (dd < from || dd > to) continue;
@@ -146,6 +208,44 @@ export function meetingAt(
 		}
 	}
 	return [best, as];
+}
+
+/** Which side of a line's segment `i` (x, z) lies: 1 left, −1 right. */
+function sideOf(
+	l: { x: ArrayLike<number>; z: ArrayLike<number> },
+	i: number,
+	x: number,
+	z: number,
+): number {
+	const sx = l.x[i + 1] - l.x[i];
+	const sz = l.z[i + 1] - l.z[i];
+	return (x - l.x[i]) * sz - (z - l.z[i]) * sx >= 0 ? 1 : -1;
+}
+
+/** A line's segment nearest (x, z). */
+function nearestOf(
+	l: { x: ArrayLike<number>; z: ArrayLike<number> },
+	x: number,
+	z: number,
+): number {
+	let best = Infinity;
+	let at = 0;
+	for (let i = 0; i + 1 < l.x.length; i++) {
+		const sx = l.x[i + 1] - l.x[i];
+		const sz = l.z[i + 1] - l.z[i];
+		const px = x - l.x[i];
+		const pz = z - l.z[i];
+		const t = Math.min(
+			1,
+			Math.max(0, (px * sx + pz * sz) / (sx * sx + sz * sz || 1)),
+		);
+		const off = Math.hypot(px - sx * t, pz - sz * t);
+		if (off < best) {
+			best = off;
+			at = i;
+		}
+	}
+	return at;
 }
 
 type Line = {

@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/fitexport"
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -232,11 +233,14 @@ func exportFailure(err error) string {
 // ride, which is what Strava files it under too (a Virtual Ride). A ride
 // saved before on_road has only route_key to say it rode one; a workout
 // ridden over a road before workout_own_name is titled the same way.
+// WattRoom's own roads are invented, no place at all: a ride one alone
+// names is titled by it (#4248).
 func activityName(ride db.GetRideForUploadRow) string {
 	switch {
 	case ride.WorkoutOwnName != nil:
 		return *ride.WorkoutOwnName
-	case ride.RouteKey == nil && (ride.OnRoad == nil || !*ride.OnRoad):
+	case ride.RouteKey == nil && (ride.OnRoad == nil || !*ride.OnRoad),
+		routes.LibraryName(ride.WorkoutName):
 		return ride.WorkoutName
 	case ride.DistanceM == nil || *ride.DistanceM <= 0:
 		return virtualRouteRide
@@ -252,10 +256,17 @@ const virtualRouteRide = "Virtual route ride"
 // activityDescription is what the Strava activity says about where it was
 // ridden: the crew's name for a crew ride (#2443), and only ever the site's
 // own link. A Strava activity is often public, so no crew link or id goes in
-// (#4139), and other riders never appear here (WATTROOM.md privacy).
+// (#4139), and other riders never appear here (WATTROOM.md privacy). A
+// workout ridden over one of WattRoom's own roads says which first: its
+// title is the workout's. A rider's own route is never named here, nor its
+// generated name (ADR-0063).
 func activityDescription(ride db.GetRideForUploadRow) string {
-	if ride.CrewName == nil {
-		return "Ridden on https://wattroom.ch"
+	where := "Ridden on https://wattroom.ch"
+	if ride.CrewName != nil {
+		where = "Ridden with " + *ride.CrewName + " on https://wattroom.ch"
 	}
-	return "Ridden with " + *ride.CrewName + " on https://wattroom.ch"
+	if ride.WorkoutOwnName != nil && routes.LibraryName(ride.WorkoutName) {
+		return "On " + ride.WorkoutName + "\n" + where
+	}
+	return where
 }

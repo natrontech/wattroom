@@ -13,6 +13,12 @@ export type Line = {
 	x: ArrayLike<number>;
 	z: ArrayLike<number>;
 	h: ArrayLike<number>;
+	/** Per vertex, 1 where the road is carried over the ground, a bridge: it shapes no earthworks there. Absent: none. */
+	open?: ArrayLike<number>;
+	/** Per vertex, 1 where the road runs through the hill, a tunnel: the ground is left closed over it, never cut down to it. Absent: none. */
+	bore?: ArrayLike<number>;
+	/** A gravel lane's (designed.ts Lane): its cut and fill bound the ground only within its own earthworks, not hundreds of metres down a hillside. */
+	light?: boolean;
 };
 
 export type Hit = {
@@ -40,7 +46,15 @@ export function canonical(lines: readonly Line[]): Line[] {
 				l.x[0] < l.x[n] || (l.x[0] === l.x[n] && l.z[0] <= l.z[n]);
 			if (forward) return l;
 			const back = (a: ArrayLike<number>) => Float64Array.from(a).reverse();
-			return { key: l.key, x: back(l.x), z: back(l.z), h: back(l.h) };
+			return {
+				key: l.key,
+				x: back(l.x),
+				z: back(l.z),
+				h: back(l.h),
+				...(l.open && { open: Uint8Array.from(l.open).reverse() }),
+				...(l.bore && { bore: Uint8Array.from(l.bore).reverse() }),
+				...(l.light && { light: true }),
+			};
 		});
 }
 
@@ -82,7 +96,16 @@ export function indexLines(lines: readonly Line[]) {
 	const h = new Float64Array(N);
 	const last = new Uint8Array(N); // the last vertex of its line starts no segment
 	const lineOf = new Int32Array(N);
+	/** A vertex carried over the ground (Line.open). */
+	const open = new Uint8Array(N);
+	/** A vertex inside a tunnel (Line.bore). */
+	const bore = new Uint8Array(N);
+	/** A vertex of a light line (Line.light). */
+	const light = new Uint8Array(N);
 	lines.forEach((l, k) => {
+		if (l.open) open.set(Uint8Array.from(l.open), starts[k]);
+		if (l.bore) bore.set(Uint8Array.from(l.bore), starts[k]);
+		if (l.light) light.fill(1, starts[k], starts[k + 1]);
 		for (let i = 0; i < l.x.length; i++) {
 			x[starts[k] + i] = l.x[i];
 			z[starts[k] + i] = l.z[i];
@@ -113,12 +136,19 @@ export function indexLines(lines: readonly Line[]) {
 	};
 	const near = new Map<number, number[]>();
 	for (let g = 0; g < N; g++) bucket(near, CELL, g);
+	// A tunnel's vertices are no road to the land round it (Line.bore): the hill over it rises as if none ran there, the way the land had it. Only the nearest point, its exact neighbour, knows the road in it.
 	const wide = new Map<number, number[]>();
-	for (const g of thin(starts, x, z, 20)) bucket(wide, WIDE, g);
-	const far = thin(starts, x, z, 200);
+	for (const g of thin(starts, x, z, 20)) if (!bore[g]) bucket(wide, WIDE, g);
+	const far = thin(starts, x, z, 200).filter((g) => !bore[g]);
 
-	/** The nearest point of any segment within `rings` cells of (px, pz), on any line but `skip`; null past them. */
-	function nearest(px: number, pz: number, rings = 6, skip = -1): Hit | null {
+	/** The nearest point of any segment within `rings` cells of (px, pz), on any line but `skip`, and in no tunnel when `outside`; null past them. */
+	function nearest(
+		px: number,
+		pz: number,
+		rings = 6,
+		skip = -1,
+		outside = false,
+	): Hit | null {
 		const ci = Math.floor(px / CELL);
 		const cj = Math.floor(pz / CELL);
 		let best = Infinity;
@@ -126,6 +156,7 @@ export function indexLines(lines: readonly Line[]) {
 		let bt = 0;
 		const segment = (a: number) => {
 			if (a < 0 || last[a] || lineOf[a] === skip) return;
+			if (outside && bore[a] && bore[a + 1]) return;
 			const sx = x[a + 1] - x[a];
 			const sz = z[a + 1] - z[a];
 			const len2 = sx * sx + sz * sz || 1;
@@ -173,12 +204,12 @@ export function indexLines(lines: readonly Line[]) {
 		};
 	}
 
-	/** Every vertex within `reach` metres: `fn(height, distance)`. */
+	/** Every vertex within `reach` metres: `fn(height, distance, vertex)`. */
 	function within(
 		px: number,
 		pz: number,
 		reach: number,
-		fn: (vh: number, d: number) => void,
+		fn: (vh: number, d: number, g: number) => void,
 	) {
 		const ci = Math.floor(px / CELL);
 		const cj = Math.floor(pz / CELL);
@@ -192,17 +223,17 @@ export function indexLines(lines: readonly Line[]) {
 					continue;
 				for (const g of near.get(key(ci + di, cj + dj)) ?? []) {
 					const d2 = (x[g] - px) ** 2 + (z[g] - pz) ** 2;
-					if (d2 < reach * reach) fn(h[g], Math.sqrt(d2));
+					if (d2 < reach * reach) fn(h[g], Math.sqrt(d2), g);
 				}
 			}
 	}
 
-	/** Every vertex ~20 m apart within `reach` metres: `fn(height, distance)`. */
+	/** Every vertex ~20 m apart within `reach` metres: `fn(height, distance, vertex)`. */
 	function thinWithin(
 		px: number,
 		pz: number,
 		reach: number,
-		fn: (vh: number, d: number) => void,
+		fn: (vh: number, d: number, g: number) => void,
 	) {
 		const ci = Math.floor(px / WIDE);
 		const cj = Math.floor(pz / WIDE);
@@ -218,7 +249,7 @@ export function indexLines(lines: readonly Line[]) {
 					const ex = x[g] - px;
 					const ez = z[g] - pz;
 					const d2 = ex * ex + ez * ez;
-					if (d2 < reach * reach) fn(h[g], Math.sqrt(d2));
+					if (d2 < reach * reach) fn(h[g], Math.sqrt(d2), g);
 				}
 			}
 	}
@@ -254,7 +285,7 @@ export function indexLines(lines: readonly Line[]) {
 		if (approx > cap) return null;
 		// Vertices 20 m apart put the true distance within 10 m below this.
 		if (approx <= EXACT_M + 10) {
-			const hit = nearest(px, pz, Math.ceil((approx + CELL) / CELL));
+			const hit = nearest(px, pz, Math.ceil((approx + CELL) / CELL), -1, true);
 			if (hit) return hit;
 		}
 		return { d: approx, h: bh };
@@ -324,6 +355,9 @@ export function indexLines(lines: readonly Line[]) {
 		z,
 		h,
 		last,
+		open,
+		bore,
+		light,
 	};
 }
 

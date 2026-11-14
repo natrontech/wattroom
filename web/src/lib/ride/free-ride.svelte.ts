@@ -14,6 +14,7 @@ import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
 import { createRoadReadout } from '#lib/ride/road-readout.ts';
 import { wayUp } from '#lib/ride/climb-repeats.ts';
 import { createRoadLaps, type RoadSecond } from '#lib/ride/road-ride.ts';
+import { homeRoad } from '#lib/ride/home-roads.ts';
 import type { RideableRoute } from '#lib/ride/roads.ts';
 import type { RideBatzen } from '#lib/ride/batzen.ts';
 import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
@@ -36,6 +37,28 @@ export const FREE_RIDE_JSON = JSON.stringify({
 	unscored: true,
 	steps: [],
 });
+
+/**
+ * The free ride as it saves (#4248): on one of WattRoom's roads it carries
+ * the road by reference, so the server saves it under the road's name; on
+ * any other road the route row (or nothing, on a mate's) does the naming.
+ */
+export function freeRideJson(
+	route: { id: string; road: { length: number } } | null | undefined,
+): string {
+	const home = route && homeRoad(route.id);
+	if (!route || !home) return FREE_RIDE_JSON;
+	return JSON.stringify({
+		name: FREE_RIDE_NAME,
+		unscored: true,
+		steps: [],
+		road: {
+			routeId: home.routeId,
+			fromM: 0,
+			toM: Math.max(1, Math.round(route.road.length)),
+		},
+	});
+}
 
 export type FreeRideOutcome =
 	| { saved: { id: string; xp?: number; batzen?: RideBatzen } }
@@ -388,7 +411,7 @@ export function createFreeRide(deps: {
 					ownerId: account.me?.id,
 					startedAt,
 					workoutName: FREE_RIDE_NAME,
-					workoutJson: FREE_RIDE_JSON,
+					workoutJson: freeRideJson(onRoad?.route),
 					...(saveOn && { routeId: saveOn.id }),
 				}).then((opened) => {
 					if (rideId === opening) buffer = opened;
@@ -457,7 +480,7 @@ export function createFreeRide(deps: {
 			if (startedAt === null || saving) return null;
 			const ride: RideUpload = {
 				workoutName: FREE_RIDE_NAME,
-				workoutJson: FREE_RIDE_JSON,
+				workoutJson: freeRideJson(onRoad?.route),
 				startedAt: new Date(startedAt).toISOString(),
 				samples,
 				...(saveOn && {

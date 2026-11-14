@@ -31,6 +31,11 @@ var library = func() map[string]libraryRoad {
 	for id, name := range map[string]string{
 		"7a77b0ad-0001-4000-8000-000000004248": "Pass loop",
 		"7a77b0ad-0002-4000-8000-000000004248": "Valley loop",
+		"7a77b0ad-0003-4000-8000-000000004248": "Col de Berne",
+		"7a77b0ad-0004-4000-8000-000000004248": "Tour de l’Aaren",
+		"7a77b0ad-0005-4000-8000-000000004248": "Urnsee-Rundfahrt",
+		"7a77b0ad-0006-4000-8000-000000004248": "Flèche du Lac",
+		"7a77b0ad-0007-4000-8000-000000004248": "Kettental-Runde",
 	} {
 		packed, err := libraryFiles.ReadFile("library/" + id + ".road")
 		if err != nil {
@@ -49,4 +54,16 @@ var library = func() map[string]libraryRoad {
 func fromLibrary(routeID string) (libraryRoad, bool) {
 	r, ok := library[routeID]
 	return r, ok
+}
+
+// LibraryName says whether name is one of WattRoom's roads' names (#4248):
+// invented, so a ride saved under one may carry it wherever the ride goes,
+// a Strava title and a posted card included, as no rider's route may.
+func LibraryName(name string) bool {
+	for _, r := range library {
+		if r.name == name {
+			return true
+		}
+	}
+	return false
 }

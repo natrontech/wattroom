@@ -15,21 +15,61 @@ import {
 import { TILE_M, tileCentre, tileKey, tileOf } from './props/tiles';
 import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
+import { Biome } from './biome';
+import { roundaboutsOf, sceneOf } from './designed';
+import { giveWays, roundabouts, stopped, stops } from './scenery';
+import {
+	BORE_BOXES,
+	boreBoxes,
+	bridges,
+	galleries,
+	Pieces,
+	roadEdges,
+	STONE_UNDER_SNOW_M,
+	tunnels,
+	type WorksColors,
+} from './structures';
 import type { Piece } from './setpieces';
-import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
+import {
+	GRAVEL_EDGE,
+	GRAVEL_W,
+	plinth,
+	ribbonOf,
+	road,
+	surfaceOf,
+	roadMaterial,
+	terrain,
+	yOf,
+} from './geometry';
 import { lightsMaterial, lightsUniforms, OFF } from './lights';
 import { flat, type Sight } from './materials';
 import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
+import { merge } from './model';
+import { shoreDressing } from './shore';
+import { HARBOUR_CLEAR_M, harbour, harbourPieces } from './harbour';
+import {
+	waterMaterial,
+	waterSheets,
+	waterTiles,
+	type ShorePoint,
+} from './water';
 import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '#lib/road/route.ts';
 import { lightAt, sunDir } from './light';
 import { DIORAMA } from './pixel';
 import { spriteOwns } from './roadside-place';
-import { setLight, skyMaterial, terrainMaterial, type Style } from './styles';
+import {
+	setBores,
+	setLight,
+	skyMaterial,
+	terrainMaterial,
+	type Style,
+} from './styles';
 import { meshOf, REACH } from './terrain-mesh';
-import { endsMeet, SHOULDER } from './terrain/road-profile';
+import { liftOf } from './road-surface';
+import { endsMeet } from './terrain/road-profile';
 import type { World } from './world';
 
 /**
@@ -41,6 +81,10 @@ import type { World } from './world';
 export const DRESS_M = FAR_M * FETCH_AHEAD + 1.5 * TILE_M;
 /** What a ride keeps of its place round the eye (#3851): the ribbon's reach, and the dressing's with the neighbours a tile settles against, each with its hysteresis. */
 const KEEP_M = Math.max(REACH.near, DRESS_M + 2 * TILE_M) * LEAVE;
+
+/** Colour `a` mixed `t` of the way to `b`, and darkened to `k` of itself. */
+const mixed = (a: string, b: string, t: number, k = 1) =>
+	`#${new THREE.Color(a).lerp(new THREE.Color(b), t).multiplyScalar(k).getHexString()}`;
 
 /** A set piece as the batch draws it: a flag by its colour's model. */
 const drawn = (p: Piece): Drawn => ({
@@ -197,9 +241,33 @@ export function buildStage(
 			ground.add(id, terrain(route, meshOf([{ ci, cj, grid }]), style.palette)),
 		drop: (id) => ground.drop(id),
 	});
-	const ribbon = piecePool(roadMaterial(style.road, lights), ROAD_ROOM);
+	const snowline = sceneOf(route.scene)?.climate.snowline;
+	const snowy =
+		snowline === undefined
+			? undefined
+			: { y: yOf(route, snowline), color: style.palette[Biome.Snow] };
+	const ribbon = piecePool(roadMaterial(style.road, lights, snowy), ROAD_ROOM);
 	group.add(tag('road', ribbon.mesh));
-	const pieces = roadPieces(route);
+	// The map's gravel lanes: their own surface, no paint on it.
+	const lanes = world.sides.some((s) => s.route.gravel)
+		? piecePool(roadMaterial(style.road, lights, snowy, true), ROAD_ROOM)
+		: null;
+	if (lanes) group.add(tag('road', lanes.mesh));
+	// The road ridden, and the map's other roads where they leave it (side-roads.ts): a hair lower, so where one meets the ridden road it lies under its asphalt.
+	const ribbons = [
+		{
+			of: world.ridden,
+			lift: undefined as number | undefined,
+			caps: undefined as readonly [boolean, boolean] | undefined,
+		},
+		...world.sides.map((s) => ({
+			of: s.route,
+			lift: liftOf(s.route, false) as number | undefined,
+			caps: s.square
+				? ([false, false] as const)
+				: ([!s.mouths[0], !s.mouths[1]] as const),
+		})),
+	].map((r, j) => ({ ...r, j, pieces: roadPieces(r.of) }));
 	let here: string | null = null;
 	function roads(eye: THREE.Vector3) {
 		const at = chunkId([
@@ -208,16 +276,24 @@ export function buildStage(
 		]);
 		if (at === here) return;
 		here = at;
-		pieces.forEach((p, k) => {
-			const key = String(k);
-			const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
-			if (d <= REACH.near && !ribbon.has(key))
-				ribbon.add(
-					key,
-					road(route, { width: ROAD_W, shoulder: SHOULDER, rows: p.rows }),
-				);
-			else if (d > REACH.near * LEAVE) ribbon.drop(key);
-		});
+		for (const { of, lift, caps, j, pieces } of ribbons) {
+			const pool = of.gravel && lanes ? lanes : ribbon;
+			pieces.forEach((p, k) => {
+				const key = j === 0 ? String(k) : `${j}:${k}`;
+				const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
+				if (d <= REACH.near && !pool.has(key))
+					pool.add(
+						key,
+						road(of, {
+							...ribbonOf(of),
+							rows: p.rows,
+							lift,
+							caps,
+						}),
+					);
+				else if (d > REACH.near * LEAVE) pool.drop(key);
+			});
+		}
 	}
 
 	const overview = new THREE.Mesh(
@@ -232,7 +308,218 @@ export function buildStage(
 	group.add(tag('road', overview));
 
 	const c = style.props;
-	const treeMat = flat(sight, { wind: true, fade: true });
+	/** The scene's own dressing, one draw: reeds and stones at its water's edge, its roundabouts' islands and signs. */
+	const built: THREE.BufferGeometry[] = [];
+	// A designed road's scene (designed.ts): its water, and the bridges that carry the road over it.
+	if (world.scene !== undefined) {
+		const both = flat(sight);
+		both.side = THREE.DoubleSide;
+		if (world.waters.length > 0) {
+			const waterline: ShorePoint[] = [];
+			// In tiles, one batch, each tile culled on its own: a lake out of view is not drawn.
+			const tiles = waterTiles(
+				waterSheets(route, world.waters, world.heightAt, waterline),
+			);
+			if (tiles.length > 0) {
+				let vertices = 0;
+				let indices = 0;
+				for (const g of tiles) {
+					vertices += g.attributes.position.count;
+					indices += g.index!.count;
+				}
+				const water = piecePool(waterMaterial(style, groundMat), {
+					pieces: tiles.length,
+					vertices,
+					indices,
+				});
+				tiles.forEach((g, k) => water.add(`water:${k}`, g));
+				group.add(tag('terrain', water.mesh));
+			}
+			// A hamlet's harbour: its jetty, boats and boathouse, with the reeds and stones in its one draw.
+			const harbours = (sceneOf(route.scene)?.names.hamlets ?? []).flatMap(
+				(h) => (h.harbour ? harbourPieces(h.harbour, world, c) : []),
+			);
+			const moored = harbour(route, harbours);
+			if (moored) built.push(moored);
+			// Reeds and stones at its edge, none in a harbour's way.
+			const dressed = shoreDressing(
+				route,
+				waterline.filter((p) =>
+					harbours.every(
+						(h) => Math.hypot(p.x - h.x, p.z - h.z) > HARBOUR_CLEAR_M,
+					),
+				),
+				world.clearOf,
+				c,
+			);
+			if (dressed) built.push(dressed);
+		}
+		// And what is built along it (structures.ts): its bridges, rails and walls, galleries and tunnels, in pieces along each road, one batch culled piece by piece.
+		const palette = style.palette;
+		const colors: WorksColors = {
+			// Granite a shade paler than the villages' stone, as the pass road's is.
+			stone: mixed(c.stone, c.wall, 0.2),
+			concrete: mixed(c.stone, c.wall, 0.45),
+			steel: c.pole,
+			dark: mixed(c.stone, style.shade, 0.55, 0.42),
+			lamp: c.wall,
+			band: c.hiking,
+			earth: palette[Biome.Meadow] ?? c.rock,
+			snow: palette[Biome.Snow] ?? c.wall,
+		};
+		const works = new Pieces();
+		bridges(
+			works,
+			'route',
+			route,
+			undefined,
+			world.bridges,
+			world.groundAt,
+			colors,
+		);
+		tunnels(works, 'route', route, undefined, world.tunnels, colors);
+		world.sides.forEach((s, j) => {
+			const lift = liftOf(s.route, false);
+			bridges(
+				works,
+				`side${j}`,
+				s.route,
+				lift,
+				s.bridges,
+				world.groundAt,
+				colors,
+				true,
+				// A gravel lane's: a farm bridge as wide as its gravel and grass edge.
+				s.route.gravel ? GRAVEL_W / 2 + GRAVEL_EDGE : undefined,
+			);
+			tunnels(works, `side${j}`, s.route, lift, s.tunnels, colors);
+			// Its galleries, so a stretch another loop rides under a roof shows it from this road; its parapets and guard stones are the ridden road's only, thousands of blocks no other road shows.
+			galleries(
+				works,
+				`side${j}`,
+				s.route,
+				world.groundAt,
+				s.galleries,
+				snowline,
+				colors,
+				lift,
+			);
+		});
+		galleries(
+			works,
+			'route',
+			route,
+			world.groundAt,
+			world.galleries,
+			snowline,
+			colors,
+		);
+		roadEdges(
+			works,
+			'route',
+			route,
+			world.groundAt,
+			[...world.bridges, ...world.galleries, ...world.tunnels],
+			snowline === undefined ? Infinity : snowline - STONE_UNDER_SNOW_M,
+			colors,
+		);
+		const pieces = works.geometries();
+		if (pieces.size > 0) {
+			let vertices = 0;
+			for (const g of pieces.values()) vertices += g.attributes.position.count;
+			const built = flat(sight, { lit: true });
+			built.side = THREE.DoubleSide;
+			const pool = piecePool(built, {
+				pieces: pieces.size,
+				vertices,
+				indices: 0,
+			});
+			for (const [k, g] of pieces) pool.add(k, g);
+			group.add(tag('road', pool.mesh));
+		}
+		// The ground drawn across a tunnel's mouth or in its portal's cutting is cut out of the tube (styles.ts uBores).
+		const bores = [
+			...boreBoxes(route, undefined, world.tunnels),
+			...world.sides.flatMap((s) =>
+				boreBoxes(s.route, liftOf(s.route, false), s.tunnels),
+			),
+		].slice(0, BORE_BOXES);
+		setBores(groundMat, bores);
+	}
+	// Paint laid on a road, drawn over the ribbon it lies on from any distance, where a centimetre of height no longer tells in the depth buffer.
+	const paintMaterial = () => {
+		const paint = flat(sight);
+		paint.side = THREE.DoubleSide;
+		paint.polygonOffset = true;
+		paint.polygonOffsetFactor = -2;
+		paint.polygonOffsetUnits = -8;
+		return paint;
+	};
+	// Its roundabouts: a statue on each island, the signs before each arm, and the give-way line across each way in.
+	const rounds = roundaboutsOf(route.scene);
+	if (rounds.length > 0) built.push(roundabouts(route, rounds, c));
+	if (built.length > 0)
+		group.add(
+			tag(
+				'dressing',
+				new THREE.Mesh(
+					built.length === 1 ? built[0] : merge(built),
+					flat(sight),
+				),
+			),
+		);
+	if (rounds.length > 0) {
+		group.add(
+			tag(
+				'road',
+				new THREE.Mesh(
+					giveWays(
+						rounds,
+						world.sides
+							.filter((s) => s.route.widen && !s.route.gravel)
+							.map((s) => ({
+								route: s.route,
+								surface: surfaceOf(s.route, liftOf(s.route, false)),
+							})),
+						style.road.line,
+					),
+					paintMaterial(),
+				),
+			),
+		);
+	}
+	// Where a side road comes in square (side-roads.ts): its stop line, STOP and its sign, laid on its own surface.
+	if (world.sides.some((s) => s.mouths.some((m) => m))) {
+		const paint = paintMaterial();
+		group.add(
+			tag(
+				'road',
+				new THREE.Mesh(
+					stops(
+						world.sides.map((s) => ({
+							length: s.route.length,
+							surface: surfaceOf(s.route, liftOf(s.route, false)),
+							mouths: stopped(s, world.sides).map((m) =>
+								m === null
+									? null
+									: {
+											...m,
+											off: (x: number, z: number) => world.offJunction(m, x, z),
+										},
+							),
+						})),
+						{ line: style.road.line, sign: c.warning, post: c.pole },
+					),
+					paint,
+				),
+			),
+		);
+	}
+	const treeMat = flat(sight, {
+		wind: true,
+		fade: true,
+		snow: { lo: c.spruce, hi: c.spruceTip },
+	});
 	const houseMat = flat(sight, { fade: true });
 	const plain = flat(sight);
 	const props = batchProps(route, c, {
@@ -417,6 +704,7 @@ export function buildStage(
 			for (const o of model ?? []) o.visible = on;
 			ground.mesh.visible = !on;
 			ribbon.mesh.visible = !on;
+			if (lanes) lanes.mesh.visible = !on;
 			horizon.visible = !on;
 			overview.visible = on;
 		},

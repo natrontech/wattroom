@@ -78,6 +78,36 @@ export type Route = {
 	 */
 	shared?: Float64Array;
 	/**
+	 * The world's road only: where it meets another road at a junction
+	 * (world/side-roads.ts). Between metres `from` and `to` its paint reads its
+	 * distance to that road's line (x, z) and gives way as `role` says
+	 * (world/crossings.ts JOINS, JOINED).
+	 */
+	/** The world's road only: drawn level across, not banked into its bend. A roundabout's ring (world/designed.ts). */
+	level?: boolean;
+	/** The world's road only: per sample, how far its bank is taken out, 1 drawn level across. The road ridden where it laps a roundabout's level arm (world/world.ts). */
+	flat?: Float64Array;
+	/** The world's road only: how many times its own width it is drawn at metre `d`. A roundabout's arm flares where it meets the ring (world/designed.ts). */
+	widen?: (d: number) => number;
+	/** The world's road only: a gravel lane (world/designed.ts Lane), narrow, with no paint, no stop and no sign. */
+	gravel?: boolean;
+	meets?: {
+		from: number;
+		to: number;
+		x: ArrayLike<number>;
+		z: ArrayLike<number>;
+		role: number;
+		/** A side road running into the road it meets (JOINS at a mouth): that road's carriageway as a height over the plan, which it is seated on (world/road-surface.ts seatOf). */
+		onto?: (x: number, z: number) => number;
+		/** A junction's (JOINS or JOINED at a mouth): a point on the side road's own side of the road it meets. The side road's distance to that road's line is signed by it, negative past the line, where it is not drawn at all (world/crossings.ts SEATED, SEATED_ON). */
+		near?: readonly [x: number, z: number];
+	}[];
+	/**
+	 * The world's road only: the designed scene it is drawn in, by its id
+	 * (world/designed.ts). Absent on every road but WattRoom's designed ones.
+	 */
+	scene?: string;
+	/**
 	 * The world's road only: the stretches, in metres along it, where it
 	 * meets another pass of itself at one height, a crossroads or a road
 	 * joining a road, each with the metres of the pass it meets and which of

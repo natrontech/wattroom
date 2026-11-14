@@ -29,6 +29,7 @@
 	import type { Road } from '#lib/road/road.ts';
 	import type { Route } from '#lib/road/route.ts';
 	import { routeOfRoad } from './road-route';
+	import { sceneOf } from './designed';
 	import { mount, type WorldScene } from './scene';
 	import type { RideMetre } from './sim';
 	import type { BunchView } from '#lib/channel/bunch-view.ts';
@@ -143,6 +144,10 @@
 
 	/** What the ride hears where you are (#3186): the land either side of the road, and a village you are passing. */
 	function hear(world: World, road: Route, km: number, ele: number) {
+		// Up in a designed road's snow it snows (designed.ts), and stops 40 m under the snowline: no flurry on and off along its edge.
+		const snowline = sceneOf(world.scene)?.climate.snowline;
+		if (snowline !== undefined)
+			snowing = ele > snowline || (snowing && ele > snowline - 40);
 		const d = km * 1000;
 		// Lapped the way the world laps it (compose.ts).
 		const lap =
@@ -308,7 +313,11 @@
 		(channelConnection.call?.live ?? channelConnection.current?.live)?.tick
 			?.lounge,
 	);
-	const weather = $derived(roomLounge ? weatherOf(roomLounge) : 'clear');
+	let snowing = $state(false);
+	const weather = $derived.by(() => {
+		const room = roomLounge ? weatherOf(roomLounge) : 'clear';
+		return room === 'clear' && snowing ? 'snow' : room;
+	});
 	let dioramaPaint: Paint | null = null;
 	let dressed = '';
 	$effect(() => {

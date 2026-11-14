@@ -46,7 +46,10 @@ describe('WattRoom’s own roads (#4248)', () => {
 	);
 
 	it('keeps to what a search matches, by name or by what is along it', () => {
-		expect(homeRoadsMatching('').length).toBe(HOME_ROADS.length);
+		// Every road but the Pass loop, which no list offers any more.
+		expect(homeRoadsMatching('').map((r) => r.id)).toEqual(
+			HOME_ROADS.filter((r) => r.id !== 'intro').map((r) => r.id),
+		);
 		expect(homeRoadsMatching('valley').map((r) => r.id)).toContain('valley');
 		expect(homeRoadsMatching('cows').map((r) => r.id)).toEqual(['valley']);
 		expect(homeRoadsMatching('swells')).toEqual([]);

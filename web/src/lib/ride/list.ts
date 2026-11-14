@@ -73,17 +73,41 @@ export function riddenName(ride: {
 		: road.name;
 }
 
-/**
- * What a ride is called: the name the rider gave it (#4209), else what was
- * ridden. One title for the list, Home and the ride page, so a ride never
- * reads as two rides.
- */
-export function rideTitle(ride: {
+/** A ride as its name is read: what it was saved under, and what it rode. */
+type Named = {
 	workoutName: string;
 	road?: RideRoad;
-	title?: string;
-}): string {
-	return ride.title || riddenName(ride);
+	/** The workout's own, where its road named the ride (#3055). */
+	workoutOwnName?: string;
+};
+
+/**
+ * What a ride is called before the rider names it (#4248): a workout by its
+ * own name, on a road too; a ride with no workout by its road's name; else
+ * its workout's. What renaming to nothing gives back.
+ */
+export function plainTitle(ride: Named): string {
+	return ride.workoutOwnName || riddenName(ride);
+}
+
+/**
+ * What a ride is called: the name the rider gave it (#4209), else
+ * plainTitle. One title for the list, Home and the ride page, so a ride
+ * never reads as two rides.
+ */
+export function rideTitle(ride: Named & { title?: string }): string {
+	return ride.title || plainTitle(ride);
+}
+
+/**
+ * The road a workout was ridden on, said beside its title (#4248): the
+ * name the rider knows their own route by, or the one the ride was saved
+ * under — WattRoom's own road, or a mate's road's generated name. Absent
+ * where the road is the title already, or there was none.
+ */
+export function rideRoadName(ride: Named): string | undefined {
+	if (!ride.workoutOwnName) return undefined;
+	return ride.road?.name || ride.workoutName;
 }
 
 export interface ServerRide extends RideRecord {
@@ -102,6 +126,8 @@ export interface ServerRide extends RideRecord {
 	road?: RideRoad;
 	/** The name the rider gave the ride (#4209); absent where they gave none. */
 	title?: string;
+	/** The workout's own name where its road named the ride (#3055). */
+	workoutOwnName?: string;
 }
 
 /** One page of the rides list (#1549). */

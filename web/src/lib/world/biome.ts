@@ -8,5 +8,9 @@ export const Biome = {
 	Rock: 4,
 	Snow: 5,
 	Verge: 6,
+	/** A designed scene's own (designed.ts): a raised bog, a dry valley floor, and snow lying under trees. */
+	Moor: 7,
+	Dry: 8,
+	Frost: 9,
 } as const;
 export type Biome = (typeof Biome)[keyof typeof Biome];

@@ -12,9 +12,13 @@ import { Biome } from './biome';
 import { sunDir, type Light } from './light';
 import { lightsUniforms, POOL, type Lights } from './lights';
 import { DIORAMA } from './pixel';
+import { BORE_BOXES, TUBE } from './structure-sizes';
 import type { SignLook } from './setpieces';
 
-export type Palette = Record<Biome, string>;
+/** A designed scene's own ground (biome.ts): a look that names no colour for it draws it from the ones it has (geometry.ts). */
+type SceneBiome = typeof Biome.Moor | typeof Biome.Dry | typeof Biome.Frost;
+export type Palette = Record<Exclude<Biome, SceneBiome>, string> &
+	Partial<Record<SceneBiome, string>>;
 
 export type PropColors = {
 	spruce: string;
@@ -40,6 +44,7 @@ export type PropColors = {
 	hiking: string; // the yellow Swiss hiking sign
 	water: string;
 	snowpole: string;
+	marker: string; // a pass road's yellow snow marker, banded black
 	warning: string; // the red border of a Swiss danger sign (#4240), never in a watt's band
 	flags: readonly string[]; // one per summit flagpole
 	rock: string;
@@ -91,6 +96,8 @@ export type Style = {
 	imhof: { valley: string; peak: string } | null; // relief-map shading instead of bands
 	road: { asphalt: string; line: string; verge: string; shoulder?: string }; // no shoulder: the verge runs to the asphalt
 	props: PropColors;
+	/** Lakes, rivers and streams (water.ts), shallows to deep and the foam at their edge: none, made from `props.water`. */
+	water?: { deep: string; mid: string; shallow: string; foam: string };
 	kit: RiderKit;
 	zones: readonly string[]; // Z1–Z7: the flat ring under each rider
 	trail: string | null; // the one glow: your live power leaves light
@@ -157,6 +164,15 @@ export const PIXEL_LAND = /* glsl */ `
 		return mix(mix(landHash(i), landHash(i + vec2(1.0, 0.0)), f.x),
 			mix(landHash(i + vec2(0.0, 1.0)), landHash(i + vec2(1.0, 1.0)), f.x), f.y);
 	}
+	// Noise on a turned lattice of triangles, flat across each: its patches have straight edges, cut as a low-poly face is.
+	float landFacet(vec2 p) {
+		p = mat2(0.94, -0.34, 0.34, 0.94) * p;
+		vec2 i = floor(p), f = fract(p);
+		float a = landHash(i), d = landHash(i + vec2(1.0, 1.0));
+		return f.x > f.y
+			? a + (landHash(i + vec2(1.0, 0.0)) - a) * f.x + (d - landHash(i + vec2(1.0, 0.0))) * f.y
+			: a + (landHash(i + vec2(0.0, 1.0)) - a) * f.y + (d - landHash(i + vec2(0.0, 1.0))) * f.x;
+	}
 	bool landGreen(vec3 base, float up) { return !(base.g < base.r * 1.05 || base.g < base.b * 1.02 || up < 0.8); }
 	// The fields, their stripes and patches.
 	vec3 landFields(vec3 base, vec3 pos, float dist) {
@@ -175,10 +191,83 @@ export const PIXEL_LAND = /* glsl */ `
 		else if (patchy < 0.36) c *= 0.86;
 		return c;
 	}
-	// Diorama 3D: flowers in the grass as dots in the world, a hand's width each, near the road.
-	vec3 dioramaLand(vec3 base, vec3 pos, float dist, float up) {
-		if (!landGreen(base, up)) return base;
-		vec3 c = landFields(base, pos, dist);
+	/** A round dot in each cell of q whose hash passes over, size of the cell across: its hash, or -1 off it. */
+	float landDot(vec2 q, float over, float size) {
+		float k = landHash(floor(q));
+		float fw = length(fwidth(q)) * 0.5;
+		float r = length(fract(q) - 0.5);
+		return k > over && r < size * 0.5 - fw ? k : -1.0;
+	}
+	// Snow: rock coming through it, more where it is steep and along the crests the wind scours,
+	// each outcrop in a ring of scoured, bluer snow and snow lying on its top; long drifts across
+	// the slope. A face turned to the sun warmer, one turned away cooler and lilac, in the sky's own
+	// colours, so the mountain's form reads from overhead in any light.
+	vec3 snowLand(vec3 c, vec3 pos, float dist, vec3 n, float crest) {
+		float up = n.y;
+		float lean = length(n.xz);
+		float sunLean = length(uSun.xz);
+		float face = lean > 1e-3 && sunLean > 1e-3
+			? dot(n.xz / lean, uSun.xz / sunLean) * smoothstep(0.04, 0.3, lean)
+			: 0.0;
+		vec3 warm = uWarm / max(max(uWarm.r, uWarm.g), max(uWarm.b, 1e-3));
+		vec3 cool = uShade / max(max(uShade.r, uShade.g), max(uShade.b, 1e-3));
+		c = mix(c, c * (face > 0.0 ? warm : cool), abs(face) * (face > 0.0 ? 0.16 : 0.3));
+		float near = 1.0 - smoothstep(1200.0, 2000.0, dist);
+		float r = landFacet(pos.xz / 30.0) * 0.72 + landFacet(pos.xz / 11.0 + 17.0) * 0.28;
+		float cut = 0.72 - (1.0 - up) * 1.2 - crest * 0.42;
+		float fw = fwidth(r) + 1e-4;
+		float rock = max(smoothstep(cut - fw, cut + fw, r) * near, crest * (1.0 - near) * 0.55);
+		float rim = smoothstep(cut - 0.07 - fw, cut - 0.07 + fw, r) * near;
+		float drift = landNoise(vec2(pos.x * 0.045 + pos.z * 0.02, pos.z * 0.11 - pos.x * 0.035)) * (1.0 - smoothstep(500.0, 800.0, dist));
+		float fd = fwidth(drift) + 1e-4;
+		c = mix(c, c * vec3(0.93, 0.93, 1.0), smoothstep(0.64 - fd, 0.64 + fd, drift));
+		c = mix(c, c * vec3(0.86, 0.86, 0.97), rim);
+		vec3 stone = mix(uRock, c, 0.18);
+		float cap = landFacet(pos.xz / 3.0 + 5.0);
+		float fc = fwidth(cap) + 1e-4;
+		float capped = smoothstep(0.6 - fc, 0.6 + fc, cap) * (1.0 - smoothstep(200.0, 400.0, dist));
+		return mix(c, mix(stone, c, capped * 0.8), rock);
+	}
+	// Rock: a cliff in strata, a darker band every few metres of its height; at its foot, scree.
+	vec3 rockLand(vec3 c, vec3 pos, float dist, float up, float bare) {
+		float s = pos.y / 3.4 + landNoise(pos.xz / 18.0) * 1.6;
+		float fs = fwidth(s) + 1e-4;
+		float strata = (1.0 - smoothstep(0.22 - fs, 0.22 + fs, fract(s))) * smoothstep(0.86, 0.7, up) * (1.0 - smoothstep(500.0, 800.0, dist));
+		c *= 1.0 - 0.13 * strata;
+		float k = landDot(pos.xz / 1.3, 0.5, 0.36 + 0.1 * landHash(floor(pos.xz / 1.3) + 3.0));
+		float scree = step(0.0, k) * bare * smoothstep(0.7, 0.86, up) * (1.0 - smoothstep(90.0, 140.0, dist));
+		return mix(c, c * (k > 0.78 ? 1.18 : 0.84), scree);
+	}
+	// Alpine pasture and dry ground: heather in lilac patches, a stone now and then.
+	vec3 sparseLand(vec3 c, vec3 pos, float dist) {
+		float h = landFacet(pos.xz / 8.0 + 41.0);
+		float fh = fwidth(h) + 1e-4;
+		float heather = smoothstep(0.66 - fh, 0.66 + fh, h) * (1.0 - smoothstep(400.0, 700.0, dist));
+		c = mix(c, c * vec3(0.92, 0.84, 0.96), heather);
+		float k = landDot(pos.xz / 3.0, 0.9, 0.24);
+		return mix(c, mix(uRock, vec3(0.92, 0.9, 1.0), 0.22), step(0.0, k) * (1.0 - smoothstep(80.0, 130.0, dist)));
+	}
+	// A bog: dark pools, tussocks, and cotton grass white over it near the road.
+	vec3 moorLand(vec3 c, vec3 pos, float dist) {
+		// Its grass gone olive and rust, not the grey of the map's bog.
+		c *= vec3(1.1, 1.08, 0.84);
+		float pool = landFacet(pos.xz / 3.6 + 31.0);
+		float fp = fwidth(pool) + 1e-4;
+		c = mix(c, vec3(0.1, 0.16, 0.3), smoothstep(0.8 - fp, 0.8 + fp, pool) * (1.0 - smoothstep(250.0, 400.0, dist)));
+		c = mix(c, c * 1.12, step(landNoise(pos.xz / 2.2), 0.3) * 0.6 * (1.0 - smoothstep(150.0, 300.0, dist)));
+		float k = landDot(pos.xz / 0.8, 0.9, 0.28);
+		return mix(c, vec3(0.96, 0.95, 0.9), step(0.0, k) * step(pool, 0.7) * (1.0 - smoothstep(35.0, 60.0, dist)));
+	}
+	// Diorama 3D: each cover its own (cover: snow, rock, alpine or dry, bog), flowers in the grass as dots in the world, a hand's width each, near the road.
+	vec3 dioramaLand(vec3 base, vec3 pos, float dist, vec3 n, vec4 cover, float steep, float crest) {
+		float up = n.y;
+		vec3 c = base;
+		if (cover.x > 0.5) return snowLand(c, pos, dist, n, crest);
+		if (cover.y > 0.5 || steep > 0.5) c = rockLand(c, pos, dist, up, cover.y);
+		if (cover.w > 0.5) return moorLand(c, pos, dist);
+		if (cover.z > 0.5) return sparseLand(c, pos, dist);
+		if (!landGreen(base, up)) return c;
+		c = landFields(base, pos, dist);
 		if (dist < 70.0) {
 			vec2 q = pos.xz / 0.7;
 			float k = landHash(floor(q));
@@ -219,6 +308,8 @@ export function terrainMaterial(
 			uSkyTop: { value: col(style.sky.top) },
 			uHorizon: { value: col(style.sky.horizon) },
 			uSunward: { value: col(style.sky.sunward) },
+			// The sun's own colour: what a snowfield turned to it is warmed by (PIXEL_LAND snowLand).
+			uWarm: { value: col(style.sun.color) },
 			uFogK: { value: style.fogK },
 			uBands: { value: style.bands },
 			uSkyFill: { value: style.skyFill },
@@ -233,31 +324,55 @@ export function terrainMaterial(
 			uPeak: { value: col(style.imhof?.peak) },
 			uRock: { value: col(style.palette[Biome.Rock]) },
 			uDiorama: DIORAMA, // Diorama 3D: the light in soft steps (diorama.ts)
+			// A tunnel's tube, cut out of the ground drawn across its mouth (setBores)
+			uBoreA: {
+				value: Array.from({ length: BORE_BOXES }, () => new THREE.Vector4()),
+			},
+			uBoreB: {
+				value: Array.from({ length: BORE_BOXES }, () => new THREE.Vector4()),
+			},
+			uBores: { value: 0 },
+			uBoreBox: { value: new THREE.Vector4() },
 		},
 		vertexColors: true,
 		vertexShader: /* glsl */ `
 			attribute float ao;
-			varying vec3 vColor; varying vec3 vPos; varying float vAo;
+			attribute vec4 cover;
+			varying vec3 vColor; varying vec3 vPos; varying float vAo; varying vec4 vCover;
 			void main() {
-				vColor = color; vAo = ao;
+				vColor = color; vAo = ao; vCover = cover;
 				vec4 world = modelMatrix * vec4(position, 1.0);
 				vPos = world.xyz;
 				gl_Position = projectionMatrix * viewMatrix * world;
 			}`,
 		fragmentShader: /* glsl */ `
-			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
+			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uWarm, uGridColor, uContour, uIndex, uValley, uPeak, uRock;
 			uniform float uFogK, uBands, uSkyFill, uGridSize, uGridAlpha, uContourStep, uImhof, uDusk, uDiorama;
-			varying vec3 vColor; varying vec3 vPos; varying float vAo;
+			uniform vec4 uBoreA[${BORE_BOXES}]; uniform vec4 uBoreB[${BORE_BOXES}]; uniform int uBores; uniform vec4 uBoreBox;
+			varying vec3 vColor; varying vec3 vPos; varying float vAo; varying vec4 vCover;
 			${POOL}
 			${PIXEL_LAND}
 			void main() {
+				// Inside a tunnel's tube at its portals no ground is drawn: each box its centre and way (a), its half length and width, height and rise (b).
+				// All of them inside one box round them (uBoreBox): the rest of the land asks once.
+				if (uBores > 0 && all(greaterThan(vPos.xz, uBoreBox.xy)) && all(lessThan(vPos.xz, uBoreBox.zw)))
+				for (int i = 0; i < ${BORE_BOXES}; i++) {
+					if (i >= uBores) break;
+					vec4 a = uBoreA[i]; vec4 b = uBoreB[i];
+					vec2 r = vPos.xz - a.xy;
+					float s = dot(r, a.zw);
+					float y = vPos.y - b.z - b.w * s;
+					if (abs(s) < b.x && abs(dot(r, vec2(a.w, -a.z))) < b.y && y > -0.65 && y < ${(TUBE.crown - 0.02).toFixed(2)}) discard;
+				}
 				vec3 n = normalize(cross(dFdx(vPos), dFdy(vPos)));
 				float dist = length(vPos - cameraPosition);
 				// One colour per face (ADR-0092): its land's, or rock on a face from about 30 degrees up,
 				// solid rock by the earthworks' 45 (n.y 0.71), never the ground's colour smeared down a vertical.
 				float steep = smoothstep(0.86, 0.66, n.y);
 				vec3 base = mix(vColor, mix(uRock, vColor, 0.18), steep);
-				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n.y);
+				// A crest: the ground standing over its neighbours (land.ts shadeOf, carried as vAo), where the wind leaves rock bare.
+				float crest = smoothstep(0.8, 0.97, vAo);
+				if (uDiorama > 0.5) base = dioramaLand(base, vPos, dist, n, vCover, steep, crest);
 				vec3 col;
 				if (uImhof > 0.5) {
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
@@ -300,6 +415,32 @@ export function terrainMaterial(
 				#include <colorspace_fragment>
 			}`,
 	});
+}
+
+/** The ground's cut-outs at tunnel portals (structures.ts boreBoxes), as many as it takes. */
+export function setBores(
+	m: THREE.ShaderMaterial,
+	boxes: readonly (readonly number[])[],
+) {
+	const n = Math.min(BORE_BOXES, boxes.length);
+	const box = [Infinity, Infinity, -Infinity, -Infinity];
+	for (let i = 0; i < n; i++) {
+		const [x, z, tx, tz, len, half, y, rise] = boxes[i];
+		(m.uniforms.uBoreA.value as THREE.Vector4[])[i].set(x, z, tx, tz);
+		(m.uniforms.uBoreB.value as THREE.Vector4[])[i].set(len, half, y, rise);
+		const r = Math.hypot(len, half);
+		box[0] = Math.min(box[0], x - r);
+		box[1] = Math.min(box[1], z - r);
+		box[2] = Math.max(box[2], x + r);
+		box[3] = Math.max(box[3], z + r);
+	}
+	(m.uniforms.uBoreBox.value as THREE.Vector4).set(
+		box[0],
+		box[1],
+		box[2],
+		box[3],
+	);
+	m.uniforms.uBores.value = n;
 }
 
 // A sky whose horizon is exactly the fog colour; a thin band on the horizon

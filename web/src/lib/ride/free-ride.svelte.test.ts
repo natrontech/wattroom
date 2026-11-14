@@ -491,6 +491,33 @@ describe('a free ride on a road', () => {
 		expect(saved.routeId).toBeUndefined();
 		expect(saved.drive).toBeUndefined();
 		expect(saved.samples[0].m).toBeGreaterThanOrEqual(500);
+		// A mate's road names nothing: the ride is a free ride.
+		expect(saved.workoutJson).toBe(FREE_RIDE_JSON);
+	});
+
+	it('names itself after one of WattRoom’s roads, by the id the server knows it by (#4248)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride({
+			...climb,
+			id: 'kette',
+			name: 'Kettental-Runde',
+			borrowed: true,
+		});
+		ride(free, 250, 61);
+		await free.end();
+		const saved = uploads[0] as { workoutJson: string; routeId?: string };
+		expect(saved.routeId).toBeUndefined();
+		expect(JSON.parse(saved.workoutJson)).toEqual({
+			name: 'Free ride',
+			unscored: true,
+			steps: [],
+			road: {
+				routeId: '7a77b0ad-0007-4000-8000-000000004248',
+				fromM: 0,
+				toM: Math.round(climb.road.length),
+			},
+		});
 	});
 
 	it('keeps its road once the ride has started', () => {

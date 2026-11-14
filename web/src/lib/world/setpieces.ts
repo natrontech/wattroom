@@ -24,6 +24,8 @@ import type { Biome } from './biome';
 import { prng } from './rand';
 import { planStroke, type Group } from './setpieces-stroke';
 import type { Ground, Origin } from './terrain/ground';
+import { indexLines } from './terrain/lines';
+import { FORMATION } from './terrain/road-profile';
 
 export type PieceKind =
 	| 'bench'
@@ -37,6 +39,7 @@ export type PieceKind =
 	| 'linden'
 	| 'chapel'
 	| 'snowpole'
+	| 'marker'
 	| 'delineator'
 	| 'lamp'
 	| 'house'
@@ -47,6 +50,7 @@ export type PieceKind =
 	| 'cattle'
 	| 'mirror'
 	| 'milkcans'
+	| 'cairn'
 	| 'cross';
 // `flag` indexes the style's flag colours: the world says where, the style says what.
 export type Piece = {
@@ -120,8 +124,15 @@ export function setPieces(c: Ctx) {
 		signs,
 		arches,
 		named: (n: Names) => (names ??= n),
+		free: offOthers(ground),
 	};
-	ground.lines.forEach((line, k) => planStroke(line, k, plan));
+	// A roundabout's ring is no stroke: a circle would be signed as one long hairpin. Nor is a gravel lane: no post, sign or arch stands along a farm track.
+	ground.lines.forEach(
+		(line, k) =>
+			line.key.startsWith('ring') ||
+			line.key.startsWith('lane') ||
+			planStroke(line, k, plan),
+	);
 
 	const first = ground.lines[0];
 	const shown = new Map<string, { signs: Sign[]; arches: Arch[] }>();
@@ -173,3 +184,63 @@ export function setPieces(c: Ctx) {
 }
 
 export type SetPieces = ReturnType<typeof setPieces>;
+
+/** Metres past another road's formation that a stroke's things keep. */
+export const OTHER_M = 1;
+/** Metres round a side road's mouth in which the road it meets stands none of its own things on the mouth's side. */
+export const MOUTH_M = 12;
+
+/**
+ * Whether stroke `k` may stand something reaching `reach` metres at (x, z):
+ * a stroke plans its things off its own road, some just past its edge line,
+ * and where another road meets or crosses it they would stand on that road's
+ * asphalt. So nothing stands within another road's formation, and the road a
+ * side road runs into keeps its posts out of the mouth. One road alone: all.
+ */
+export function offOthers(
+	ground: Pick<Ground, 'lines'>,
+): (x: number, z: number, k: number, reach?: number) => boolean {
+	const lines = ground.lines;
+	if (lines.length < 2) return () => true;
+	const index = indexLines(lines);
+	// Every road's end that lies in another road: the line met, its segment there, and the side the road comes in from.
+	const mouths: {
+		x: number;
+		z: number;
+		on: number;
+		a: number;
+		side: number;
+	}[] = [];
+	const sideOf = (a: number, x: number, z: number) => {
+		const sx = index.x[a + 1] - index.x[a];
+		const sz = index.z[a + 1] - index.z[a];
+		return Math.sign(sz * (x - index.x[a]) - sx * (z - index.z[a])) || 1;
+	};
+	lines.forEach((l, k) => {
+		const n = l.x.length - 1;
+		for (const end of [0, n]) {
+			const hit = index.nearest(l.x[end], l.z[end], 1, k);
+			if (!hit || hit.d > FORMATION) continue;
+			// A point a little way up the road that comes in says which side it comes from.
+			const inside = end === 0 ? Math.min(n, 8) : Math.max(0, n - 8);
+			mouths.push({
+				x: l.x[end],
+				z: l.z[end],
+				on: index.lineOf[hit.i],
+				a: hit.i,
+				side: sideOf(hit.i, l.x[inside], l.z[inside]),
+			});
+		}
+	});
+	return (x, z, k, reach = 0) => {
+		const hit = index.nearest(x, z, 1, k);
+		if (hit && hit.d < FORMATION + OTHER_M + reach) return false;
+		return mouths.every(
+			(m) =>
+				m.on !== k ||
+				// Two metres more than is asked of it: a line ends a little inside the road it meets.
+				Math.hypot(x - m.x, z - m.z) >= MOUTH_M + 2 + reach ||
+				sideOf(m.a, x, z) !== m.side,
+		);
+	};
+}

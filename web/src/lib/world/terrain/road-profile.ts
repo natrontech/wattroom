@@ -10,6 +10,9 @@ import type { Line } from './lines';
  */
 
 export const ROAD_W = 6.4; // a two-lane Swiss mountain road
+/** A gravel lane's width, and its grass edge's (designed.ts Lane): a farm track, one car wide. */
+export const GRAVEL_W = 3;
+export const GRAVEL_EDGE = 0.7;
 export const SHOULDER = 1.6;
 /** The shoulder's outer edge tucks this far down, under the verge. */
 export const SHOULDER_DROP = 0.38;

@@ -1,3 +1,4 @@
+import { SNOWED_BY } from '../materials';
 import * as THREE from 'three';
 import type { Route } from '#lib/road/route.ts';
 import { yOf } from '../geometry';
@@ -41,12 +42,14 @@ export const FAMILY: Record<DrawKind, Family> = {
 	fountain: 'stock',
 	fence: 'stock',
 	snowpole: 'buildings',
+	marker: 'buildings',
 	delineator: 'stock',
 	lamp: 'buildings',
 	steep: 'buildings',
 	cattle: 'buildings',
 	mirror: 'buildings',
 	milkcans: 'stock',
+	cairn: 'stock',
 	cross: 'buildings',
 	flag0: 'buildings',
 	flag1: 'buildings',
@@ -94,6 +97,7 @@ const MODELS: Record<DrawKind, Form[]> = {
 	fountain: [[P.fountain, P.fountain]],
 	fence: [[P.fence, P.fence]],
 	snowpole: [[P.snowpole, P.snowpole]],
+	marker: [[P.marker, P.marker]],
 	delineator: [[P.delineator, P.delineator]],
 	lamp: [[P.lamp, P.lamp]],
 	steep: [[P.steepSign, P.steepSign]],
@@ -101,6 +105,7 @@ const MODELS: Record<DrawKind, Form[]> = {
 	mirror: [[P.mirror, P.mirror]],
 	milkcans: [[P.milkcans, P.milkcans]],
 	cross: [[P.summitCross, P.summitCross]],
+	cairn: [[P.cairn, P.cairn]],
 	flag0: [[flag(0), flag(0)]],
 	flag1: [[flag(1), flag(1)]],
 	flag2: [[flag(2), flag(2)]],
@@ -124,6 +129,8 @@ export type Drawn = {
 	form?: number;
 	/** A tree's shade, a keyed unit: TONE darker at 0, lighter at 1, its colours' own when absent. */
 	tone?: number;
+	/** A tree in snow: its colours washed out to white. */
+	snow?: boolean;
 	x: number;
 	z: number;
 	base: number;
@@ -298,7 +305,9 @@ export function batchProps(
 				if (FAMILY[p.kind] === 'trees')
 					mesh.setColorAt(
 						n,
-						shade.setScalar(1 + TONE * (2 * (p.tone ?? 0.5) - 1)),
+						p.snow
+							? shade.setScalar(SNOWED_BY)
+							: shade.setScalar(1 + TONE * (2 * (p.tone ?? 0.5) - 1)),
 					);
 				tile.members.push([mesh, n, p.kind, form]);
 				const light = litId.get(p.kind);

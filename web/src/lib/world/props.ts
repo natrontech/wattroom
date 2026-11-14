@@ -9,7 +9,7 @@ import type { PropColors } from './styles';
 export * from './trees';
 
 // A gabled roof as an extruded triangle.
-function roof(w: number, d: number, h: number, overhang: number) {
+export function roof(w: number, d: number, h: number, overhang: number) {
 	const s = new THREE.Shape();
 	s.moveTo(-w / 2 - overhang, 0);
 	s.lineTo(0, h);
@@ -363,6 +363,17 @@ export function snowpole(c: PropColors) {
 	]);
 }
 
+// A pass road's snow marker above the snowline: a yellow pole banded black, so a
+// plough finds the road's edge under the snow. Square: four boxes, the far model too.
+export function marker(c: PropColors) {
+	return merge([
+		tint(box(0.09, 2.6, 0.09).translate(0, 1.3, 0), c.marker),
+		...[1.0, 1.7, 2.45].map((y) =>
+			tint(box(0.1, 0.3, 0.1).translate(0, y, 0), c.band),
+		),
+	]);
+}
+
 // The Swiss delineator: white round post, black band, reflector.
 export function delineator(c: PropColors) {
 	return merge([
@@ -431,6 +442,29 @@ export function milkcans(c: PropColors) {
 		...can(-0.42),
 		...can(0),
 		...can(0.42),
+	]);
+}
+
+// A cairn on the high ground, where nothing grows to stand beside the road:
+// flat stones stacked smaller to the top, each face its own shade.
+export function cairn(c: PropColors) {
+	const stone = (r: number, h: number, y: number, turn: number) =>
+		facets(
+			new THREE.OctahedronGeometry(1, 0)
+				.rotateY(turn)
+				.scale(r, h / 2, r * 0.85)
+				.translate(0, y + h / 2, 0),
+			c.rock,
+			c.stone,
+			0,
+			1.4,
+		);
+	return merge([
+		stone(0.62, 0.42, 0, 0.3),
+		stone(0.5, 0.36, 0.34, 1.1),
+		stone(0.38, 0.32, 0.64, 0.6),
+		stone(0.26, 0.3, 0.9, 1.7),
+		stone(0.15, 0.26, 1.14, 0.2),
 	]);
 }
 

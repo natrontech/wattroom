@@ -55,6 +55,10 @@ const SHIFTS = [0, 15, -15, 30, -30, 45, -45, 60, -60];
 /** A stretch this steep over STEEP_M gets the danger sign (#4240): Swiss roads sign steep grades from about 8 %. */
 const STEEP = 0.08;
 const STEEP_M = 200;
+/** Metres from the road's centre to each of a KOM arch's posts (furniture.ts ARCH_POSTS). */
+const ARCH_POST_M = 4.4;
+/** Where a sign is tried along the road from where it was planned, nearest first, sooner for its own traffic first. */
+const SIGN_SHIFTS = [0, 10, -10, 20, -20, 30, -30];
 /** Where a danger sign or a mirror stands: just past the edge line, inside furniture's clearance. */
 const SIGN_OFF = 4.6;
 /** Road furniture is planned in stretches this long, each worked out as one. */
@@ -73,6 +77,16 @@ const fits: Record<(typeof SMALL_KINDS)[number], (b: Biome | null) => boolean> =
 		signpost: () => true,
 		fence: (b) => b === Biome.Meadow,
 	};
+
+/** Ground above the trees and the grass, where a small piece that does not fit is a cairn. */
+const BARE = new Set<Biome>([
+	Biome.Alpine,
+	Biome.Rock,
+	Biome.Snow,
+	Biome.Frost,
+]);
+/** Ground no fountain stands on: its trough would freeze, or stand on a crag. */
+const NO_FOUNTAIN = new Set<Biome>([Biome.Rock, Biome.Snow, Biome.Frost]);
 
 /**
  * A piece O9 counts, in the order the stroke's plan meets it: where it was
@@ -126,11 +140,13 @@ export type Plan = {
 	signs: { sign: Omit<Sign, 'y'>; line: number; pass: Passing }[];
 	arches: Omit<Arch, 'y'>[];
 	named: (names: Names) => void;
+	/** Whether stroke k may stand something reaching `reach` metres at (x, z): clear of every other road (setpieces.ts offOthers). */
+	free: (x: number, z: number, k: number, reach?: number) => boolean;
 };
 
 /** Plans stroke `k`'s set pieces into `plan`. */
 export function planStroke(line: Line, k: number, plan: Plan) {
-	const { c, key, tileNames, groups, signs, arches } = plan;
+	const { c, key, tileNames, groups, signs, arches, free } = plan;
 	const { ground, heightAt, biomeAt, placer } = c;
 	const origin = c.origin ?? [0, 0];
 	const stroke = hashOf(line.key);
@@ -219,7 +235,12 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			for (const hand of keyed ? [side] : [side, -side]) {
 				const x = p.x + p.lx * off * hand;
 				const z = p.z + p.lz * off * hand;
-				if (!ground.clearOf(x, z, need) || biomeAt(x, z) === null) continue;
+				if (
+					!ground.clearOf(x, z, need) ||
+					!free(x, z, k) ||
+					biomeAt(x, z) === null
+				)
+					continue;
 				const turn =
 					extra.turn ?? facing(at, hand, Math.round((u(slot, 90) - 0.5) * 14));
 				const placed = placer.candidate(kind, cls, x, z, turn);
@@ -264,6 +285,14 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 	) {
 		// The profile's length is rounded to the centimetre: a foot at the stroke's end may read past it by that much.
 		if (s < 0 || s > r.length + 0.01) return;
+		// Where another road would have it on its asphalt, a little earlier for its own traffic, or later, or not at all.
+		const along = SIGN_SHIFTS.map((by) => s - by * dir).find((m) => {
+			if (m < 0 || m > r.length + 0.01) return false;
+			const q = w.at(m);
+			return free(q.x - q.lx * off * dir, q.z - q.lz * off * dir, k);
+		});
+		if (along === undefined) return;
+		s = along;
 		const p = w.at(s);
 		const x = p.x - p.lx * off * dir;
 		const z = p.z - p.lz * off * dir;
@@ -302,10 +331,16 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		const g = filed(s);
 		item(g, kind, s, 60, (self) => {
 			const p = w.at(s);
-			if (
-				!fits[kind](biomeAt(p.x + p.lx * off * side, p.z + p.lz * off * side))
-			)
-				return null;
+			const x = p.x + p.lx * off * side;
+			const z = p.z + p.lz * off * side;
+			const b = biomeAt(x, z);
+			// High ground where nothing grows to stand a hay bale or a fence on takes a cairn instead; a river's gravel bar in the valley, nothing.
+			if (!fits[kind](b))
+				return b !== null &&
+					BARE.has(b) &&
+					ground.scene?.coverAt(x, z) !== 'gravel'
+					? put(g, 'cairn', 'kit', s, side, off, 9.2, i, self)
+					: null;
 			return put(g, kind, 'kit', s, side, off, 9.2, i, self);
 		});
 	}
@@ -320,9 +355,13 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		const side = u(slot, 1) < 0.5 ? -1 : 1;
 		const g = filed(s);
 		if (kind === 'fountain') {
-			const f = item(g, 'fountain', s, 60, (self) =>
-				put(g, 'fountain', 'kit', s, side, 10.5, 9.5, slot, self),
-			);
+			const f = item(g, 'fountain', s, 60, (self) => {
+				const p = w.at(s);
+				const b = biomeAt(p.x + p.lx * 10.5 * side, p.z + p.lz * 10.5 * side);
+				return b !== null && NO_FOUNTAIN.has(b)
+					? null
+					: put(g, 'fountain', 'kit', s, side, 10.5, 9.5, slot, self);
+			});
 			item(g, 'signpost', s + 5, 60, (self) =>
 				f.at === null
 					? null
@@ -545,11 +584,46 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		// A pass: where this way's climb tops out and the other way's does too.
 		if (dir < 0) continue;
 		const back = climbsOf(turnedRound(road)).map((cl) => road.length - cl.topM);
-		for (const cl of climbs) {
-			if (!back.some((t) => Math.abs(t - cl.topM) < 200)) continue;
+		// Each pass has a name of its own: a designed map's where one stands within 500 m of the top (designed.ts), or its tile's, and where two passes share a tile the later one's from a tile further on.
+		const taken: string[] = [];
+		const own = c.ground.scene?.names.passes ?? [];
+		const tops = climbs.filter((cl) =>
+			back.some((t) => Math.abs(t - cl.topM) < 200),
+		);
+		for (const cl of tops) {
 			const s = cl.topM;
 			const p = w.at(s);
-			const here = tileNames(p.x, p.z);
+			let here = tileNames(p.x, p.z);
+			for (let far = 1; far < 8 && taken.includes(here.pass); far++)
+				here = tileNames(p.x + far * 7 * 5000, p.z);
+			const named = own.find((o) => Math.hypot(o.x - p.x, o.z - p.z) < 500);
+			if (named) here = { ...here, pass: named.name };
+			taken.push(here.pass);
+			// The arch stands across a straight, where its posts clear the road: the nearest within 120 m of the top.
+			const bend = (m: number) => {
+				const a = w.at(Math.max(0, m - 10)).along;
+				const b = w.at(Math.min(r.length, m + 10)).along;
+				return Math.abs(a[0] * b[1] - a[1] * b[0]);
+			};
+			// Where its posts stand clear of any other road.
+			const posts = (m: number) => {
+				const q = w.at(m);
+				return [-1, 1].every((hand) =>
+					free(
+						q.x + q.lx * ARCH_POST_M * hand,
+						q.z + q.lz * ARCH_POST_M * hand,
+						k,
+					),
+				);
+			};
+			// At the top, or well clear of it: the metres round a summit are where a ride's picture is taken, and an arch 13 m from the lens stood across its sky.
+			const gate =
+				[0, 70, 90, 110, -70, -90, -110]
+					.map((by) => s + by)
+					.find(
+						(m) => m > 10 && m < r.length - 10 && bend(m) < 0.03 && posts(m),
+					) ?? s;
+			const q = w.at(gate);
 			plan.named(here);
 			const top = `${Math.round(p.h)} m`;
 			const g = filed(s);
@@ -585,12 +659,13 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 				});
 			sign(s - 30, 1, 5.2, 'pass', [here.pass, top], 2.6, 1.1);
 			sign(s + 30, -1, 5.2, 'pass', [here.pass, top], 2.6, 1.1);
-			arches.push({
-				x: p.x,
-				z: p.z,
-				turn: p.along,
-				label: `KOM · ${here.pass.toUpperCase()}`,
-			});
+			if (posts(gate))
+				arches.push({
+					x: q.x,
+					z: q.z,
+					turn: q.along,
+					label: `KOM · ${here.pass.toUpperCase()}`,
+				});
 		}
 	}
 
@@ -622,6 +697,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 				const p = w.at(s);
 				const x = p.x - p.lx * SIGN_OFF;
 				const z = p.z - p.lz * SIGN_OFF;
+				if (!free(x, z, k)) continue;
 				const turn = facing(s, -1);
 				const placed = placer.candidate('lamp', 'furniture', x, z, turn);
 				if (placed)
@@ -638,9 +714,14 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 	}
 
 	// Road furniture from the stroke's start, a stretch at a time: snow poles every 25 m above 1,100 m
-	// where the ground falls away, delineators every 50 m, both sides, 0.5 m outside the edge line,
+	// where the ground falls away, and on the ridden road above a scene's snowline the yellow and
+	// black markers instead, every 25 m a side in turn; delineators every 50 m, both sides, 0.5 m
+	// outside the edge line,
 	// and every 25 m on a side whose ground 8 m past the shoulder lies over 4 m below the road
 	// (#3838): from below, they mark a stacked leg as road when its ledge hides the asphalt.
+	// The road ridden (world.ts names its line 'route'), and the scene's snowline: a pass road's markers are the ridden road's only.
+	const ridden = line.key === 'route';
+	const snowline = ground.scene?.climate.snowline;
 	const dropsAway = (p: ReturnType<typeof w.at>, side: number) =>
 		p.h -
 			heightAt(
@@ -654,6 +735,11 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 			for (let s = a; s < a + STRETCH_M && s <= r.length; s += 25) {
 				const p = w.at(s);
 				if (p.h <= 1100) continue;
+				if (ridden && snowline !== undefined && p.h >= snowline) {
+					const side = Math.round(s / 25) % 2 === 0 ? 1 : -1;
+					put(g, 'marker', 'furniture', s, side, 4.4, 0, 8e6 + s, null);
+					continue;
+				}
 				const fall =
 					heightAt(p.x + p.lx * 8, p.z + p.lz * 8) <
 					heightAt(p.x - p.lx * 8, p.z - p.lz * 8)
@@ -667,6 +753,7 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 					if (s % 50 !== 0 && !dropsAway(p, side)) continue;
 					const x = p.x + p.lx * 3.7 * side;
 					const z = p.z + p.lz * 3.7 * side;
+					if (!free(x, z, k)) continue;
 					const placed = placer.candidate(
 						'delineator',
 						'furniture',

@@ -3,7 +3,10 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { at } from '#lib/road/along.ts';
 import { toRoute, type Route } from '#lib/road/route.ts';
-import { RIDE } from './look.test-helper';
+import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
+import { DIORAMA_RIDE, RIDE } from './look.test-helper';
+import { routeOfRoad } from './road-route';
+import { BUILD_MS } from './world.test-helper';
 import { pageGrids } from './chunks/grids';
 import { compose, type Composed } from './compose';
 import type { Family } from './family';
@@ -432,6 +435,57 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 		const kinds = new Set(frames.flatMap((f) => f.unbatched));
 		expect([...kinds].sort()).toEqual(Object.keys(UNBATCHED).sort());
 	});
+});
+
+describe('a designed loop’s scene budget, high tier', () => {
+	// The Col de Berne: the map's whole land, its lake, the pass with its granite, galleries and a tunnel, every other loop's road and the gravel lanes drawn. The chase camera every 4 km, in the Diorama look a ride draws.
+	it(
+		'holds the map’s scene to the high tier along its loop',
+		async () => {
+			const route = routeOfRoad(
+				(await homeRoute(HOME_ROADS.find((r) => r.id === 'berne')!)).road,
+			);
+			const world = generate(route);
+			const w = compose(
+				{
+					route,
+					world,
+					style: DIORAMA_RIDE,
+					ftp: 250,
+					grids: pageGrids(world),
+				},
+				null,
+			);
+			w.camera.aspect = 16 / 9;
+			w.camera.updateProjectionMatrix();
+			const rig = makeRig(route, world);
+			const you = new THREE.Vector3();
+			const frames: Frame[] = [];
+			for (let d = 0; d < route.length; d += 4000) {
+				rig.reset();
+				for (let k = 0; k < 3; k++) {
+					const p = at(route, d);
+					rig.update(
+						w.camera,
+						'chase',
+						{ d, v: 8 } as SimRider,
+						you.set(p.x, yOf(route, p.ele) + 1, p.z),
+						1 / 30,
+					);
+				}
+				w.look();
+				frames.push(measure(w.scene, w.camera, true));
+			}
+			expect(frames.flatMap((f) => f.untagged)).toEqual([]);
+			for (const line of ['draws', 'triangles', 'dressing.draws'] as const)
+				expect(
+					Math.max(...frames.map((f) => f.lines[line])),
+					`${line} over the high tier`,
+				).toBeLessThanOrEqual(HIGH[line]);
+			w.dispose();
+		},
+		2 * BUILD_MS,
+	);
 });
 
 describe('a bunch on the road (#3098)', () => {

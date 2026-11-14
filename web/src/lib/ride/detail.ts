@@ -31,6 +31,8 @@ export interface RideDetail {
 	workoutName: string;
 	/** The name the rider gave the ride (#4209); absent where they gave none. */
 	title?: string;
+	/** The workout's own name where its road named the ride (#3055). */
+	workoutOwnName?: string;
 	startedAt: string;
 	seconds: number;
 	avgWatts: number;

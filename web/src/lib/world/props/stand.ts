@@ -27,6 +27,10 @@ export function standTiles(
 	props: { tile(ti: number, tj: number): Candidate<Prop>[] },
 	set: Pick<SetPieces, 'tile' | 'boards'>,
 	origin: Origin = [0, 0],
+	/** Where nothing stands that reaches `reach` metres round its middle: a designed scene's water (designed.ts), a gallery. */
+	wet?: (x: number, z: number, reach: number) => boolean,
+	/** Where no sign or arch stands: a gallery, a tunnel and before its portals. */
+	roofed?: (x: number, z: number, reach: number) => boolean,
 ) {
 	const candidates = new Map<string, Candidate<Thing>[]>();
 	const stood = new Map<string, Stood>();
@@ -41,6 +45,15 @@ export function standTiles(
 		return list;
 	}
 
+	const boardsOf = (ti: number, tj: number) => {
+		const b = set.boards(ti, tj);
+		if (!roofed) return b;
+		return {
+			signs: b.signs.filter((s) => !roofed(s.x, s.z, 1)),
+			arches: b.arches.filter((a) => !roofed(a.x, a.z, 0)),
+		};
+	};
+
 	/** Tile (ti, tj) as it stands, settled the first time it is asked. */
 	function tile(ti: number, tj: number): Stood {
 		const id = tileKey(ti, tj);
@@ -50,13 +63,25 @@ export function standTiles(
 		for (let dj = -1; dj <= 1; dj++)
 			for (let di = -1; di <= 1; di++)
 				around.push(...candidatesOf(ti + di, tj + dj));
-		const ok = settle(candidatesOf(ti, tj), around);
+		const settled = settle(candidatesOf(ti, tj), around);
+		const ok = wet
+			? settled.filter((c) => {
+					const at = isStanding(c.is) ? c.is.piece : c.is;
+					// Its reach is its footprint's, a tree's crown and all (kit.ts).
+					const reach = Math.max(
+						...c.p.footprint.map(([fx, fz]) =>
+							Math.hypot(fx - at.x, fz - at.z),
+						),
+					);
+					return !wet(at.x, at.z, reach);
+				})
+			: settled;
 		const standing = ok.flatMap((c) => (isStanding(c.is) ? [c.is] : []));
 		const out: Stood = {
 			props: ok.flatMap((c) => (isStanding(c.is) ? [] : [c.is])),
 			pieces: standing.map((s) => s.piece),
 			standing,
-			...set.boards(ti, tj),
+			...boardsOf(ti, tj),
 			placements: ok.map((c) => c.p),
 		};
 		stood.set(id, out);

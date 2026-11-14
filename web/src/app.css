@@ -399,6 +399,8 @@
 	--world-biome-rock: #414758;
 	--world-biome-snow: #9aa5b8;
 	--world-biome-verge: #3d4a36;
+	--world-biome-moor: #4c4535;
+	--world-biome-dry: #6d6440;
 
 	--world-ridge: #26304a;
 	--world-ridge-rock: #3c4258;
@@ -430,7 +432,14 @@
 	--world-prop-pole: #9a9aa2;
 	--world-prop-hiking: #b29d5a;
 	--world-prop-water: #5aa0c8;
+	/* Lakes, rivers and streams (water.ts): deep to the shallows, and the foam at the waterline. */
+	--world-water-deep: #234f78;
+	--world-water: #3b78a6;
+	--world-water-shallow: #5aa3ad;
+	--world-water-foam: #c9dbe6;
 	--world-prop-snowpole: #ff7a1a;
+	/* A pass road's snow marker over the snowline: the yellow of a Swiss marker pole, banded in --world-prop-band. */
+	--world-prop-marker: #e6cc80;
 	/* A Swiss danger sign's red, turned toward orange past every watt's band (O13, #4240). */
 	--world-prop-warning: #c05a2c;
 	--world-prop-rock: #4c5060;
@@ -460,12 +469,18 @@
 	--world-px-sky-light: #e6e0ff;
 	--world-px-sky-shade: #4a3f8a;
 	--world-px-biome-water: #2c6fb4;
+	--world-px-water-deep: #2f5fb8;
+	--world-px-water: #3f8fd2;
+	--world-px-water-shallow: #5cc6cf;
+	--world-px-water-foam: #f4f2ff;
 	--world-px-biome-meadow: #4fb377;
 	--world-px-biome-forest: #2a8568;
 	--world-px-biome-alpine: #7f9a62;
 	--world-px-biome-rock: #76709e;
 	--world-px-biome-snow: #f2eeff;
 	--world-px-biome-verge: #5bad6e;
+	--world-px-biome-moor: #6e6d63;
+	--world-px-biome-dry: #a8a877;
 	--world-px-ridge: #4a4596;
 	--world-px-ridge-rock: #5c5598;
 	--world-px-road-asphalt: #5c5a86;

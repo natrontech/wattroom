@@ -5,6 +5,7 @@ import type { Road } from '#lib/road/road.ts';
 import type { Route } from '#lib/road/route.ts';
 import { walk } from './place/stroke';
 import { crossingsOf, levelCrossings, meetingsOf } from './crossings';
+import { designedFor, designedLine } from './designed';
 import { shareRoad } from './shared-road';
 
 /** Metres between the route's samples, as a route file's are (route.ts). */
@@ -20,7 +21,14 @@ const STEP_M = 10;
  * pass where it was recorded.
  */
 export function routeOfRoad(road: Road, share = true): Route {
-	const { x: wx, z: wz, part } = walk(road);
+	// A designed road is drawn on the line it was designed on, where its scene's water and peaks lie (designed.ts): a walk of its turns drifts tens of metres off it.
+	const designed = designedFor(road);
+	const drawnOn = designed && designedLine(designed);
+	const {
+		x: wx,
+		z: wz,
+		part,
+	} = drawnOn ? { x: drawnOn.x, z: drawnOn.z, part: drawnOn.step } : walk(road);
 	const n = Math.max(2, Math.round(road.length / STEP_M) + 1);
 	const step = road.length / (n - 1);
 	const x = new Float64Array(n);
@@ -38,9 +46,9 @@ export function routeOfRoad(road: Road, share = true): Route {
 	// A road that ends where it began ends at the height it began at. One whose end stands high over its start, a hairpin's upper leg beside its lower, has two ends.
 	const home = Math.abs(ele[n - 1] - ele[0]) <= HOME_RISE_M;
 	const flat = home && closeWalk(x, z, road.length) ? closeHeights(ele) : ele;
-	// Centred, as a route file's frame is: the horizon stands round the middle.
-	const cx = x.reduce((s, v) => s + v, 0) / n;
-	const cz = z.reduce((s, v) => s + v, 0) / n;
+	// Centred, as a route file's frame is: the horizon stands round the middle. A designed line is centred already, and its scene lies in that frame.
+	const cx = drawnOn ? 0 : x.reduce((s, v) => s + v, 0) / n;
+	const cz = drawnOn ? 0 : z.reduce((s, v) => s + v, 0) / n;
 	for (let k = 0; k < n; k++) {
 		x[k] -= cx;
 		z[k] -= cz;
@@ -76,6 +84,7 @@ export function routeOfRoad(road: Road, share = true): Route {
 		shape: '',
 		climbs: climbsOf(road),
 		fixed: { spikes: 0, heldM: 0 },
+		...(designed && { scene: designed.id }),
 		...(drawn && { shared: drawn.shared }),
 		...(bare.length > 0 && { bare }),
 	};

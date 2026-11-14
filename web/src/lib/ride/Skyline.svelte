@@ -64,6 +64,7 @@
 		mates = [],
 		watts,
 		ftp = 0,
+		finishM,
 	}: {
 		road: Road;
 		/** The dot: metres along the stored road, as of the last second. */
@@ -96,6 +97,8 @@
 		watts?: number;
 		/** For the watts' zones: each stretch of the line takes its zone's colour. */
 		ftp?: number;
+		/** Where the road's finish stands, for a road drawn on past it (a loop's next lap): a flag at that metre. */
+		finishM?: number;
 	} = $props();
 
 	/** The dot's halo, painted once: the watt colour fading out, no filter. */
@@ -452,6 +455,23 @@
 						style:top="{chip.y}px">{chip.cls}</span
 					>
 				{/each}
+				{#if finishM !== undefined && frame && !strip}
+					<!-- The finish, on a road drawn on past it: a chequered flag on a stake over the road. -->
+					<span
+						data-testid="skyline-finish"
+						class="absolute top-0 left-0 flex -translate-x-1/2 flex-col items-center"
+						style:transform="translate({finishM * frame.scale}px, {yOf(
+							frame,
+							heightAt(road, finishM),
+						) - 44}px)"
+					>
+						<span
+							class="num bg-ink text-surface px-1.5 py-0.5 text-[max(12px,1.6vh)] leading-none font-bold whitespace-nowrap"
+							>FINISH</span
+						>
+						<span class="bg-ink block h-8 w-0.5"></span>
+					</span>
+				{/if}
 				{#each posts as post (post.km)}
 					<!-- A distance post (#4536): a stake under the road and its
 					     kilometre, on the land; flat only. -->

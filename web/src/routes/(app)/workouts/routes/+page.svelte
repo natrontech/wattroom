@@ -9,6 +9,7 @@
 	import { withBack } from '#lib/back-link.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	import RouteProfile from '#lib/components/RouteProfile.svelte';
+	import RouteLandMap from '#lib/components/RouteLandMap.svelte';
 	import RouteRow from '#lib/components/RouteRow.svelte';
 	import RouteShape from '#lib/components/RouteShape.svelte';
 	import RouteStatRow from '#lib/components/RouteStatRow.svelte';
@@ -20,7 +21,7 @@
 	import { workoutSections } from '#lib/nav/pages.ts';
 	import { routePrivacyLine } from '#lib/privacy-copy.ts';
 	import {
-		HOME_ROADS,
+		LISTED_ROADS,
 		homeRoad,
 		homeRow,
 		homeShape,
@@ -57,7 +58,7 @@
 	void load();
 
 	let homes = $state<StoredRoute[] | null>(null);
-	void Promise.all(HOME_ROADS.map(homeRow)).then((r) => (homes = r));
+	void Promise.all(LISTED_ROADS.map(homeRow)).then((r) => (homes = r));
 
 	// Every road, read once, for its time at your pace and its drawing. What
 	// was asked for is not state, so a road in flight is not asked for again.
@@ -317,17 +318,25 @@
 						</h2>
 						<RouteStatRow parts={statRow(selected, loop)} />
 					</div>
-					{#if shape || shapeNote}
-						<RouteShape
-							x={shape?.x}
-							z={shape?.z}
-							climbs={selected.climbs}
-							length={road?.length}
-							note={shapeNote ?? undefined}
-							mine={!homeRoad(selected.id)}
-						/>
+					{#snippet outline()}
+						{#if shape || shapeNote}
+							<RouteShape
+								x={shape?.x}
+								z={shape?.z}
+								climbs={selected.climbs}
+								length={road?.length}
+								note={shapeNote ?? undefined}
+								mine={!homeRoad(selected.id)}
+							/>
+						{:else}
+							<Skeleton class="h-[220px] sm:h-[280px]" />
+						{/if}
+					{/snippet}
+					<!-- WattRoom's designed loops on the land they run through; a rider's own road keeps its outline. -->
+					{#if road && homeRoad(selected.id)}
+						<RouteLandMap {road}>{@render outline()}</RouteLandMap>
 					{:else}
-						<Skeleton class="h-[220px] sm:h-[280px]" />
+						{@render outline()}
 					{/if}
 					{#if road}
 						<RouteProfile {road} climbs={selected.climbs} />

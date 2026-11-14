@@ -88,16 +88,36 @@ const FADE = /* glsl */ `
 	float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
 	if (keep < (bayer[by * 4 + bx] + 0.5) / 16.0) discard;`;
 
+/** A face turned down leaning less than this out (its normal's level part, about 15°) has no side of its own. */
+const FLAT_UNDER = '0.25';
+
 // A face turned to the ground is lit as one turned out (#4256): the
 // hemisphere's ground colour alone takes a tier's or an eave's underside to
-// black, and the world's shadow is a tint, never black (ADR-0072).
+// black, and the world's shadow is a tint, never black (ADR-0072). One that
+// faces about straight down, a gallery's or a bridge's soffit, has no way
+// out of its own: what little it leans is a bank's hundredth or the noise of
+// a flat normal taken from screen derivatives, and lit by that it came out
+// light and dark in bands and specks. It is lit as a face side-on to the
+// sun, one shade all over, as an underside is: in the shade, never black.
 const UNDERSIDE = /* glsl */ `
 	vec3 upView = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
 	float toSky = dot( normal, upView );
 	if ( toSky < 0.0 ) {
 		vec3 level = normal - toSky * upView;
-		normal = length( level ) > 1e-3 ? normalize( level ) : normalize( cross( upView, vec3( 0.0, 0.0, 1.0 ) ) );
+		vec3 side = normalize( ( viewMatrix * vec4( 1.0, 0.0, 0.0, 0.0 ) ).xyz );
+		#if NUM_DIR_LIGHTS > 0
+			vec3 sunward = directionalLights[ 0 ].direction - dot( directionalLights[ 0 ].direction, upView ) * upView;
+			if ( length( sunward ) > 1e-3 ) side = normalize( cross( upView, sunward ) );
+		#endif
+		normal = length( level ) > ${FLAT_UNDER} ? normalize( level ) : side;
 	}`;
+
+/** What a tree's colours are multiplied by where it stands in snow (props/batch.ts): far past any colour, so the material reads it as a mark, and divides it out again. */
+export const SNOWED_BY = 256;
+/** A vertex colour brighter than this is that mark. */
+const SNOWED_OVER = 4;
+/** What a lamp's colours are multiplied by (structures.ts, a tunnel's): under nought, so the material reads it as a mark and draws the face its own colour, lit or not. Only a `lit` material reads it. */
+export const LIT = -1;
 
 /**
  * The dressing's material (ADR-0092): its models' colours, flat per face,
@@ -106,7 +126,14 @@ const UNDERSIDE = /* glsl */ `
  */
 export function flat(
 	sight: Sight,
-	opts: { wind?: boolean; fade?: boolean } = {},
+	opts: {
+		wind?: boolean;
+		fade?: boolean;
+		/** A tree's darkest and lightest green, foot to tip: where it stands in snow, its tip is white and its skirts keep their green under a dusting. None: snowed all over. */
+		snow?: { lo: string; hi: string };
+		/** Faces marked LIT are drawn their own colour, a tunnel's lamps: flat, never a glow. */
+		lit?: boolean;
+	} = {},
 ): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial({
 		vertexColors: true,
@@ -117,6 +144,47 @@ export function flat(
 			'#include <normal_fragment_begin>',
 			`#include <normal_fragment_begin>\n${UNDERSIDE}`,
 		);
+		// A tree in snow (props/batch.ts): its colours come multiplied far past any colour, and are drawn snow.
+		// Half of it keeps its white in the shade, where a face turned from the sun would be drawn as dark as a green tree's.
+		const greens = opts.snow && [
+			new THREE.Color(opts.snow.lo).g,
+			new THREE.Color(opts.snow.hi).g,
+		];
+		s.uniforms.uSnowGreen = {
+			value: new THREE.Vector2(greens?.[0] ?? 0, greens?.[1] ?? 1e-4),
+		};
+		s.fragmentShader = s.fragmentShader
+			.replace(
+				'#include <common>',
+				'#include <common>\nuniform vec2 uSnowGreen;',
+			)
+			.replace(
+				'#include <color_fragment>',
+				`#include <color_fragment>
+				bool snowed = false;
+				float snowOn = 0.0;
+				#ifdef USE_COLOR
+					snowed = max(vColor.r, max(vColor.g, vColor.b)) > ${SNOWED_OVER.toFixed(1)};
+					if (snowed) {
+						vec3 own = vColor.rgb / ${SNOWED_BY.toFixed(1)};
+						float up = clamp((own.g - uSnowGreen.x) / max(uSnowGreen.y - uSnowGreen.x, 1e-4), 0.0, 1.0);
+						snowOn = mix(0.28, 1.0, smoothstep(0.3, 0.72, up));
+						diffuseColor.rgb = mix(own, vec3(0.84, 0.88, 1.0), snowOn);
+					}
+				#endif`,
+			)
+			.replace(
+				'#include <opaque_fragment>',
+				`if (snowed) outgoingLight = mix(outgoingLight, vec3(0.8, 0.83, 0.96), 0.5 * snowOn);
+				${
+					opts.lit
+						? `#ifdef USE_COLOR
+					if (vColor.r < 0.0) outgoingLight = vColor.rgb / ${LIT.toFixed(1)};
+				#endif`
+						: ''
+				}
+				#include <opaque_fragment>`,
+			);
 		if (!opts.wind && !opts.fade) return;
 		Object.assign(s.uniforms, sight);
 		s.vertexShader = s.vertexShader
@@ -152,6 +220,6 @@ export function flat(
 				);
 	};
 	m.customProgramCacheKey = () =>
-		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}`;
+		`flat-${opts.wind ? 'w' : ''}${opts.fade ? 'f' : ''}${opts.lit ? 'l' : ''}${opts.snow ? `${opts.snow.lo}${opts.snow.hi}` : ''}`;
 	return m;
 }

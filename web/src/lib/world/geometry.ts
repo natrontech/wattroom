@@ -2,39 +2,112 @@
 // materials, so one world can be drawn in any art style.
 import * as THREE from 'three';
 import { Biome } from './biome';
-import type { RoutePoint } from '#lib/road/along.ts';
+import { type RoutePoint } from '#lib/road/along.ts';
 import { type Route } from '#lib/road/route.ts';
 import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
+import { BLEND } from './terrain-grid';
 import type { World } from './world';
 import { meetingAt } from './crossings';
+import { sceneOf } from './designed';
+import { smoothstep } from './rand';
 import { sharedAt } from './shared-road';
+import { flatAt, ROAD_LIFT, seatOf, yOf } from './road-surface';
 import { BANK_SPAN_M, banksOf, bendsOf } from './terrain/road-frame';
-import { ribbonRows, ROAD_W, SHOULDER_DROP } from './terrain/road-profile';
+import {
+	FORMATION,
+	ribbonRows,
+	ROAD_W,
+	GRAVEL_EDGE,
+	GRAVEL_W,
+	SHOULDER,
+	SHOULDER_DROP,
+} from './terrain/road-profile';
 
-export const EXAG = 1.2; // vertical exaggeration; the Alps read flat from a chase cam otherwise
 export { ROAD_W } from './terrain/road-profile';
-export const ROAD_LIFT = 0.12;
 
-export const yOf = (route: Route, ele: number) => (ele - route.minEle) * EXAG;
+export { GRAVEL_EDGE, GRAVEL_W } from './terrain/road-profile';
+
+/** How wide a road's ribbon is drawn, its surface and the shoulder each side: a gravel lane's narrow, with a grass edge. */
+export const ribbonOf = (route: Pick<Route, 'gravel'>) =>
+	route.gravel
+		? { width: GRAVEL_W, shoulder: GRAVEL_EDGE }
+		: { width: ROAD_W, shoulder: SHOULDER };
+export { EXAG, ROAD_LIFT, surfaceOf, yOf } from './road-surface';
+
+/** A ploughed bank's height over the asphalt at the formation's edge, and the metres of height either side of the snowline over which the snow comes in. */
+const SNOW_BANK_M = 0.9;
+const SNOW_EASE_M = 12;
+
+/** A road's galleries and tunnels in metres along it (designed.ts), found once a road: under a roof no bank is ploughed up. */
+const roofs = new WeakMap<Route, [number, number][]>();
+function roofedOf(route: Route): [number, number][] {
+	let spans = roofs.get(route);
+	if (spans) return spans;
+	const metre = ([x, z]: [number, number]) => {
+		let best = 30;
+		let at = -1;
+		for (let i = 0; i < route.x.length; i++) {
+			const d = Math.hypot(route.x[i] - x, route.z[i] - z);
+			if (d < best) {
+				best = d;
+				at = i * route.step;
+			}
+		}
+		return at;
+	};
+	const scene = sceneOf(route.scene);
+	spans = [...(scene?.galleries ?? []), ...(scene?.tunnels ?? [])].flatMap(
+		([a, b]) => {
+			const [from, to] = [metre(a), metre(b)].sort((p, q) => p - q);
+			return from < 0 ? [] : [[from, to] as [number, number]];
+		},
+	);
+	roofs.set(route, spans);
+	return spans;
+}
+
+/** Which of the land shader's covers a biome is dressed as: snow, rock, sparse grass, bog (styles.ts dioramaLand). */
+const COVER_OF: Partial<Record<Biome, number>> = {
+	[Biome.Snow]: 0,
+	[Biome.Frost]: 0,
+	[Biome.Rock]: 1,
+	[Biome.Alpine]: 2,
+	[Biome.Dry]: 2,
+	[Biome.Moor]: 3,
+};
 
 export function terrain(
 	route: Route,
 	mesh: TerrainMesh,
 	palette: Palette,
 ): THREE.BufferGeometry {
-	const { pos, biome, shade, forest, index } = mesh;
+	const { pos, biome, shade, forest, blend, index } = mesh;
 	const n = pos.length / 3;
 	const p = new Float32Array(n * 3);
 	const colors = new Float32Array(n * 3);
 	const ao = new Float32Array(n);
+	// What the land shader dresses each vertex as (styles.ts): snow, rock, sparse grass, bog.
+	const cover = new Uint8Array(n * 4);
 	const cache = new Map<number, THREE.Color>();
 	for (const [k, v] of Object.entries(palette))
 		cache.set(Number(k), new THREE.Color(v));
 	const meadow = cache.get(Biome.Meadow) ?? new THREE.Color();
 	const wood = cache.get(Biome.Forest) ?? meadow;
+	// A designed scene's ground in a look that names no colour for it: moor between meadow and rock, dry ground a pale pasture, frost snow.
+	const made = (b: Biome, from: Biome, to: Biome, t: number) => {
+		if (!cache.has(b))
+			cache.set(
+				b,
+				(cache.get(from) ?? meadow).clone().lerp(cache.get(to) ?? meadow, t),
+			);
+	};
+	made(Biome.Moor, Biome.Meadow, Biome.Rock, 0.5);
+	made(Biome.Dry, Biome.Alpine, Biome.Snow, 0.3);
+	made(Biome.Frost, Biome.Snow, Biome.Snow, 0);
 	const mix = new THREE.Color();
+	const sum = new THREE.Color();
 	for (let i = 0; i < n; i++) {
 		p[i * 3] = pos[i * 3];
 		p[i * 3 + 1] = yOf(route, pos[i * 3 + 1]);
@@ -44,15 +117,37 @@ export function terrain(
 			b === Biome.Meadow || b === Biome.Forest
 				? mix.copy(meadow).lerp(wood, forest[i]) // meadow ↔ forest, blended at the edge
 				: (cache.get(b) ?? meadow);
+		ao[i] = Math.min(1, Math.max(0, (shade[i] - 0.72) / 0.4)); // hollows dark, crests light
+		const k = COVER_OF[b as Biome];
+		if (blend && blend[i * BLEND] !== 255) {
+			// A far vertex: the mean of its own and the points round it, colour and covers alike, so far fields and patches blend, never a square of one.
+			const shares = [0, 0, 0, 0];
+			if (k !== undefined) shares[k]++;
+			sum.copy(c);
+			for (let n = 0; n < BLEND; n++) {
+				const o = blend[i * BLEND + n] as Biome;
+				sum.add(cache.get(o) ?? (o === Biome.Forest ? wood : meadow));
+				const ko = COVER_OF[o];
+				if (ko !== undefined) shares[ko]++;
+			}
+			sum.multiplyScalar(1 / (BLEND + 1));
+			colors[i * 3] = sum.r;
+			colors[i * 3 + 1] = sum.g;
+			colors[i * 3 + 2] = sum.b;
+			for (let q = 0; q < 4; q++)
+				cover[i * 4 + q] = Math.round((255 * shares[q]) / (BLEND + 1));
+			continue;
+		}
 		colors[i * 3] = c.r;
 		colors[i * 3 + 1] = c.g;
 		colors[i * 3 + 2] = c.b;
-		ao[i] = Math.min(1, Math.max(0, (shade[i] - 0.72) / 0.4)); // hollows dark, crests light
+		if (k !== undefined) cover[i * 4 + k] = 255;
 	}
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.BufferAttribute(p, 3));
 	g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 	g.setAttribute('ao', new THREE.BufferAttribute(ao, 1));
+	g.setAttribute('cover', new THREE.BufferAttribute(cover, 4, true));
 	g.setIndex(new THREE.BufferAttribute(index, 1));
 	g.computeBoundingSphere();
 	return g;
@@ -77,6 +172,8 @@ export function road(
 		shoulder?: number;
 		step?: number;
 		rows?: readonly [from: number, to: number];
+		/** Whether its first end and its last are rounded off: a side road's that ends at another road's edge is cut square (side-roads.ts). */
+		caps?: readonly [boolean, boolean];
 	} = {},
 ): THREE.BufferGeometry {
 	const half = (opts.width ?? ROAD_W) / 2;
@@ -90,6 +187,8 @@ export function road(
 	const drops =
 		shoulder > 0 ? [-SHOULDER_DROP, 0, 0, 0, -SHOULDER_DROP] : [0, 0, 0];
 	const cols = offs.length;
+	const snowline = sceneOf(route.scene)?.climate.snowline;
+	const roofed = snowline === undefined ? [] : roofedOf(route);
 	const [from, to] = opts.rows ?? [0, Infinity];
 	// A road that goes round is one strip round (#4534): rows before its first and past its last wrap, so its start line is lit, banked and walked as any other row.
 	const rows = ribbonRows(route, step);
@@ -113,6 +212,9 @@ export function road(
 	const hidden: boolean[] = [];
 	// Through a crossing, each vertex's metres off the pass it meets and which of the two it is (crossings.ts): the paint gives way to the other road's.
 	const bare: number[] = [];
+	// Where it runs into another road, its vertices seated on that road's carriageway (road-surface.ts), and its asphalt lit as that road's: by vertex, how much, and that plane's up.
+	const seat = seatOf(route);
+	const seated: number[] = [];
 	for (let r = first; r <= last; r++) {
 		const p = centre[r - first];
 		const d = rows.metre(r);
@@ -120,7 +222,10 @@ export function road(
 		// A later pass easing onto an earlier one sinks under it, and is not drawn where it is on it (#4531).
 		const w = sharedAt(route, d);
 		// Its bend onto the earlier one is no road's bend: unbanked as it lands, so it never tilts up through the earlier one.
-		const bank = banks[r - first] * (1 - w);
+		// Nor where it laps a roundabout's level arm: banked into its turn onto the ring, its high edge stood through the arm's asphalt.
+		const bank = route.level
+			? 0
+			: banks[r - first] * (1 - w) * (1 - flatAt(route, d));
 		const lx = Math.cos(p.heading); // left of travel
 		const lz = -Math.sin(p.heading);
 		sides.push(new THREE.Vector3(lx, -Math.tan(bank), lz)); // across the asphalt, leftward
@@ -128,18 +233,33 @@ export function road(
 		const y = yOf(route, p.ele) + lift - SHARED_SINK * w;
 		const tx = Math.sin(p.heading);
 		const tz = Math.cos(p.heading);
+		// In a designed road's snow the plough has thrown a bank up along both edges.
+		const banked =
+			snowline === undefined || roofed.some(([a, b]) => d >= a && d <= b)
+				? 0
+				: SNOW_BANK_M *
+					smoothstep(snowline - SNOW_EASE_M, snowline + SNOW_EASE_M, p.ele);
+		const wide = route.widen?.(d) ?? 1;
 		for (let c = 0; c < cols; c++) {
-			let u = offs[c];
+			// Its paint is laid by its own width (uv), so a road drawn wider carries its edge lines out with it.
+			let u = offs[c] * wide;
 			if (Math.sign(u) === Math.sign(k) && Math.abs(k) > 1e-4)
 				u = Math.sign(u) * Math.min(Math.abs(u), 0.85 / Math.abs(k));
 			const v = new THREE.Vector3(
 				p.x + lx * u,
-				y + drops[c] - u * Math.tan(bank),
+				y + drops[c] + (drops[c] < 0 ? banked : 0) - u * Math.tan(bank),
 				p.z + lz * u,
 			);
 			// walk the column: never step backwards along the road (a degenerate triangle, not a bow-tie)
 			const q = prev[c];
 			if (q && (v.x - q.x) * tx + (v.z - q.z) * tz <= 0) v.copy(q);
+			const on = seat?.(d, v.x, v.z);
+			if (on) {
+				// Its own shoulder's drop kept: the two shoulders meet where the higher of them lies, a mitre round the corner.
+				const drop = drops[c] + (drops[c] < 0 ? banked : 0);
+				v.y += (on.y + drop - v.y) * on.w;
+				seated.push(on.w, ...on.up);
+			} else seated.push(0, 0, 1, 0);
 			prev[c] = v;
 			pos.push(v.x, v.y, v.z);
 			uv.push(offs[c], d);
@@ -148,6 +268,24 @@ export function road(
 	}
 	// The rows asked for, lit as the whole ribbon lights them.
 	const lit = normals(pos, sides, cols);
+	if (seat)
+		for (let i = 0; i < lit.length / 3; i++) {
+			const w = seated[i * 4];
+			const c = i % cols;
+			// The asphalt's own columns: a shoulder keeps the light of its own slope.
+			if (w <= 0 || c === 0 || c === cols - 1) continue;
+			const n = new THREE.Vector3(lit[i * 3], lit[i * 3 + 1], lit[i * 3 + 2])
+				.lerp(
+					new THREE.Vector3(
+						seated[i * 4 + 1],
+						seated[i * 4 + 2],
+						seated[i * 4 + 3],
+					),
+					w,
+				)
+				.normalize();
+			lit.splice(i * 3, 3, n.x, n.y, n.z);
+		}
 	const lo = Math.max(from, first);
 	const hi = Math.min(top, last);
 	const keep = (a: readonly number[], size: number) =>
@@ -163,8 +301,10 @@ export function road(
 	const cuts: number[] = [];
 	if (!rows.ring && shoulder > 0) {
 		const count = out.hidden.length;
-		if (lo === 0 && !out.hidden[0]) endCap(out, cuts, cols, drops, 0, 1);
-		if (hi === end && !out.hidden[count - 1])
+		const [capFirst, capLast] = opts.caps ?? [true, true];
+		if (capFirst && lo === 0 && !out.hidden[0])
+			endCap(out, cuts, cols, drops, 0, 1);
+		if (capLast && hi === end && !out.hidden[count - 1])
 			endCap(out, cuts, cols, drops, count - 1, count - 2);
 	}
 	const g = strip(out.pos, out.uv, cols, out.hidden, cuts);
@@ -358,14 +498,27 @@ const MOUTH_WITHIN_M = ROAD_W / 2 - 0.6;
 export function roadMaterial(
 	c: Style['road'],
 	lights: Lights = lightsUniforms(),
+	/** Where a designed road's snow lies from (designed.ts), as a height in the scene: above it the shoulder and the verge are snow, a bank ploughed up beside the asphalt. */
+	snow?: { y: number; color: string },
+	/** A gravel lane's (designed.ts Lane): GRAVEL_W of the shoulder's gravel, no line on it, a grass edge, then the verge. */
+	gravel = false,
 ): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial();
+	/** Half the surface's width: the edge of the asphalt, or of the gravel. */
+	const half = (gravel ? GRAVEL_W : ROAD_W) / 2;
+	const edgeAt = gravel ? half : ROAD_W / 2 + 0.9;
 	m.onBeforeCompile = (s) => {
 		Object.assign(s.uniforms, lights);
-		s.uniforms.uAsphalt = { value: new THREE.Color(c.asphalt) };
+		s.uniforms.uSnowY = { value: snow?.y ?? 1e9 };
+		s.uniforms.uSnow = { value: new THREE.Color(snow?.color ?? '#fff') };
+		s.uniforms.uAsphalt = {
+			value: new THREE.Color(gravel ? (c.shoulder ?? c.verge) : c.asphalt),
+		};
 		s.uniforms.uLine = { value: new THREE.Color(c.line) };
 		s.uniforms.uVerge = { value: new THREE.Color(c.verge) };
-		s.uniforms.uShoulder = { value: new THREE.Color(c.shoulder ?? c.verge) };
+		s.uniforms.uShoulder = {
+			value: new THREE.Color(gravel ? c.verge : (c.shoulder ?? c.verge)),
+		};
 		s.vertexShader = s.vertexShader
 			.replace(
 				'#include <common>',
@@ -391,6 +544,7 @@ export function roadMaterial(
 				varying vec3 vLampAt;
 				${POOL}
 				uniform vec3 uAsphalt; uniform vec3 uLine; uniform vec3 uVerge; uniform vec3 uShoulder;
+				uniform float uSnowY; uniform vec3 uSnow;
 				// A stripe of half width h at distance d, one pixel fw wide at least, at the share of it the stripe covers.
 				float paint(float d, float h, float fw) {
 					float w = max(h, 0.5 * fw);
@@ -406,17 +560,22 @@ export function roadMaterial(
 				float along = abs(mod(s - ${(DASH_M / 2).toFixed(1)} + ${(DASH_EVERY_M / 2).toFixed(1)}, ${DASH_EVERY_M.toFixed(1)}) - ${(DASH_EVERY_M / 2).toFixed(1)});
 				float dash = mix(paint(along, ${(DASH_M / 2).toFixed(1)}, fs), ${(DASH_M / DASH_EVERY_M).toFixed(2)}, smoothstep(0.15, 0.5, fs / ${DASH_EVERY_M.toFixed(1)}));
 				float centre = paint(abs(u), ${CENTRE_HALF.toFixed(3)}, fw) * dash;
-				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fw, abs(u));
-				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fw, abs(u));
+				${gravel ? 'edge = 0.0; centre = 0.0; // gravel: no paint' : ''}
+				float shoulder = smoothstep(${half.toFixed(2)} - 0.5 * fw, ${half.toFixed(2)} + 0.5 * fw, abs(u));
+				float verge = smoothstep(${edgeAt.toFixed(2)} - 0.5 * fw, ${edgeAt.toFixed(2)} + 0.5 * fw, abs(u));
 				// Where it meets another pass (crossings.ts): o metres off that pass's centre line, and which of the two it is.
 				float o = abs(vBare.x);
 				float fo = max(fwidth(o), 1e-4);
 				float joins = step(0.5, vBare.y);
 				float joined = step(0.5, -vBare.y);
-				// A pass joining an earlier one is not drawn inside its asphalt, but for a hand's width at its edge: o is read off a line of 10 m chords, and where each ribbon stopped exactly at the other the ground showed between them.
-				if (joins > 0.5 && o < ${(ROAD_W / 2 - 0.1).toFixed(2)}) discard;
+				// A side road at a junction (crossings.ts SEATED): its distance signed, negative past the line of the road it meets.
+				float seated = step(1.5, vBare.y);
+				// A pass joining an earlier one is not drawn inside its asphalt, but for a hand's width at its edge: o is read off a line of 10 m chords, and where each ribbon stopped exactly at the other the ground showed between them. A side road is not drawn past that road's line either.
+				if (joins > 0.5 && mix(o, vBare.x, seated) < ${(ROAD_W / 2 - 0.1).toFixed(2)}) discard;
+				// Nor is its shoulder or verge drawn on the earlier one's formation: where it comes in along that road, a roundabout's arm, its shoulder lay across that road's far edge. A side road seated on the road it meets keeps its shoulder there: the two shoulders meet where the higher lies, round the corner as one.
+				if (joins > 0.5 && seated < 0.5 && abs(u) > ${half.toFixed(2)} && o < ${FORMATION.toFixed(2)}) discard;
 				// And the pass joined draws no shoulder under the joining one's asphalt: two surfaces there, each lit by its own slope, drew as streaks.
-				if (joined > 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${(ROAD_W / 2 - 0.15).toFixed(2)}) discard;
+				if (joined > 0.5 && abs(u) > ${half.toFixed(2)} && o < ${(ROAD_W / 2 - 0.15).toFixed(2)}) discard;
 				float theirs = 1.0 - smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fo, o);
 				float theirEdge = 1.0 - smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fo, o);
 				// Across the mouth of a road joining it, the pass joined dashes its edge line, a metre on and a metre off: the line runs on, and the road beside it is seen to be another.
@@ -429,7 +588,13 @@ export function roadMaterial(
 				float line = max(edge, centre) * (1.0 - theirEdge * (1.0 - joined));
 				vec3 col = mix(uAsphalt, uShoulder, shoulder);
 				col = mix(col, uLine, line * (1.0 - shoulder));
+				// And no verge of mine on its formation: a green wedge on its shoulder at each corner of a junction.
+				float theirForm = 1.0 - smoothstep(${FORMATION.toFixed(2)} - 0.5 * fo, ${FORMATION.toFixed(2)} + 0.5 * fo, o);
 				col = mix(col, uVerge, verge * (1.0 - theirEdge));
+				// At a junction the two shoulders meet where the higher lies, and each verge runs on to the other's: one L round the corner, nothing to recolour.
+				float atMouth = step(1.5, abs(vBare.y));
+				col = mix(col, uShoulder, verge * theirForm * (1.0 - theirEdge) * (1.0 - atMouth));
+				col = mix(col, uSnow, shoulder * smoothstep(uSnowY - ${SNOW_EASE_M.toFixed(1)}, uSnowY + ${SNOW_EASE_M.toFixed(1)}, vLampAt.y));
 				col = mix(col, uAsphalt, theirs * mix(1.0, shoulder, joined));
 				vec4 diffuseColor = vec4(col, opacity);`,
 			)
@@ -448,7 +613,7 @@ export function roadMaterial(
 			);
 	};
 	m.customProgramCacheKey = () =>
-		`road-${c.asphalt}-${c.line}-${c.verge}-${c.shoulder}`;
+		`road-${c.asphalt}-${c.line}-${c.verge}-${c.shoulder}-${snow?.y}-${snow?.color}-${gravel}`;
 	return m;
 }
 

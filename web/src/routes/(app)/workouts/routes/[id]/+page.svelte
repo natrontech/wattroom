@@ -9,6 +9,7 @@
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import RouteAttempts from '#lib/components/RouteAttempts.svelte';
 	import RouteProfile from '#lib/components/RouteProfile.svelte';
+	import RouteLandMap from '#lib/components/RouteLandMap.svelte';
 	import RouteShape from '#lib/components/RouteShape.svelte';
 	import RouteStatRow from '#lib/components/RouteStatRow.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
@@ -247,17 +248,25 @@
 			{/if}
 			<div class="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
 				<div class="order-2 lg:order-1">
-					{#if shape || shapeNote}
-						<RouteShape
-							x={shape?.x}
-							z={shape?.z}
-							climbs={route.climbs}
-							length={road?.length}
-							note={shapeNote ?? undefined}
-							mine={!home}
-						/>
+					{#snippet outline()}
+						{#if shape || shapeNote}
+							<RouteShape
+								x={shape?.x}
+								z={shape?.z}
+								climbs={route?.climbs}
+								length={road?.length}
+								note={shapeNote ?? undefined}
+								mine={!home}
+							/>
+						{:else}
+							<Skeleton class="h-[220px] sm:h-[280px]" />
+						{/if}
+					{/snippet}
+					<!-- WattRoom's designed loops on the land they run through; a rider's own road keeps its outline. -->
+					{#if road && home}
+						<RouteLandMap {road}>{@render outline()}</RouteLandMap>
 					{:else}
-						<Skeleton class="h-[220px] sm:h-[280px]" />
+						{@render outline()}
 					{/if}
 				</div>
 				{#if road}
