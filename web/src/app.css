@@ -439,7 +439,7 @@
 	--world-water-foam: #c9dbe6;
 	--world-prop-snowpole: #ff7a1a;
 	/* A pass road's snow marker over the snowline: the yellow of a Swiss marker pole, banded in --world-prop-band. */
-	--world-prop-marker: #f2c230;
+	--world-prop-marker: #e6cc80;
 	/* A Swiss danger sign's red, turned toward orange past every watt's band (O13, #4240). */
 	--world-prop-warning: #c05a2c;
 	--world-prop-rock: #4c5060;
