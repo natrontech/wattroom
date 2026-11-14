@@ -859,10 +859,11 @@ const MAP = {
 			{ x: 3700, y: -2700, ele: 1505, r: 0 },
 			{ x: 4900, y: -2500, ele: 1530, r: 0 },
 		],
-		// The Kettental's road on down the valley.
+		// The Kettental's road on down the valley: off the outside of the loop's bend out of it, square to it, then south. Run on straight from the bend it left at a shallow angle and ended beside the loop's road, never meeting it.
 		[
-			{ x: -7300, y: -4900, ele: 1318, r: 0 },
-			{ x: -7350, y: -5800, ele: 1310, r: 0 },
+			{ x: -7285, y: -4897, ele: 1318, r: 0 },
+			{ x: -7355, y: -4912, ele: 1317, r: 0 },
+			{ x: -7380, y: -5800, ele: 1310, r: 0 },
 			{ x: -7250, y: -6800, ele: 1302, r: 0 },
 		],
 		// Gravel: up the Kettental to its head, and farm tracks across its fields, to its farms and over its river.

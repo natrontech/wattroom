@@ -378,6 +378,60 @@ describe('the map', () => {
 	);
 
 	it(
+		'ends no road rounded beside another: one that comes that near meets it at a junction',
+		async () => {
+			/** Metres from (x, z) to a road's line. */
+			const off = (r: Route, x: number, z: number) => {
+				let best = Infinity;
+				for (let i = 0; i + 1 < r.x.length; i++) {
+					const sx = r.x[i + 1] - r.x[i];
+					const sz = r.z[i + 1] - r.z[i];
+					const t = Math.min(
+						1,
+						Math.max(
+							0,
+							((x - r.x[i]) * sx + (z - r.z[i]) * sz) /
+								(sx * sx + sz * sz || 1),
+						),
+					);
+					best = Math.min(
+						best,
+						Math.hypot(r.x[i] + sx * t - x, r.z[i] + sz * t - z),
+					);
+				}
+				return best;
+			};
+			let open = 0;
+			for (const d of LOOPS) {
+				const route = routeOfRoad(await roadOf(d.id));
+				const world = generate(route);
+				world.sides.forEach((side, k) => {
+					if (side.square) return;
+					const r = side.route;
+					side.mouths.forEach((m, end) => {
+						if (m) return;
+						open++;
+						const i = end === 0 ? 0 : r.x.length - 1;
+						const near = Math.min(
+							off(world.ridden, r.x[i], r.z[i]),
+							...world.sides
+								.filter((_, j) => j !== k)
+								.map((s) => off(s.route, r.x[i], r.z[i])),
+						);
+						// A lane's end in the open lies far from any road; one that leaves a road at a shallow angle ended a car's length beside it.
+						expect(
+							near,
+							`${d.id}: side road ${k}'s end ${end}`,
+						).toBeGreaterThan(40);
+					});
+				});
+			}
+			expect(open).toBeGreaterThan(20);
+		},
+		5 * BUILD_MS,
+	);
+
+	it(
 		'makes a junction of every mouth: the side road runs into the road it meets at its height, and what is painted on it lies on it, inside its lane, its stop line along the other road’s carriageway edge',
 		async () => {
 			/** Metres from (x, z) to a road's line, and which side of it: positive left. */
