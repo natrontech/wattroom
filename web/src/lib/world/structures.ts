@@ -711,8 +711,13 @@ const READ = {
 	cutOut: 11,
 	cut: 3,
 };
-/** The pass road's granite starts this far under the scene's snowline: the mountain's stretches. Under it, and on a road with no snow, steel. */
+/** The pass road's granite starts this far under the snowline, or at the treeline if that is lower: the mountain's stretches. Under it, steel. */
 export const STONE_UNDER_SNOW_M = 450;
+
+/** The height, metres above sea, from which a road's edges are the mountain's granite (`edgesOf` stoneFrom), from its climate (land.ts climateOf). */
+export function stoneFromOf(climate: { snowline: number; treeline: number }) {
+	return Math.min(climate.treeline, climate.snowline - STONE_UNDER_SNOW_M);
+}
 
 /** What a road's stretch is given beside it, by how the land lies there and how high it is: what the tests read. */
 export type Edge = 'rail' | 'parapet' | 'guard' | 'wall';

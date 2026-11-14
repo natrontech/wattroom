@@ -171,7 +171,11 @@
 		const road = (await roads).find((r) => r.id === name);
 		if (!road) return;
 		try {
-			points = await road.points();
+			// `lift` raises a road by that many metres: a fixture over the treeline or the snowline.
+			const lift = Number(params.get('lift') ?? 0);
+			points = (await road.points()).map((p) =>
+				lift && p.ele !== undefined ? { ...p, ele: p.ele + lift } : p,
+			);
 			source = road.label;
 			picked = road.id;
 			m = 0;
