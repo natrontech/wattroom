@@ -27,7 +27,7 @@ not a second copy of `git log`.
 
 - Farm lanes no longer climb straight up mountains, streams no longer cut through hills, and the snow beside the pass road is closed. (#4597)
 - Rivers and streams now flow all the way into their lakes and under every bridge, their water ripples instead of looking like road markings, and no tree stands in them any more. (#4596)
-- A gallery's roof is now covered in the same grass or snow as the hillside around it, and the harbour on the Urnersee loop is in view as you cross the inlet's bridge. (#4595)
+- A gallery's roof is now covered in the same grass or snow as the hillside around it, and the harbour on the Urnsee loop is in view as you cross the inlet's bridge. (#4595)
 - Snow on the high passes looks solid from any camera angle, instead of showing stones through it when you look around from above. (#4594)
 
 ## [2026.11.35] - 2026-11-14
