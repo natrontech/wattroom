@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.35] - 2026-11-14
+
+### Added
+
+- New map: WattRoom's own roads now run through Wattalp, one drawn alpine land with a lake and its harbour, tunnels, stone viaducts and a 21-hairpin pass into the snow. Ride its five loops from 30 minutes to the new two-hour Kettental-Runde. Every loop shows the map of its land in the ride's Map view, zoomed to your loop, and on the Routes page; the Valley loop has its own, Rahmental. A ride on one of these roads is now named after it. (#4591)
+
+### Fixed
+
+- Where a route comes onto a street it already rode, or leaves it, the street's edge line now runs on dashed across the junction and the two roads no longer show through one another. A road's end is a clean half circle, and a climb that ends beside its start keeps its height. (#4590)
+
 ## [2026.11.34] - 2026-11-13
 
 ### Fixed
@@ -4583,7 +4593,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.34...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.35...HEAD
+[2026.11.35]: https://github.com/natrontech/wattroom/compare/2026.11.34...2026.11.35
 [2026.11.34]: https://github.com/natrontech/wattroom/compare/2026.11.33...2026.11.34
 [2026.11.33]: https://github.com/natrontech/wattroom/compare/2026.11.32...2026.11.33
 [2026.11.32]: https://github.com/natrontech/wattroom/compare/2026.11.31...2026.11.32
