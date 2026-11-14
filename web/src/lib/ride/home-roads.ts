@@ -45,7 +45,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 			'Rolling farmland and villages, cows by the road, two bridges over the river and two short steep ramps.',
 		shape: () => designed('valley'),
 	},
-	// The map (world/designs.ts): one land, and four loops through it from its village, by the time they take.
+	// The map (world/designs.ts): one land, and five loops through it from its village, by the time they take.
 	{
 		id: 'urnsee',
 		routeId: '7a77b0ad-0005-4000-8000-000000004248',
@@ -77,6 +77,14 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		story:
 			'Ninety minutes: twenty-one hairpins up into the snow to a notch between two peaks, down the north side past a tarn, and home along the lake.',
 		shape: () => designed('berne'),
+	},
+	{
+		id: 'kette',
+		routeId: '7a77b0ad-0007-4000-8000-000000004248',
+		name: 'Kettental-Runde',
+		story:
+			'Two hours: the lake shore and its tunnel, a Z of hairpins up to the alp and its lake, the ridge over Speichenegg, down into the Kettental’s fields and home over the gorge.',
+		shape: () => designed('kette'),
 	},
 ];
 

@@ -2,15 +2,16 @@
  * WattRoom's map (designed.ts): one made-up land, its roads and what lies
  * round them drawn on it together, and the loops a rider picks through it.
  * A lake between mountains, the river that leaves it through a gorge, a
- * pass over the massif east of both. Named after Swiss places a rider knows
- * and shaped like them from memory, never traced: no coordinate here is a
- * place's, and each name is changed.
+ * pass over the massif east of both; west over the alp, a second, wider
+ * valley of fields. Named after Swiss places a rider knows and shaped like
+ * them from memory, never traced: no coordinate here is a place's, and each
+ * name is changed.
  *
  * Metres east and north of the map's own origin; heights above sea. Every
- * loop is built of the same stretches of road between the same two nodes,
- * so two loops that share a stretch share it to the metre.
+ * loop is built of the same stretches of road between the same nodes, so
+ * two loops that share a stretch share it to the metre.
  */
-import type { Designed, Feature, Spot } from './designed';
+import type { Designed, Feature, Lane, Spot } from './designed';
 import { prng } from './rand';
 import type { Corner } from './synthetic';
 
@@ -18,7 +19,7 @@ import type { Corner } from './synthetic';
  * A stretch of road with its long legs wound: no road runs a kilometre dead
  * straight. Each leg gets a point every `every` metres, set off to one side
  * and the other by turns, up to `amp(leg)` metres, and its height rolled by
- * up to `roll`: 0 keeps a leg as drawn, a bridge's or a hairpin's.
+ * up to `roll`: 0 keeps a leg as drawn, a bridge's, a tunnel's or a hairpin's.
  */
 function wind(
 	corners: Corner[],
@@ -52,10 +53,11 @@ function wind(
 	});
 }
 
-/** The two nodes every loop is built between: the village south of the lake, and the head of the lake. */
+/** The nodes every loop is built between: the village south of the lake, the head of the lake, and the crossroads on the plateau west of the gorge. */
 // Each is a roundabout (through, below): its centre here.
 const HUB: Corner = { x: 200, y: 300, ele: 1446, r: 0 };
 const HEAD: Corner = { x: 150, y: 4250, ele: 1441, r: 0 };
+const WEST: Corner = { x: -2650, y: -1750, ele: 1462, r: 0 };
 
 /** A roundabout: the radius of its ring's centre line, how far out each arm runs straight at it, and the radius a line turns onto the ring or off it on: tight, so an arm is one straight road to the ring's edge, the same for the way in and the way out. */
 const RING = { r: 18, stub: 70, level: 160, arm: 3 };
@@ -74,20 +76,33 @@ const stretch = (
 ): Corner[] => wind([from, ...drawn, to], ...how).slice(1, -1);
 
 /**
- * The east shore, hub to the head of the lake: 8 m over the water under the
- * massif's cliffs, up over a headland through a gallery, and across an
- * inlet on a bridge.
+ * The east shore, hub to the head of the lake. Past the village's beach and
+ * round the harbour's bay a few metres over the water, up and through the
+ * Nase headland in a tunnel, under the cliffs through a gallery, across the
+ * inlet's mouth on a bridge, and along the shore to the reeds at the head.
  */
 const SHORE_DRAWN: Corner[] = [
-	{ x: 480, y: 800, ele: 1444, r: 80 },
-	{ x: 640, y: 1500, ele: 1442, r: 150 },
-	{ x: 560, y: 2300, ele: 1470, r: 150 },
-	{ x: 700, y: 3000, ele: 1443, r: 150 },
-	{ x: 520, y: 3700, ele: 1442, r: 120 },
+	{ x: 450, y: 590, ele: 1439, r: 120 },
+	{ x: 640, y: 830, ele: 1438, r: 120 },
+	{ x: 800, y: 1010, ele: 1437, r: 100 },
+	// Behind the harbour, on the bay's far side.
+	{ x: 960, y: 1240, ele: 1438, r: 90 },
+	{ x: 900, y: 1450, ele: 1451, r: 90 },
+	// The Nase: its tunnel's leg straight.
+	{ x: 800, y: 1610, ele: 1461, r: 80 },
+	{ x: 770, y: 2010, ele: 1462, r: 80 },
+	{ x: 900, y: 2250, ele: 1455, r: 100 },
+	// Under the cliffs, 24 m over the water: the gallery.
+	{ x: 930, y: 2450, ele: 1458, r: 120 },
+	{ x: 920, y: 2820, ele: 1457, r: 120 },
+	// The inlet's mouth: its bridge's leg straight.
+	{ x: 935, y: 3080, ele: 1449, r: 150 },
+	{ x: 905, y: 3560, ele: 1444, r: 120 },
+	{ x: 870, y: 3760, ele: 1441, r: 120 },
+	{ x: 560, y: 3980, ele: 1440, r: 100 },
 ];
-// Its bridge's leg stays straight.
 const SHORE = stretch(HUB, SHORE_DRAWN, HEAD, 4340, (leg) =>
-	leg === 4 ? 0 : 16,
+	leg === 5 || leg === 10 ? 0 : leg >= 7 && leg <= 9 ? 8 : 16,
 );
 
 /**
@@ -112,11 +127,12 @@ const TERRACE = stretch(
 );
 
 /**
- * The gorge: out over a spur in the river's bend, across the river on a
- * high bridge, round the moor on the plateau and back over the river into
- * the village.
+ * The gorge, from the village out over a spur in the river's bend, across
+ * the river on a high bridge, along the gorge's rim and through a rib of its
+ * rock in a tunnel, and round the moor on the plateau to the crossroads
+ * there; and from the crossroads back over the river into the village.
  */
-const GORGE = stretch(
+const GORGE_OUT = stretch(
 	HUB,
 	[
 		// The spur: 1.6 km up from the village, the last 900 m at 9 %, and off it on a viaduct 130 m over the river.
@@ -124,18 +140,28 @@ const GORGE = stretch(
 		{ x: 100, y: -1250, ele: 1552, r: 60 },
 		{ x: 1250, y: -1450, ele: 1490, r: 80 },
 		{ x: 1150, y: -2150, ele: 1450, r: 80 },
-		{ x: 300, y: -2500, ele: 1470, r: 90 },
+		{ x: 300, y: -2500, ele: 1470, r: 140 },
 		{ x: -400, y: -2950, ele: 1445, r: 100 },
 		{ x: -1500, y: -3100, ele: 1462, r: 100 },
-		{ x: -2700, y: -2300, ele: 1448, r: 100 },
+		{ x: -2700, y: -2300, ele: 1452, r: 100 },
+	],
+	WEST,
+	4404,
+	// The leg that crosses the river and the one through the rib stay straight: a bridge and a tunnel have no bend in them.
+	(leg) => (leg === 2 || leg === 3 ? 0 : 28),
+	270,
+	3,
+);
+const GORGE_HOME = stretch(
+	WEST,
+	[
 		{ x: -2600, y: -1300, ele: 1480, r: 80 },
 		{ x: -1800, y: -1000, ele: 1455, r: 70 },
 		{ x: -1100, y: -800, ele: 1450, r: 80 },
 	],
 	HUB,
-	4404,
-	// The two legs that cross the river stay straight: a bridge has no bend in it.
-	(leg) => (leg === 2 || leg === 11 ? 0 : 28),
+	4405,
+	(leg) => (leg === 3 ? 0 : 28),
 	270,
 	3,
 );
@@ -186,7 +212,7 @@ function colDeBerne(): Corner[] {
 			{ x: 1400, y: 4700, ele: 1622, r: 100 },
 			{ x: 800, y: 5000, ele: 1552, r: 80 },
 			{ x: 300, y: 4900, ele: 1506, r: 60 },
-			{ x: 550, y: 4500, ele: 1466, r: 40 },
+			{ x: 480, y: 4600, ele: 1468, r: 40 },
 		],
 		HEAD,
 		2101,
@@ -198,6 +224,93 @@ function colDeBerne(): Corner[] {
 }
 const COL = colDeBerne();
 
+/**
+ * The Kettental road, from the head of the lake the long way to the
+ * crossroads on the plateau: up the side valley and its Z of four hairpins
+ * onto the alp, along the alp's lake, south on the ridge over Speichenegg
+ * with the Kettental under it, down its west face in four hairpins, the
+ * length of the valley's fields and through its village, and back east up
+ * the forest to the plateau.
+ */
+const KETTE_DRAWN: Corner[] = [
+	// The side valley.
+	{ x: -150, y: 4800, ele: 1458, r: 100 },
+	{ x: -180, y: 5350, ele: 1492, r: 100 },
+	{ x: -480, y: 5800, ele: 1528, r: 60 },
+	// The Z up its west side: six ramps of 7–8 %, five hairpins.
+	{ x: -1200, y: 5980, ele: 1580, r: 24 },
+	{ x: -620, y: 6250, ele: 1627, r: 24 },
+	{ x: -1300, y: 6500, ele: 1680, r: 24 },
+	{ x: -700, y: 6780, ele: 1730, r: 24 },
+	{ x: -1400, y: 7020, ele: 1784, r: 24 },
+	{ x: -1850, y: 7330, ele: 1820, r: 80 },
+	// Onto the alp, along its lake's north shore.
+	{ x: -2450, y: 7250, ele: 1842, r: 120 },
+	{ x: -3100, y: 7050, ele: 1850, r: 120 },
+	{ x: -3650, y: 6650, ele: 1856, r: 120 },
+	// The ridge: out to its north end, and south along the crest over Speichenegg.
+	{ x: -4250, y: 7050, ele: 1866, r: 120 },
+	{ x: -4650, y: 7450, ele: 1876, r: 100 },
+	{ x: -5100, y: 6850, ele: 1888, r: 120 },
+	{ x: -4850, y: 6150, ele: 1898, r: 150 },
+	{ x: -4650, y: 5550, ele: 1906, r: 150 },
+	{ x: -4550, y: 4850, ele: 1924, r: 150 },
+	{ x: -4800, y: 4100, ele: 1898, r: 150 },
+	{ x: -4750, y: 3400, ele: 1866, r: 100 },
+	// Down the west face: six hairpins, and the long traverse to the valley's head.
+	{ x: -5300, y: 3100, ele: 1826, r: 80 },
+	{ x: -5950, y: 3350, ele: 1778, r: 24 },
+	{ x: -5450, y: 3700, ele: 1730, r: 24 },
+	{ x: -6100, y: 3950, ele: 1680, r: 24 },
+	{ x: -5550, y: 4300, ele: 1632, r: 24 },
+	{ x: -6200, y: 4550, ele: 1583, r: 24 },
+	{ x: -5750, y: 4900, ele: 1540, r: 24 },
+	{ x: -6450, y: 5100, ele: 1492, r: 80 },
+	{ x: -7000, y: 5450, ele: 1462, r: 120 },
+	{ x: -7600, y: 5200, ele: 1440, r: 120 },
+	// The Kettental, south through its fields, over its river twice, through Nabenwil.
+	{ x: -7950, y: 4000, ele: 1418, r: 200 },
+	{ x: -7400, y: 2800, ele: 1402, r: 150 },
+	{ x: -7600, y: 1500, ele: 1388, r: 150 },
+	{ x: -7350, y: 600, ele: 1376, r: 200 },
+	{ x: -7700, y: -500, ele: 1365, r: 150 },
+	{ x: -7200, y: -1800, ele: 1352, r: 150 },
+	{ x: -7500, y: -3000, ele: 1338, r: 150 },
+	{ x: -7100, y: -4000, ele: 1328, r: 200 },
+	{ x: -7300, y: -4900, ele: 1318, r: 150 },
+	// Out of the valley and east, up through the forest to the plateau, a hairpin in it.
+	{ x: -6700, y: -5700, ele: 1310, r: 150 },
+	{ x: -5600, y: -5900, ele: 1324, r: 150 },
+	{ x: -4500, y: -5300, ele: 1350, r: 150 },
+	{ x: -3800, y: -4500, ele: 1378, r: 40 },
+	{ x: -4250, y: -3900, ele: 1402, r: 30 },
+	{ x: -3500, y: -3400, ele: 1424, r: 100 },
+	{ x: -3150, y: -2700, ele: 1440, r: 120 },
+	{ x: -3050, y: -2150, ele: 1452, r: 100 },
+];
+/** The legs that carry the valley road over its river: from these corners, straight. */
+const KETTE_BRIDGES = [
+	[-7400, 2800],
+	[-7200, -1800],
+].map(([x, y]) => KETTE_DRAWN.findIndex((c) => c.x === x && c.y === y) + 1);
+const KETTE = stretch(
+	HEAD,
+	KETTE_DRAWN,
+	WEST,
+	5050,
+	// The river's two bridges run as drawn, the hairpins' ramps nearly; the valleys' roads wind.
+	(leg, a, b) =>
+		KETTE_BRIDGES.includes(leg)
+			? 0
+			: a.r <= 40 || b.r <= 40
+				? 6
+				: a.r >= 150 && b.r >= 150
+					? 42
+					: 30,
+	270,
+	2,
+);
+
 const peak = (
 	at: Spot,
 	rise: number,
@@ -205,44 +318,94 @@ const peak = (
 	clear?: readonly [number, number],
 ): Feature => ({ kind: 'peak', at, rise, spread, ...(clear && { clear }) });
 
-/** Spots `off` metres left of the way from `a` to `b`, at each share `ts` of it: a shore beside a road. */
-const beside = (a: Corner, b: Corner, off: number, ts: number[]): Spot[] => {
-	const len = Math.hypot(b.x - a.x, b.y - a.y);
-	const lx = -(b.y - a.y) / len;
-	const ly = (b.x - a.x) / len;
-	return ts.map((t) => [
-		a.x + (b.x - a.x) * t + lx * off,
-		a.y + (b.y - a.y) * t + ly * off,
-	]);
-};
-/** The east shore lies this far from the road's centre: a strip of bank, and the water. */
-const SHORE_M = 62;
-const E = SHORE_DRAWN;
+const lane = (...course: Spot[]): Lane => ({ kind: 'gravel', course });
 
 const LAND: Feature[] = [
-	// The lake, 1,434 m: its east shore beside the road, an inlet under the road's bridge.
+	// The lake, 1,434 m: a beach by the village, the harbour's bay, the Nase headland, cliffs, an inlet, the reeds of a delta at its head, and a headland and an island on the west.
 	{
 		kind: 'lake',
 		level: 1434,
-		deep: 40,
+		deep: 60,
 		basin: { slope: 0.5, reach: 450 },
 		shore: [
-			...beside(E[0], E[1], SHORE_M, [0.3, 0.7]),
-			...beside(E[1], E[2], SHORE_M, [0.1, 0.5, 0.9]),
-			...beside(E[2], E[3], SHORE_M, [0.2, 0.6, 1]),
-			...beside(E[3], E[4], SHORE_M, [0.33]),
-			[1000, 3290],
-			[1000, 3400],
-			...beside(E[3], E[4], SHORE_M, [0.67, 0.95]),
-			...beside(E[4], HEAD, SHORE_M + 30, [0.5]),
-			[0, 3950],
-			[-350, 3800],
-			[-520, 3200],
-			[-480, 2400],
-			[-560, 1600],
-			[-420, 1000],
-			[-150, 760],
-			[170, 740],
+			// The beach, by the village.
+			[-250, 830],
+			[-80, 720],
+			[140, 680],
+			[330, 720],
+			[470, 800],
+			// The harbour's bay.
+			[560, 900],
+			[670, 1020],
+			[790, 1110],
+			[850, 1210],
+			[820, 1310],
+			[730, 1360],
+			// The Nase, out into the lake.
+			[640, 1450],
+			[500, 1600],
+			[360, 1720],
+			[260, 1830],
+			[250, 1930],
+			[350, 2010],
+			[520, 2090],
+			[680, 2170],
+			// Under the cliffs.
+			[790, 2290],
+			[850, 2450],
+			[860, 2650],
+			[840, 2850],
+			[830, 3050],
+			[850, 3170],
+			// The inlet.
+			[960, 3230],
+			[1150, 3270],
+			[1240, 3350],
+			[1150, 3430],
+			[980, 3420],
+			[840, 3480],
+			[740, 3640],
+			[600, 3800],
+			[470, 3920],
+			[360, 4000],
+			// The delta at its head, a lobe each side of the stream.
+			[250, 4040],
+			[160, 4110],
+			[80, 4090],
+			[20, 4140],
+			[-60, 4100],
+			[-150, 4060],
+			[-260, 4010],
+			// The west shore: its bay, and its headland facing the Nase across the narrows.
+			[-380, 3900],
+			[-470, 3700],
+			[-480, 3450],
+			[-560, 3100],
+			[-680, 2800],
+			[-760, 2500],
+			[-680, 2250],
+			[-450, 2100],
+			[-200, 1990],
+			[-110, 1880],
+			[-200, 1780],
+			[-420, 1650],
+			[-560, 1450],
+			[-540, 1180],
+			[-420, 960],
+		],
+		islands: [
+			[
+				[-60, 2600],
+				[20, 2560],
+				[110, 2590],
+				[130, 2670],
+				[60, 2720],
+				[-30, 2700],
+			],
+		],
+		shallows: [
+			{ at: [130, 720], radius: 280 },
+			{ at: [20, 4100], radius: 260 },
 		],
 	},
 	// The river that leaves it, 34 m lower: a gorge round the spur's peninsula, and off south.
@@ -260,6 +423,8 @@ const LAND: Feature[] = [
 			[1500, -2500],
 			[1700, -3600],
 			[1600, -4600],
+			[1800, -5600],
+			[1650, -6900],
 		],
 		width: 70,
 		level: 1400,
@@ -270,9 +435,9 @@ const LAND: Feature[] = [
 	{
 		kind: 'stream',
 		course: [
-			[-110, 730],
-			[-200, 450],
-			[-290, 170],
+			[-170, 770],
+			[-230, 520],
+			[-290, 250],
 			[-300, 60],
 		],
 		width: 12,
@@ -296,19 +461,132 @@ const LAND: Feature[] = [
 	peak([3680, 2790], 170, 100, [25, 110]),
 	peak([2650, 3380], 150, 90, [25, 110]),
 	peak([3690, 3960], 150, 90, [25, 110]),
-	// Cliffs over the east shore.
+	// Cliffs over the east shore, the gallery under them.
 	peak([1080, 1300], 90, 70, [30, 110]),
-	peak([980, 2350], 110, 80, [30, 110]),
-	peak([1130, 2800], 100, 75, [30, 110]),
-	// The west side's mountains, behind the terrace, and the head of the lake.
-	peak([-2700, 2300], 900, 1000),
+	peak([1100, 2620], 130, 90, [20, 90]),
+	peak([1130, 2900], 100, 75, [30, 110]),
+	// The Nase: a wooded rib out into the lake, the shore road through it.
+	peak([640, 1830], 70, 170, [8, 45]),
+	peak([420, 1870], 35, 110, [8, 45]),
+	// The rib of rock the gorge road tunnels through.
+	peak([1200, -1800], 45, 75, [6, 30]),
+	// The west side's mountains, behind the terrace; and over the head of the lake, east of the side valley.
+	peak([-2700, 2300], 750, 850),
 	peak([-2400, 4400], 500, 800),
-	peak([-700, 5900], 500, 700),
+	// And between them and the ridge, the high valleys they stand over: the alp's stream runs down one.
+	peak([-3500, 3500], -300, 800),
+	peak([-3700, 1100], -320, 900),
+	peak([-4300, -900], -200, 800),
+	peak([-2800, 5300], -250, 600),
+	peak([900, 6300], 450, 600),
 	// The hills the river runs off between, and a knoll the gorge road bends round.
 	peak([-3600, -500], 220, 900),
 	peak([-1800, -4300], 200, 900),
 	peak([900, -3900], 180, 800),
 	peak([-1700, -1900], 70, 220, [40, 160]),
+
+	// The alp: its lake at 1,838 m under the ridge, and the stream out of it down to the head of the lake.
+	{
+		kind: 'lake',
+		level: 1838,
+		deep: 22,
+		basin: { slope: 0.3, reach: 300 },
+		shore: [
+			[-2350, 7120],
+			[-2700, 7130],
+			[-3050, 6950],
+			[-3450, 6640],
+			[-3600, 6450],
+			[-3400, 6300],
+			[-3000, 6400],
+			[-2600, 6650],
+			[-2300, 6900],
+		],
+	},
+	{
+		kind: 'stream',
+		course: [
+			[-3380, 6290],
+			[-3100, 5700],
+			[-2600, 5300],
+			[-1900, 5000],
+			[-1100, 4700],
+			[-600, 4350],
+			[-330, 4060],
+		],
+	},
+	// The peaks round the alp, and the ridge's own summit knolls.
+	peak([-3000, 8300], 450, 700),
+	peak([-4000, 7700], 380, 500),
+	peak([-1900, 6100], 160, 350, [60, 250]),
+	peak([-3700, 5200], 220, 450, [80, 300]),
+
+	// The Kettental: a wide valley of fields between two ranges, falling south.
+	peak([-10200, 4200], 700, 1200),
+	peak([-10400, -900], 650, 1200),
+	peak([-10000, -5200], 500, 1000),
+	peak([-9400, 7800], 600, 900),
+	peak([-5600, 1600], 520, 900, [120, 600]),
+	peak([-5300, -1500], 380, 800, [120, 600]),
+	peak([-6000, 6600], 420, 700, [120, 600]),
+	// Its river, wide and slow, from the valley's head off south beside the valley road, under it twice: its floor the valley's fields.
+	{
+		kind: 'stream',
+		course: [
+			[-8250, 8400],
+			[-8080, 7300],
+			[-7960, 6300],
+			[-7840, 5300],
+			[-8180, 4000],
+			[-7630, 2800],
+			[-7370, 1500],
+			[-7120, 600],
+			[-7470, -500],
+			[-6970, -1800],
+			[-7730, -3000],
+			[-7330, -4000],
+			[-7530, -4900],
+			[-7600, -6900],
+		],
+		levels: [
+			1532, 1494, 1462, 1435, 1413, 1397, 1383, 1371, 1360, 1347, 1333, 1323,
+			1313, 1292,
+		],
+		width: 26,
+		cut: 5,
+		plain: { bank: 380, slope: 0.35 },
+	},
+	// Streams off the ranges into it.
+	{
+		kind: 'stream',
+		course: [
+			[-5300, 2700],
+			[-5900, 2300],
+			[-6400, 1900],
+			[-6900, 1700],
+			[-7400, 1750],
+		],
+	},
+	{
+		kind: 'stream',
+		course: [
+			[-9900, 1500],
+			[-9200, 1300],
+			[-8600, 1000],
+			[-8000, 900],
+			[-7250, 1000],
+		],
+	},
+	{
+		kind: 'stream',
+		course: [
+			[-5200, -3200],
+			[-5800, -2900],
+			[-6400, -2600],
+			[-7000, -2300],
+			[-7300, -2330],
+		],
+	},
 
 	// Streams. Off the notch's west peak, down the crags beside the hairpins, across the valley road and into the river.
 	{
@@ -330,20 +608,20 @@ const LAND: Feature[] = [
 	{
 		kind: 'stream',
 		course: [
-			[2000, 3300],
+			[2000, 3330],
 			[1500, 3360],
-			[1050, 3345],
-			[900, 3345],
+			[1300, 3345],
+			[1190, 3345],
 		],
 	},
 	{
 		kind: 'stream',
 		course: [
 			[1900, 1450],
-			[1400, 1650],
-			[1000, 1720],
-			[700, 1750],
-			[400, 1750],
+			[1400, 1450],
+			[1100, 1250],
+			[900, 1180],
+			[820, 1200],
 		],
 	},
 	{
@@ -352,8 +630,20 @@ const LAND: Feature[] = [
 			[-2400, 2950],
 			[-1800, 2800],
 			[-1300, 2500],
-			[-800, 2450],
-			[-400, 2450],
+			[-900, 2380],
+			[-700, 2380],
+		],
+	},
+	// Down the side valley into the head of the lake: its delta.
+	{
+		kind: 'stream',
+		course: [
+			[-200, 7200],
+			[-80, 6400],
+			[80, 5600],
+			[60, 5000],
+			[40, 4500],
+			[25, 4150],
 		],
 	},
 	// Off the hills into the river: under the gorge road.
@@ -402,12 +692,67 @@ const LAND: Feature[] = [
 			[1120, 5270],
 		],
 	},
+
+	// Ground laid by hand. Bogs: the tarn's moor, the plateau's, the reeds of the delta and a wet meadow in the Kettental's bend.
 	{ kind: 'land', cover: 'moor', at: [1150, 5100], radius: 750 },
-	// The moor on the plateau west of the gorge, and reeds at the head of the lake.
 	{ kind: 'land', cover: 'moor', at: [-2300, -2100], radius: 800 },
-	{ kind: 'land', cover: 'moor', at: [-150, 4250], radius: 380 },
-	// The valley under the climb, in the massif's rain shadow.
+	{ kind: 'land', cover: 'moor', at: [40, 4160], radius: 230 },
+	{ kind: 'land', cover: 'moor', at: [-8300, 3700], radius: 380 },
+	// The valley under the climb, in the massif's rain shadow; and the village's beach.
 	{ kind: 'land', cover: 'dry', at: [2300, -1500], radius: 1000 },
+	{ kind: 'land', cover: 'dry', at: [130, 690], radius: 130 },
+	// Alp: open pasture round the alp's lake, along the ridge, over the terrace.
+	{ kind: 'land', cover: 'alp', at: [-3000, 6800], radius: 1100 },
+	{ kind: 'land', cover: 'alp', at: [-4650, 6300], radius: 800 },
+	{ kind: 'land', cover: 'alp', at: [-4600, 4900], radius: 800 },
+	{ kind: 'land', cover: 'alp', at: [-4800, 3800], radius: 550 },
+	{ kind: 'land', cover: 'alp', at: [-2050, 2500], radius: 450 },
+	{ kind: 'land', cover: 'alp', at: [1700, 6500], radius: 550 },
+	// Scree under the cliffs: over the gallery, under the notch, off the west mountain, at the foot of the Kettental's ranges.
+	{ kind: 'land', cover: 'scree', at: [1170, 2700], radius: 170 },
+	{ kind: 'land', cover: 'scree', at: [2600, 2050], radius: 260 },
+	{ kind: 'land', cover: 'scree', at: [-2150, 2800], radius: 280 },
+	{ kind: 'land', cover: 'scree', at: [-5150, 4500], radius: 220 },
+	{ kind: 'land', cover: 'scree', at: [-9300, -400], radius: 380 },
+	{ kind: 'land', cover: 'scree', at: [-9000, 5300], radius: 300 },
+	// Fields: the Kettental's floor, and the village's south of the lake.
+	{
+		kind: 'land',
+		cover: 'fields',
+		area: [
+			[-8150, 5100],
+			[-7350, 5150],
+			[-7100, 3400],
+			[-6950, 1900],
+			[-6500, 1200],
+			[-6500, -600],
+			[-6750, -2800],
+			[-6950, -4100],
+			[-7500, -4600],
+			[-8350, -3700],
+			[-8700, -1300],
+			[-8600, 1200],
+			[-8700, 2800],
+		],
+	},
+	{
+		kind: 'land',
+		cover: 'fields',
+		area: [
+			[-350, -250],
+			[250, -700],
+			[950, -700],
+			[1050, -150],
+			[700, 120],
+			[150, 30],
+		],
+	},
+	// Woods where the generator would mow: the Kettental's slopes, the forest the road climbs back through, the descent's face.
+	{ kind: 'land', cover: 'wood', at: [-6000, -200], radius: 650 },
+	{ kind: 'land', cover: 'wood', at: [-8950, -2300], radius: 600 },
+	{ kind: 'land', cover: 'wood', at: [-4300, -4200], radius: 750 },
+	{ kind: 'land', cover: 'wood', at: [-5850, 4100], radius: 520 },
+	{ kind: 'land', cover: 'wood', at: [-1000, 4600], radius: 420 },
 ];
 
 /**
@@ -417,11 +762,14 @@ const LAND: Feature[] = [
  */
 export const MAP_NAME = 'Wattalp';
 export const MAP_BOUNDS = {
-	west: -3400,
+	west: -9600,
 	east: 4500,
-	south: -4100,
-	north: 5800,
+	south: -6600,
+	north: 8000,
 };
+
+/** The map's loops, by id: each draws the others' roads where they leave it, so every loop rides one land. */
+const LOOP_IDS = ['urnsee', 'aare', 'lac', 'berne', 'kette'];
 
 /** What every loop on the map shares: its land, its weather and its names. */
 const MAP = {
@@ -433,9 +781,11 @@ const MAP = {
 			{ name: 'Col de Berne', at: [3300, 1650] },
 			{ name: 'Axenegg', at: [-1500, 2100] },
 			{ name: 'Seelisgrat', at: [-1400, 850] },
-			{ name: 'Morschachli', at: [560, 2300] },
+			{ name: 'Morschachli', at: [900, 2250] },
 			{ name: 'Bantigeregg', at: [100, -1250] },
 			{ name: 'Längenhubel', at: [-2600, -1300] },
+			{ name: 'Speichenegg', at: [-4550, 4850] },
+			{ name: 'Nabenalp', at: [-3650, 6650] },
 		],
 		villages: [
 			'Flüetritt',
@@ -455,20 +805,35 @@ const MAP = {
 			'Isenkette',
 			'Urnried',
 		],
+		// The harbour on the east shore, and the Kettental's village.
+		hamlets: [
+			{ name: 'Schifftritt', at: [960, 1240] },
+			{ name: 'Nabenwil', at: [-7350, 600] },
+		],
 	},
 	galleries: [
 		// Under the east shore's cliffs, the lake seen between its pillars; and an avalanche gallery high on the climb.
 		[
-			[630, 1650],
-			[585, 2100],
+			[930, 2470],
+			[921, 2800],
 		],
 		[
 			[3340, 882],
 			[3080, 955],
 		],
 	],
-	// Provisional: a tunnel through the spur the north valley's road cuts deepest into, by the tarn.
 	tunnels: [
+		// Through the root of the Nase, on the east shore.
+		[
+			[797, 1660],
+			[773, 1960],
+		],
+		// Through a rib of rock on the gorge's rim.
+		[
+			[1212, -1716],
+			[1188, -1884],
+		],
+		// Through the spur the north valley's road cuts deepest into, by the tarn: the col's road, its hill some 24 m over it.
 		[
 			[976, 4937],
 			[678, 4976],
@@ -482,16 +847,8 @@ const MAP = {
 			{ x: 650, y: -3000, ele: 1452, r: 0 },
 			{ x: 500, y: -3700, ele: 1440, r: 0 },
 			{ x: 800, y: -4400, ele: 1428, r: 0 },
-		],
-		// Across the plateau's moor, over the gorge loop twice.
-		[
-			{ x: -3700, y: -1650, ele: 1492, r: 0 },
-			{ x: -3100, y: -1700, ele: 1476, r: 0 },
-			{ x: -2200, y: -1750, ele: 1462, r: 0 },
-			{ x: -1500, y: -2300, ele: 1456, r: 0 },
-			{ x: -1150, y: -3060, ele: 1456, r: 0 },
-			{ x: -900, y: -3900, ele: 1470, r: 0 },
-			{ x: -750, y: -4500, ele: 1480, r: 0 },
+			{ x: 950, y: -5200, ele: 1420, r: 0 },
+			{ x: 900, y: -6900, ele: 1410, r: 0 },
 		],
 		// Off the valley road under the climb, square to it, then out through the dry valley: a road leaving another at a shallow angle runs beside it and reads as a mistake.
 		[
@@ -502,27 +859,53 @@ const MAP = {
 			{ x: 3700, y: -2700, ele: 1505, r: 0 },
 			{ x: 4900, y: -2500, ele: 1530, r: 0 },
 		],
-		// North from the head of the lake, up the side valley.
+		// The Kettental's road on down the valley.
 		[
-			// From the roundabout's ring: its lead (designed.ts) brings it the 25 m back onto it.
-			{ x: 129.4, y: 4287.8, ele: 1441, r: 0 },
-			{ x: -150, y: 4800, ele: 1462, r: 0 },
-			{ x: -100, y: 5400, ele: 1500, r: 0 },
-			{ x: -250, y: 6100, ele: 1540, r: 0 },
+			{ x: -7300, y: -4900, ele: 1318, r: 0 },
+			{ x: -7350, y: -5800, ele: 1310, r: 0 },
+			{ x: -7250, y: -6800, ele: 1302, r: 0 },
 		],
-		// A farm lane north off the valley road, square to it: a road leaving another at a shallow angle runs beside it for a kilometre.
-		[
-			{ x: 1250, y: -200, ele: 1462, r: 0 },
-			{ x: 1500, y: 250, ele: 1480, r: 0 },
-			{ x: 2000, y: 600, ele: 1515, r: 0 },
-		],
+		// Gravel: up the Kettental to its head, and farm tracks across its fields, to its farms and over its river.
+		lane(
+			[-7000, 5450],
+			[-7050, 6150],
+			[-7350, 7050],
+			[-7700, 7800],
+			[-7900, 8300],
+		),
+		lane([-7950, 4000], [-8450, 3900], [-9000, 4250], [-9800, 4450]),
+		lane([-6950, 3060], [-7300, 2950], [-7700, 2850], [-8050, 2650]),
+		lane([-7350, 600], [-6800, 760], [-6300, 1150], [-5850, 1300]),
+		lane([-7350, 600], [-8000, 350], [-8600, 500], [-9800, 250]),
+		lane([-7700, -500], [-8400, -800], [-8950, -1550]),
+		lane([-7500, -3000], [-8200, -3250], [-8750, -3750]),
+		// Forest roads up the valley's sides and off the climb back to the plateau.
+		lane([-7200, -1800], [-6600, -1700], [-6100, -1200], [-5700, -700]),
+		lane([-3500, -3400], [-4100, -3050], [-4800, -2700], [-5400, -2000]),
+		// Over the plateau: south off the gorge road, and north off its way home.
+		lane([-1500, -3100], [-1300, -3800], [-1000, -4600], [-800, -6900]),
+		lane([-1800, -1000], [-2200, -500], [-2900, -200], [-3500, 300]),
+		// By the village: out through its fields, and down to its beach.
+		lane([300, -350], [750, -480], [1100, -650]),
+		lane([450, 590], [260, 620], [90, 650]),
+		// A farm lane north off the valley road.
+		lane([1250, -200], [1500, 250], [2000, 600]),
+		// Up from the terrace to its alp, and down to the west headland's shore.
+		lane([-1500, 2100], [-2000, 2400], [-2400, 2900]),
+		lane([-900, 1500], [-600, 1700], [-350, 1850]),
+		// Across the side valley from the Kettental road to the col's, over the delta's stream.
+		lane([-180, 5350], [150, 5450], [500, 5150], [550, 4955]),
+		// Up the north valley's forest, through the dry valley, and on up the alp.
+		lane([1400, 4700], [1600, 5400], [1800, 6200]),
+		lane([2700, -2600], [2500, -3400], [2700, -4300], [2600, -6900]),
+		lane([-3100, 7050], [-3000, 7600], [-2800, 8300]),
 	],
-	rings: [HUB, HEAD].map((node) => ({
+	rings: [HUB, HEAD, WEST].map((node) => ({
 		at: [node.x, node.y] as const,
 		r: RING.r,
 		ele: node.ele,
-		// The bearings its arms leave on, anticlockwise from east: each road through it adds its own (through), and the head of the lake has the spur north.
-		arms: node === HEAD ? [(118.6 * Math.PI) / 180] : ([] as number[]),
+		// The bearings its arms leave on, anticlockwise from east: each road through it adds its own (through).
+		arms: [] as number[],
 		statue: node === HUB ? ('bicycle' as const) : ('cow' as const),
 	})),
 } satisfies Pick<
@@ -535,12 +918,11 @@ const loop = (
 	lengthM: number,
 	seed: number,
 	corners: Corner[],
-	others: string[],
 ): Designed => ({
 	id,
 	lengthM,
 	shape: { corners, seed, drawn: true },
-	others,
+	others: LOOP_IDS.filter((o) => o !== id),
 	...MAP,
 });
 
@@ -706,20 +1088,26 @@ function round(...parts: (Corner[] | Corner)[]): Corner[] {
 	return [...first.slice(-2), ...out.slice(0, -1)];
 }
 
-/** The loops, each from the village and back: by the time they take, about 30, 40, 60 and 90 minutes. Each stretch is followed by the node it runs to. */
+/** A stretch ridden the other way. */
+const back = (s: Corner[]) => [...s].reverse();
+
+/** The loops, each from the village and back: by the time they take, about 30, 40, 60, 90 and 120 minutes. Each stretch is followed by the node it runs to. */
 export const DESIGNS: readonly Designed[] = [
-	loop('urnsee', 10695.18, 4340, round(SHORE, HEAD, TERRACE, HUB), [
-		'aare',
-		'berne',
-	]),
-	loop('aare', 11978.49, 4404, round(GORGE, HUB), ['urnsee', 'berne']),
-	loop('lac', 22672.87, 4406, round(SHORE, HEAD, TERRACE, HUB, GORGE, HUB), [
-		'berne',
-	]),
-	loop('berne', 30735.45, 2101, round(COL, HEAD, TERRACE, HUB), [
-		'urnsee',
-		'aare',
-	]),
+	loop('urnsee', 11151.47, 4340, round(SHORE, HEAD, TERRACE, HUB)),
+	loop('aare', 11993.04, 4404, round(GORGE_OUT, WEST, GORGE_HOME, HUB)),
+	loop(
+		'lac',
+		23143.95,
+		4406,
+		round(SHORE, HEAD, TERRACE, HUB, GORGE_OUT, WEST, GORGE_HOME, HUB),
+	),
+	loop('berne', 30628.62, 2101, round(COL, HEAD, TERRACE, HUB)),
+	loop(
+		'kette',
+		50886.1,
+		5050,
+		round(SHORE, HEAD, KETTE, WEST, back(GORGE_OUT), HUB),
+	),
 	{
 		id: 'valley',
 		lengthM: 16036.55,

@@ -87,6 +87,9 @@ describe('a WattRoom loop’s dressing', () => {
 				const at = m % L;
 				if (world.bridges.some(([a, b]) => at >= a - BIN_M && at <= b))
 					continue;
+				// Nor in a tunnel: the hill is over it, and its inside is drawn as the tunnel's.
+				if (world.tunnels.some(([a, b]) => at >= a - BIN_M && at <= b + BIN_M))
+					continue;
 				if (!drawsAny(batches, w.camera)) bare.push(at);
 			}
 			expect(bare, 'lap metres with no dressing drawn').toEqual([]);

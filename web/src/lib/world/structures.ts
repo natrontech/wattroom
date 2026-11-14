@@ -253,6 +253,8 @@ export function bridges(
 	colors: WorksColors,
 	/** A road not ridden, seen from afar: its sides plain walls, no railing, guard rail or single blocks. */
 	plain = false,
+	/** A gravel lane's: metres from its centre to its grass edge's. A farm bridge as wide as that, plain sided, a slab or (longer than a slab spans) on girders. */
+	narrow?: number,
 ) {
 	const frame = framer(route, lift);
 	const stone = tone(colors.stone);
@@ -260,14 +262,22 @@ export function bridges(
 	const steel = tone(colors.steel);
 	const groundY = (x: number, z: number) => yOf(route, groundAt(x, z));
 	for (const [from, to] of spans) {
-		const kind = bridgeKind(to - from, highest(route, from, to, groundAt));
+		const kind =
+			narrow === undefined
+				? bridgeKind(to - from, highest(route, from, to, groundAt))
+				: to - from <= BRIDGE.slab
+					? 'slab'
+					: 'beam';
 		const k = KIND[kind];
 		const masonry = kind === 'slab' || kind === 'arch';
 		const body = masonry ? stone : concrete;
 		const rand = prng(Math.round(from * 7 + to));
 		const n = Math.max(1, Math.round((to - from) / DECK_STEP_M));
 		const metre = (i: number) => from + ((to - from) * i) / n;
-		const E = DECK.edge;
+		const E = narrow === undefined ? DECK.edge : narrow + 0.35;
+		const kerb = narrow === undefined ? DECK.kerb : narrow;
+		/** Girders' and a crosshead's legs' offset: under the deck's edge on a narrow one. */
+		const leg = Math.min(2.3, E - 0.6);
 		/** The deck's rings at frame `f`: its slab, its walkways, its parapets' upstands, the girders or the box under it. */
 		const rings = (f: Frame) => {
 			const slab =
@@ -286,14 +296,14 @@ export function bridges(
 			for (const s of [1, -1]) {
 				r.push({
 					ring: [
-						f.pt(s * DECK.kerb, -0.3),
-						f.pt(s * DECK.kerb, DECK.up),
+						f.pt(s * kerb, -0.3),
+						f.pt(s * kerb, DECK.up),
 						f.pt(s * E, DECK.up),
 						f.pt(s * E, -0.3),
 					],
 					tint: masonry ? shade(stone, 0.6) : shade(concrete, 0.5),
 				});
-				if (!masonry || plain)
+				if (!masonry || plain || narrow !== undefined)
 					r.push({
 						ring: section(
 							f,
@@ -308,7 +318,7 @@ export function bridges(
 			if (kind === 'beam')
 				for (const s of [1, -1])
 					r.push({
-						ring: section(f, s * 2.3, -k.soffit, 0.55, k.soffit - 0.7),
+						ring: section(f, s * leg, -k.soffit, 0.55, k.soffit - 0.7),
 						tint: shade(concrete, -0.7),
 					});
 			if (kind === 'box')
@@ -336,7 +346,7 @@ export function bridges(
 		for (const { ring, tint } of prev) out.at(key, to).cap(ring, tint);
 
 		// The sides: low granite on a stone bridge, a railing and a guard rail on a concrete one.
-		for (const s of plain ? [] : [1, -1]) {
+		for (const s of plain || narrow !== undefined ? [] : [1, -1]) {
 			if (masonry)
 				granite(
 					out,
@@ -403,8 +413,17 @@ export function bridges(
 			if (foot >= top) continue;
 			if (kind === 'beam') {
 				// A crosshead on two legs.
-				column(b, f, 0, 1.5, 7.2, top - 0.9, top, concrete);
-				for (const u of [-2.3, 2.3])
+				column(
+					b,
+					f,
+					0,
+					1.5,
+					Math.min(7.2, 2 * E + 0.5),
+					top - 0.9,
+					top,
+					concrete,
+				);
+				for (const u of [-leg, leg])
 					column(
 						b,
 						f,

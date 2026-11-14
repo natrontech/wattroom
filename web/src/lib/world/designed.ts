@@ -35,13 +35,25 @@ export type Water = {
 	 */
 	run?: { levels: number[]; foam: number[] };
 	/** How its bed falls from the shore: metres down a metre out, to `deep` at the most, past the freeboard (FREEBOARD_M). */
-	bed?: { slope: number; deep: number };
+	bed?: {
+		slope: number;
+		deep: number;
+		/** Metres down a metre out at (x, z) where it is not `slope`: a lake's shallows fall gentler. */
+		fall?: (x: number, z: number) => number;
+	};
 	/** A river's course, the way it flows: its line down the middle. */
 	course?: [x: number, z: number][];
+	/** A lake's islands, each an outline: land, a hole in its sheet. */
+	islands?: [x: number, z: number][][];
 };
 
-/** Ground a scene lays out by hand: a raised bog, a dry valley floor. */
-export type Cover = 'moor' | 'dry';
+/**
+ * Ground a scene lays out by hand: a raised bog or a lake's reeds, a dry
+ * valley floor or a beach, an alp's open pasture above the forest, a field of
+ * scree under a cliff, a valley floor's fields, and a wood where the
+ * generator would mow.
+ */
+export type Cover = 'moor' | 'dry' | 'alp' | 'scree' | 'fields' | 'wood';
 /** Where a scene's snow lies from and its trees stand to, metres above sea: the generator's own where not given. */
 export type Climate = { snowline?: number; treeline?: number };
 
@@ -51,6 +63,8 @@ export type PlaceNames = {
 	passes: { name: string; x: number; z: number }[];
 	/** Villages, by the 5 km tile each stands in: sixteen names, so no two tiles within 20 km share one. */
 	villages: readonly string[];
+	/** Hamlets and villages that stand where the map draws them, on the road nearest each, by their own names. */
+	hamlets?: { name: string; x: number; z: number }[];
 };
 
 export type Scene = {
@@ -93,6 +107,10 @@ export type Feature =
 			deep?: number;
 			/** The land round it falls to the shore no gentler than `slope`, out to `reach` metres: none, the generator's land stands to the water's edge. */
 			basin?: { slope: number; reach: number };
+			/** Its islands, each an outline: land standing out of it, a little knoll on each. */
+			islands?: readonly (readonly Spot[])[];
+			/** Where its bed shelves gently, a beach's or a delta's shallows: within `radius` of `at` the bed falls a tenth as steeply. */
+			shallows?: readonly { at: Spot; radius: number }[];
 	  }
 	| {
 			kind: 'river';
@@ -109,6 +127,12 @@ export type Feature =
 			course: readonly Spot[];
 			/** Metres wide: 7 where not given. */
 			width?: number;
+			/** Metres its bed lies under the land it runs down: STREAM_CUT_M where not given. A valley's river runs in banks of its own, a road over it on a bridge. */
+			cut?: number;
+			/** Its water's level at each spot of its course, falling: drawn, not read off the land. A valley's river, whose land is its own floor. */
+			levels?: readonly number[];
+			/** Its floor: within `bank` metres of its banks the land lies flat, `cut` less 1.5 m over its water, and rises from there no steeper than `slope`. A wide valley's fields. */
+			plain?: { bank: number; slope: number };
 	  }
 	| {
 			kind: 'land';
@@ -116,6 +140,12 @@ export type Feature =
 			at: Spot;
 			/** Metres out to its edge, which wanders a fifth of that. */
 			radius: number;
+	  }
+	| {
+			kind: 'land';
+			cover: Cover;
+			/** Its outline, in order round it: fields and woods have edges a farmer drew. */
+			area: readonly Spot[];
 	  }
 	| {
 			kind: 'peak';
@@ -139,6 +169,7 @@ export type Designed = {
 	names?: {
 		passes: readonly { name: string; at: Spot }[];
 		villages: readonly string[];
+		hamlets?: readonly { name: string; at: Spot }[];
 	};
 	/** The map's other loops, by id: their roads are drawn where they leave this one. */
 	others?: readonly string[];
@@ -152,13 +183,24 @@ export type Designed = {
 		/** What stands on its island. */
 		statue: 'bicycle' | 'cow';
 	}[];
-	/** Roads no loop rides: a lane off to a farm, a road across the plateau, each from its first corner to its last. Drawn as the other loops' roads are. */
-	spurs?: readonly (readonly Corner[])[];
+	/** Roads no loop rides: a road across the plateau, each from its first corner to its last, drawn as the other loops' roads are; and gravel lanes (Lane). */
+	spurs?: readonly (readonly Corner[] | Lane)[];
 	/** Galleries: each from one spot on the road to another. */
 	galleries?: readonly (readonly [Spot, Spot])[];
-	/** Tunnels: each from one portal's spot on the road to the other's. */
+	/** Tunnels: each from one portal on a loop's road to the other. */
 	tunnels?: readonly (readonly [Spot, Spot])[];
 };
+
+/**
+ * A gravel lane: a farm track or a forest road, three metres of gravel with
+ * no paint, no sign and no rail, that leaves a loop's road or crosses it at
+ * a plain junction. Drawn through `course`, its heights the land's own
+ * (world.ts drapes it): an end within LANE_SNAP_M of a loop's road starts on
+ * that road.
+ */
+export type Lane = { kind: 'gravel'; course: readonly Spot[] };
+export const isLane = (s: readonly Corner[] | Lane): s is Lane =>
+	!Array.isArray(s);
 
 /** Rounds a line's corners off: each cut twice, a quarter in from either end (Chaikin). */
 function rounded(
@@ -246,6 +288,8 @@ export const FREEBOARD_M = 0.5;
 const LAKE_BED = 0.3;
 const RIVER_BED = 0.4;
 const RIVER_DEEP_M = 4;
+/** Metres an island's knoll stands over the water at the most. */
+const ISLE_M = 14;
 
 type Part = {
 	shape(x: number, z: number, h: number, d: number): number;
@@ -266,6 +310,34 @@ const SWALE_M = 9;
 const GULLY_SLOPE = 0.7;
 /** The fall along a stream at which its water starts to whiten, and at which it is a waterfall. */
 const FOAM = [0.2, 0.6] as const;
+
+/** Metres past a river's plain its floor is let go of: the land beyond is the generator's again. */
+const PLAIN_EASE_M = 400;
+
+/** A course's drawn levels, one per spot of it, at each of `n` points spread along it by length. */
+function levelsAlong(
+	course: readonly Spot[],
+	at: readonly number[],
+	n: number,
+): number[] {
+	const arc = [0];
+	for (let i = 1; i < course.length; i++)
+		arc.push(
+			arc[i - 1] +
+				Math.hypot(
+					course[i][0] - course[i - 1][0],
+					course[i][1] - course[i - 1][1],
+				),
+		);
+	const total = arc[arc.length - 1];
+	return Array.from({ length: n }, (_, k) => {
+		const s = (k / Math.max(1, n - 1)) * total;
+		let i = 0;
+		while (i < arc.length - 2 && arc[i + 1] < s) i++;
+		const t = (s - arc[i]) / (arc[i + 1] - arc[i] || 1);
+		return at[i] + (at[i + 1] - at[i]) * Math.min(1, Math.max(0, t));
+	});
+}
 
 /** A line walked again at every `step` metres. */
 function stepped(pts: readonly [number, number][], step: number) {
@@ -301,8 +373,15 @@ function stream(
 	// Water runs down: where the land rises again the stream has cut through it.
 	const levels: number[] = [];
 	let level = Infinity;
-	for (const [x, z] of course)
-		levels.push((level = Math.min(level, ground(x, z) - STREAM_CUT_M)));
+	const drawn = f.levels && levelsAlong(f.course, f.levels, n);
+	course.forEach(([x, z], i) =>
+		levels.push(
+			(level = Math.min(
+				level,
+				drawn ? drawn[i] : ground(x, z) - (f.cut ?? STREAM_CUT_M),
+			)),
+		),
+	);
 	// And never lower than the water it runs into: there it would have ponded.
 	const into = end < 0 ? null : standing(course[n - 1][0], course[n - 1][1]);
 	if (into !== null)
@@ -364,16 +443,32 @@ function stream(
 		left.push([p[0] + nx * half, p[1] + nz * half]);
 		right.push([p[0] - nx * half, p[1] - nz * half]);
 	});
+	const plain = f.plain;
+	const floor = (f.cut ?? STREAM_CUT_M) - 1.5;
 	return {
 		shape(x, z, h) {
-			const s = near(x, z, half + SWALE_M + 40);
+			const s = near(
+				x,
+				z,
+				half + (plain ? plain.bank + PLAIN_EASE_M : SWALE_M + 40),
+			);
 			if (!s) return h;
 			// Its bed, deeper where it falls: the ground between two vertices is a straight line, and the water must lie over it.
 			const bed = s.level - STREAM_DEEP_M - 2 * s.fall;
 			const out = s.off - half;
 			if (out <= 3) return bed;
 			if (out <= SWALE_M) return Math.min(h, bed);
-			return Math.min(h, bed + GULLY_SLOPE * (out - SWALE_M));
+			let land = Math.min(h, bed + GULLY_SLOPE * (out - SWALE_M));
+			// Its floor, flat to the valley's sides and rising up them; let go of over the last PLAIN_EASE_M.
+			if (plain) {
+				const cap = Math.max(
+					bed + GULLY_SLOPE * (out - SWALE_M),
+					s.level + floor + plain.slope * Math.max(0, out - plain.bank),
+				);
+				const w = 1 - smoothstep(plain.bank, plain.bank + PLAIN_EASE_M, out);
+				land = Math.min(land, h + (Math.min(h, cap) - h) * w);
+			}
+			return land;
 		},
 		waterAt(x, z) {
 			const s = near(x, z, half);
@@ -406,16 +501,49 @@ function part(f: Solid, world: World): Part {
 		const shore = rounded(f.shore.map(world), true);
 		const box = boxOf(shore);
 		const deep = f.deep ?? 25;
+		const isles = (f.islands ?? []).map((i) => {
+			const outline = rounded(i.map(world), true);
+			return { outline, box: boxOf(outline) };
+		});
+		const shelves = (f.shallows ?? []).map((s) => {
+			const [x, z] = world(s.at);
+			return { x, z, r: s.radius };
+		});
+		/** Whether (x, z) stands on one of its islands. */
+		const onIsle = (x: number, z: number) =>
+			isles.some((i) => offBox(i.box, x, z) === 0 && inside(i.outline, x, z));
+		/** How steeply its bed falls from the shore at (x, z): a tenth as steep in its shallows. */
+		const fall = (x: number, z: number) => {
+			let gentle = 0;
+			for (const s of shelves)
+				gentle = Math.max(
+					gentle,
+					1 - smoothstep(0.6 * s.r, s.r, Math.hypot(x - s.x, z - s.z)),
+				);
+			return LAKE_BED * (1 - 0.9 * gentle);
+		};
 		return {
 			shape(x, z, h, d) {
 				const reach = Math.max(REACH_M, f.basin?.reach ?? 0);
 				if (offBox(box, x, z) > reach) return h;
-				const off = offLine(shore, true, x, z);
-				if (inside(shore, x, z))
+				let off = offLine(shore, true, x, z);
+				if (inside(shore, x, z)) {
+					// An island: a knoll out of the water, rising from its shore.
+					for (const i of isles) {
+						if (offBox(i.box, x, z) > reach) continue;
+						const to = offLine(i.outline, true, x, z);
+						if (inside(i.outline, x, z))
+							return Math.max(
+								f.level + FREEBOARD_M + 0.04 * to,
+								f.level + Math.min(ISLE_M, 0.25 * to),
+							);
+						off = Math.min(off, to);
+					}
 					return Math.min(
 						h,
-						f.level - Math.min(deep, FREEBOARD_M + LAKE_BED * off),
+						f.level - Math.min(deep, FREEBOARD_M + fall(x, z) * off),
 					);
+				}
 				if (off > reach) return h;
 				// Its basin: the land falls to the shore, so the lake is seen from the road above it.
 				let out = h;
@@ -427,8 +555,10 @@ function part(f: Solid, world: World): Part {
 						smoothstep(40, 120, d);
 					out += (Math.min(out, cap) - out) * w;
 				}
-				// The shore: land, rising a little from the water's edge, whatever the generator had there.
-				const lift = f.level + Math.min(2, FREEBOARD_M + 0.04 * off);
+				// The shore: land, rising a little from the water's edge, whatever the generator had there; a beach by its shallows, lower and longer.
+				const lift =
+					f.level +
+					Math.min(2, FREEBOARD_M + (fall(x, z) / LAKE_BED) * 0.04 * off);
 				return (
 					out +
 					(Math.max(out, lift) - out) *
@@ -436,11 +566,14 @@ function part(f: Solid, world: World): Part {
 				);
 			},
 			waterAt: (x, z) =>
-				offBox(box, x, z) === 0 && inside(shore, x, z) ? f.level : null,
+				offBox(box, x, z) === 0 && inside(shore, x, z) && !onIsle(x, z)
+					? f.level
+					: null,
 			water: {
 				level: f.level,
 				outline: shore,
-				bed: { slope: LAKE_BED, deep },
+				bed: { slope: LAKE_BED, deep, ...(shelves.length > 0 && { fall }) },
+				...(isles.length > 0 && { islands: isles.map((i) => i.outline) }),
 			},
 		};
 	}
@@ -551,8 +684,15 @@ function build(d: Designed): Built {
 	const parts = [...solid]
 		.sort((p, q) => Number(p.kind !== 'peak') - Number(q.kind !== 'peak'))
 		.map((f) => part(f, world));
-	const lands = d.features.flatMap((f) => {
+	type Laid =
+		| { cover: Cover; outline: [number, number][]; box: Box }
+		| { cover: Cover; x: number; z: number; r: number; turn: number };
+	const lands = d.features.flatMap((f): Laid[] => {
 		if (f.kind !== 'land') return [];
+		if ('area' in f) {
+			const outline = f.area.map(world);
+			return [{ cover: f.cover, outline, box: boxOf(outline) }];
+		}
 		const [x, z] = world(f.at);
 		return [
 			{ x, z, r: f.radius, cover: f.cover, turn: (x * 7 + z * 13) % 6.28 },
@@ -560,6 +700,11 @@ function build(d: Designed): Built {
 	});
 	const covers: Scene['coverAt'] = (x, z) => {
 		for (const l of lands) {
+			if ('outline' in l) {
+				if (offBox(l.box, x, z) === 0 && inside(l.outline, x, z))
+					return l.cover;
+				continue;
+			}
 			const dx = x - l.x;
 			const dz = z - l.z;
 			const r2 = dx * dx + dz * dz;
@@ -578,6 +723,10 @@ function build(d: Designed): Built {
 			return { name: p.name, x, z };
 		}),
 		villages: d.names?.villages ?? [],
+		hamlets: (d.names?.hamlets ?? []).map((h) => {
+			const [x, z] = world(h.at);
+			return { name: h.name, x, z };
+		}),
 	};
 	const galleries = (d.galleries ?? []).map(
 		([a, b]): Scene['galleries'][number] => [world(a), world(b)],
@@ -649,17 +798,28 @@ export const designedLine = (d: Designed): Route => build(d).line;
 const SPUR_STEP_M = 10;
 const SPUR_LEAD_M = 25;
 
+/** A lane's end within this of a loop's road starts on that road. */
+const LANE_SNAP_M = 60;
+
 /** A spur as a road's line: its corners rounded off, walked every 10 m, in the map's frame. Never ridden, so it has no road to send. */
-function spur(corners: readonly Corner[], like: Route): Route {
+function spur(
+	corners: readonly Corner[],
+	like: Route,
+	/** Whether each end starts on a road, and is led SPUR_LEAD_M on through it: a spur's first end always. */
+	lead: readonly [boolean, boolean] = [true, false],
+): Route {
 	let line = corners.map((c) => [c.x, -c.y, c.ele]);
 	// A spur starts on a road's corner as it was drawn, and the road, rounded and wound, runs a few metres off that: the spur starts SPUR_LEAD_M short of it, on its own line, so it crosses the road wherever it lies and is cut at its edge (side-roads.ts drops the stub left on the far side).
-	const [first, next] = line;
-	const run = Math.hypot(next[0] - first[0], next[1] - first[1]) || 1;
-	line.unshift([
-		first[0] - ((next[0] - first[0]) / run) * SPUR_LEAD_M,
-		first[1] - ((next[1] - first[1]) / run) * SPUR_LEAD_M,
-		first[2],
-	]);
+	const led = (first: number[], next: number[]) => {
+		const run = Math.hypot(next[0] - first[0], next[1] - first[1]) || 1;
+		return [
+			first[0] - ((next[0] - first[0]) / run) * SPUR_LEAD_M,
+			first[1] - ((next[1] - first[1]) / run) * SPUR_LEAD_M,
+			first[2],
+		];
+	};
+	if (lead[0]) line.unshift(led(line[0], line[1]));
+	if (lead[1]) line.push(led(line[line.length - 1], line[line.length - 2]));
 	for (let pass = 0; pass < 3; pass++) {
 		const next = [line[0]];
 		for (let i = 0; i + 1 < line.length; i++) {
@@ -829,7 +989,51 @@ export function ringsOf(id: string | undefined): Route[] {
 	});
 }
 
-/** The map's other roads as a design's road meets them, each on its own line: its other loops, and its spurs. */
+const lanes = new WeakMap<
+	Lane,
+	{ corners: Corner[]; lead: [boolean, boolean] }
+>();
+/** A lane's course as a spur's corners: each end within LANE_SNAP_M of a loop's road or a spur's moved onto it, and whether it was. */
+function laneCorners(
+	lane: Lane,
+	d: Designed,
+): {
+	corners: Corner[];
+	lead: [boolean, boolean];
+} {
+	const kept = lanes.get(lane);
+	if (kept) return kept;
+	const own = build(d).line;
+	const loops = [
+		...DESIGNS.filter((k) => k.others).map((k) => build(k).line),
+		...(d.spurs ?? []).flatMap((s) => (isLane(s) ? [] : [spur(s, own)])),
+	];
+	const snap = ([x, y]: Spot): [Spot, boolean] => {
+		let best = LANE_SNAP_M;
+		let at: Spot = [x, y];
+		for (const l of loops)
+			for (let i = 0; i < l.x.length; i += 2) {
+				if (Math.abs(l.x[i] - x) > best) continue;
+				const d = Math.hypot(l.x[i] - x, -l.z[i] - y);
+				if (d < best) {
+					best = d;
+					at = [l.x[i], -l.z[i]];
+				}
+			}
+		return [at, best < LANE_SNAP_M];
+	};
+	const [first, a] = snap(lane.course[0]);
+	const [last, b] = snap(lane.course[lane.course.length - 1]);
+	const spots = [first, ...lane.course.slice(1, -1), last];
+	const out = {
+		corners: spots.map(([x, y]) => ({ x, y, ele: 0, r: 0 })),
+		lead: [a, b] as [boolean, boolean],
+	};
+	lanes.set(lane, out);
+	return out;
+}
+
+/** The map's other roads as a design's road meets them, each on its own line: its other loops, and its spurs. A gravel lane's heights are the land's, laid by world.ts. */
 export function othersOf(id: string | undefined): Route[] {
 	const d = DESIGNS.find((k) => k.id === id);
 	if (!d) return [];
@@ -839,7 +1043,11 @@ export function othersOf(id: string | undefined): Route[] {
 			const other = DESIGNS.find((k) => k.id === o);
 			return other ? [build(other).line] : [];
 		}),
-		...(d.spurs ?? []).map((corners) => spur(corners, own)),
+		...(d.spurs ?? []).map((s) => {
+			if (!isLane(s)) return spur(s, own);
+			const { corners, lead } = laneCorners(s, d);
+			return { ...spur(corners, own, lead), gravel: true };
+		}),
 	];
 }
 

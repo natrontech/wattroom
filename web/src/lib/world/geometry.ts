@@ -18,10 +18,21 @@ import {
 	FORMATION,
 	ribbonRows,
 	ROAD_W,
+	GRAVEL_EDGE,
+	GRAVEL_W,
+	SHOULDER,
 	SHOULDER_DROP,
 } from './terrain/road-profile';
 
 export { ROAD_W } from './terrain/road-profile';
+
+export { GRAVEL_EDGE, GRAVEL_W } from './terrain/road-profile';
+
+/** How wide a road's ribbon is drawn, its surface and the shoulder each side: a gravel lane's narrow, with a grass edge. */
+export const ribbonOf = (route: Pick<Route, 'gravel'>) =>
+	route.gravel
+		? { width: GRAVEL_W, shoulder: GRAVEL_EDGE }
+		: { width: ROAD_W, shoulder: SHOULDER };
 export { EXAG, ROAD_LIFT, surfaceOf, yOf } from './road-surface';
 
 /** A ploughed bank's height over the asphalt at the formation's edge, and the metres of height either side of the snowline over which the snow comes in. */
@@ -468,16 +479,25 @@ export function roadMaterial(
 	lights: Lights = lightsUniforms(),
 	/** Where a designed road's snow lies from (designed.ts), as a height in the scene: above it the shoulder and the verge are snow, a bank ploughed up beside the asphalt. */
 	snow?: { y: number; color: string },
+	/** A gravel lane's (designed.ts Lane): GRAVEL_W of the shoulder's gravel, no line on it, a grass edge, then the verge. */
+	gravel = false,
 ): THREE.MeshLambertMaterial {
 	const m = new THREE.MeshLambertMaterial();
+	/** Half the surface's width: the edge of the asphalt, or of the gravel. */
+	const half = (gravel ? GRAVEL_W : ROAD_W) / 2;
+	const edgeAt = gravel ? half : ROAD_W / 2 + 0.9;
 	m.onBeforeCompile = (s) => {
 		Object.assign(s.uniforms, lights);
 		s.uniforms.uSnowY = { value: snow?.y ?? 1e9 };
 		s.uniforms.uSnow = { value: new THREE.Color(snow?.color ?? '#fff') };
-		s.uniforms.uAsphalt = { value: new THREE.Color(c.asphalt) };
+		s.uniforms.uAsphalt = {
+			value: new THREE.Color(gravel ? (c.shoulder ?? c.verge) : c.asphalt),
+		};
 		s.uniforms.uLine = { value: new THREE.Color(c.line) };
 		s.uniforms.uVerge = { value: new THREE.Color(c.verge) };
-		s.uniforms.uShoulder = { value: new THREE.Color(c.shoulder ?? c.verge) };
+		s.uniforms.uShoulder = {
+			value: new THREE.Color(gravel ? c.verge : (c.shoulder ?? c.verge)),
+		};
 		s.vertexShader = s.vertexShader
 			.replace(
 				'#include <common>',
@@ -519,8 +539,9 @@ export function roadMaterial(
 				float along = abs(mod(s - ${(DASH_M / 2).toFixed(1)} + ${(DASH_EVERY_M / 2).toFixed(1)}, ${DASH_EVERY_M.toFixed(1)}) - ${(DASH_EVERY_M / 2).toFixed(1)});
 				float dash = mix(paint(along, ${(DASH_M / 2).toFixed(1)}, fs), ${(DASH_M / DASH_EVERY_M).toFixed(2)}, smoothstep(0.15, 0.5, fs / ${DASH_EVERY_M.toFixed(1)}));
 				float centre = paint(abs(u), ${CENTRE_HALF.toFixed(3)}, fw) * dash;
-				float shoulder = smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fw, abs(u));
-				float verge = smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fw, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fw, abs(u));
+				${gravel ? 'edge = 0.0; centre = 0.0; // gravel: no paint' : ''}
+				float shoulder = smoothstep(${half.toFixed(2)} - 0.5 * fw, ${half.toFixed(2)} + 0.5 * fw, abs(u));
+				float verge = smoothstep(${edgeAt.toFixed(2)} - 0.5 * fw, ${edgeAt.toFixed(2)} + 0.5 * fw, abs(u));
 				// Where it meets another pass (crossings.ts): o metres off that pass's centre line, and which of the two it is.
 				float o = abs(vBare.x);
 				float fo = max(fwidth(o), 1e-4);
@@ -531,9 +552,9 @@ export function roadMaterial(
 				// A pass joining an earlier one is not drawn inside its asphalt, but for a hand's width at its edge: o is read off a line of 10 m chords, and where each ribbon stopped exactly at the other the ground showed between them. A side road is not drawn past that road's line either.
 				if (joins > 0.5 && mix(o, vBare.x, seated) < ${(ROAD_W / 2 - 0.1).toFixed(2)}) discard;
 				// Nor is its shoulder or verge drawn on the earlier one's formation: where it comes in along that road, a roundabout's arm, its shoulder lay across that road's far edge. A side road seated on the road it meets keeps its shoulder there: the two shoulders meet where the higher lies, round the corner as one.
-				if (joins > 0.5 && seated < 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${FORMATION.toFixed(2)}) discard;
+				if (joins > 0.5 && seated < 0.5 && abs(u) > ${half.toFixed(2)} && o < ${FORMATION.toFixed(2)}) discard;
 				// And the pass joined draws no shoulder under the joining one's asphalt: two surfaces there, each lit by its own slope, drew as streaks.
-				if (joined > 0.5 && abs(u) > ${(ROAD_W / 2).toFixed(2)} && o < ${(ROAD_W / 2 - 0.15).toFixed(2)}) discard;
+				if (joined > 0.5 && abs(u) > ${half.toFixed(2)} && o < ${(ROAD_W / 2 - 0.15).toFixed(2)}) discard;
 				float theirs = 1.0 - smoothstep(${(ROAD_W / 2).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2).toFixed(2)} + 0.5 * fo, o);
 				float theirEdge = 1.0 - smoothstep(${(ROAD_W / 2 + 0.9).toFixed(2)} - 0.5 * fo, ${(ROAD_W / 2 + 0.9).toFixed(2)} + 0.5 * fo, o);
 				// Across the mouth of a road joining it, the pass joined dashes its edge line, a metre on and a metre off: the line runs on, and the road beside it is seen to be another.
@@ -571,7 +592,7 @@ export function roadMaterial(
 			);
 	};
 	m.customProgramCacheKey = () =>
-		`road-${c.asphalt}-${c.line}-${c.verge}-${c.shoulder}-${snow?.y}-${snow?.color}`;
+		`road-${c.asphalt}-${c.line}-${c.verge}-${c.shoulder}-${snow?.y}-${snow?.color}-${gravel}`;
 	return m;
 }
 

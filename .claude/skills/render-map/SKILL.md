@@ -52,7 +52,7 @@ about 400 KB; raise `MAP_MPP` before shrinking the palette.
    streams blue with lighter shallows.
 2. Open the lab (`make dev-env` prints this checkout's web port):
    `/dev/route?shape=berne&view=map`, then `shape=urnsee`, `shape=aare`,
-   `shape=lac`, headless. A ride's Map view (`/ride?road=aare&sim=1`, Ride
+   `shape=lac`, `shape=kette`, headless. A ride's Map view (`/ride?road=aare&sim=1`, Ride
    simulated, Start the ride, Map) shows the same map smaller.
 3. Look for:
    - every road, spur, river and stream that leaves the rectangle runs to the

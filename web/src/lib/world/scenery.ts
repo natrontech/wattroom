@@ -39,6 +39,22 @@ const MOUTH_REACH_M = 30;
 const PAINT_LIFT = 0.015;
 
 /**
+ * A side road's mouths that are given a stop (stops): none onto a
+ * roundabout's ring, where nobody stops, and none out of a gravel lane,
+ * which has neither paint nor sign.
+ */
+export function stopped<M extends { met: number }>(
+	side: { route: Pick<Route, 'gravel'>; mouths: readonly (M | null)[] },
+	sides: readonly { route: Pick<Route, 'level'> }[],
+): (M | null)[] {
+	return side.mouths.map((m) =>
+		!m || side.route.gravel || (m.met > 0 && sides[m.met - 1].route.level)
+			? null
+			: m,
+	);
+}
+
+/**
  * What a side road that comes in square is given at its mouth
  * (side-roads.ts): a stop line across its incoming lane, STOP painted
  * before it, and a stop sign on its right. All of it is laid on the side

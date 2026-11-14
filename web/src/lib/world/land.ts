@@ -54,8 +54,8 @@ export function landUse(
 					: Biome.Snow,
 			);
 		const laid = scene?.coverAt(x, z) ?? null;
-		// A verge is mown grass; through a bog or over dry ground the road has none.
-		if (d < 5 && laid === null) return bare(Biome.Verge);
+		// A verge is mown grass; through a bog, over dry ground or across an alp the road has none.
+		if (d < 5 && (laid === null || MOWN.has(laid))) return bare(Biome.Verge);
 		// A road's earthworks are grown over, rock only in outcrops: a cutting
 		// painted rock whole was a bare wall beside the road (#3838).
 		if (
@@ -69,7 +69,16 @@ export function landUse(
 			const patch = noise('biome', [CHUNK_M / 2, CHUNK_M / 4], x, z);
 			if (laid === 'moor')
 				return bare(patch > 0.22 ? Biome.Alpine : Biome.Moor);
-			return bare(patch > 0.3 ? Biome.Meadow : Biome.Dry);
+			if (laid === 'dry') return bare(patch > 0.3 ? Biome.Meadow : Biome.Dry);
+			// An alp's pasture: open, grazed short, greener in its hollows.
+			if (laid === 'alp')
+				return bare(patch > 0.25 ? Biome.Meadow : Biome.Alpine);
+			// Scree: rock with the odd tongue of turf through it.
+			if (laid === 'scree')
+				return bare(patch > 0.3 ? Biome.Alpine : Biome.Rock);
+			// A wood: forest, its edge the cover's own.
+			if (laid === 'wood') return { biome: Biome.Forest, forest: 1 };
+			return bare(fieldAt(x, z, noise));
 		}
 		const north = slope > 1e-4 ? gz / slope : 0;
 		const f =
@@ -86,6 +95,39 @@ export function landUse(
 	};
 }
 export type LandUse = ReturnType<typeof landUse>;
+
+/** The covers a road keeps its mown verge through: fields, an alp, a wood. */
+const MOWN = new Set(['fields', 'alp', 'wood', 'scree']);
+
+/** A field's size, metres along its furrows and across them, and the bearing they run on: a valley's strips run down it. */
+const FIELD = { long: 190, wide: 75, turn: 0.18 };
+/** What each field grows, by the share of fields: meadow, hay just cut, ripe grain, a fallow strip. */
+const CROPS = [
+	[0.4, Biome.Meadow],
+	[0.62, Biome.Verge],
+	[0.85, Biome.Dry],
+	[1, Biome.Alpine],
+] as const;
+
+/**
+ * A valley's fields: strips laid down the valley, each its own crop, their
+ * edges wandering a little as a farmer's do. Read by place, so a field is
+ * one crop wherever the ground asks.
+ */
+export function fieldAt(x: number, z: number, noise: Relief): Biome {
+	const c = Math.cos(FIELD.turn);
+	const s = Math.sin(FIELD.turn);
+	const wobble = 12 * noise('biome', [CHUNK_M], x, z);
+	const u = (x * c - z * s + wobble) / FIELD.wide;
+	const v = (x * s + z * c) / FIELD.long;
+	// Rows of strips, each row's set off along the furrow by half a field from the last.
+	const i = Math.floor(u);
+	const j = Math.floor(v + 0.5 * (i & 1));
+	let k = Math.imul(i, 0x27d4eb2d) ^ Math.imul(j, 0x165667b1);
+	k = Math.imul(k ^ (k >>> 15), 0x2c1b3c6d);
+	const pick = ((k ^ (k >>> 12)) >>> 0) / 4294967296;
+	return CROPS.find(([share]) => pick < share)![1];
+}
 
 // Fake ambient occlusion from curvature: hollows darker, crests lighter.
 export function shadeOf(

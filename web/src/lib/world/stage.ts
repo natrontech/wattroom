@@ -17,7 +17,7 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
 import { roundaboutsOf, sceneOf } from './designed';
-import { giveWays, roundabouts, stops } from './scenery';
+import { giveWays, roundabouts, stopped, stops } from './scenery';
 import {
 	BORE_BOXES,
 	boreBoxes,
@@ -31,11 +31,13 @@ import {
 } from './structures';
 import type { Piece } from './setpieces';
 import {
+	GRAVEL_EDGE,
+	GRAVEL_W,
 	plinth,
+	ribbonOf,
 	road,
 	surfaceOf,
 	roadMaterial,
-	ROAD_W,
 	terrain,
 	yOf,
 } from './geometry';
@@ -61,7 +63,7 @@ import {
 } from './styles';
 import { meshOf, REACH } from './terrain-mesh';
 import { liftOf } from './road-surface';
-import { endsMeet, SHOULDER } from './terrain/road-profile';
+import { endsMeet } from './terrain/road-profile';
 import type { World } from './world';
 
 /**
@@ -234,17 +236,17 @@ export function buildStage(
 		drop: (id) => ground.drop(id),
 	});
 	const snowline = sceneOf(route.scene)?.climate.snowline;
-	const ribbon = piecePool(
-		roadMaterial(
-			style.road,
-			lights,
-			snowline === undefined
-				? undefined
-				: { y: yOf(route, snowline), color: style.palette[Biome.Snow] },
-		),
-		ROAD_ROOM,
-	);
+	const snowy =
+		snowline === undefined
+			? undefined
+			: { y: yOf(route, snowline), color: style.palette[Biome.Snow] };
+	const ribbon = piecePool(roadMaterial(style.road, lights, snowy), ROAD_ROOM);
 	group.add(tag('road', ribbon.mesh));
+	// The map's gravel lanes: their own surface, no paint on it.
+	const lanes = world.sides.some((s) => s.route.gravel)
+		? piecePool(roadMaterial(style.road, lights, snowy, true), ROAD_ROOM)
+		: null;
+	if (lanes) group.add(tag('road', lanes.mesh));
 	// The road ridden, and the map's other roads where they leave it (side-roads.ts): a hair lower, so where one meets the ridden road it lies under its asphalt.
 	const ribbons = [
 		{
@@ -268,23 +270,24 @@ export function buildStage(
 		]);
 		if (at === here) return;
 		here = at;
-		for (const { of, lift, caps, j, pieces } of ribbons)
+		for (const { of, lift, caps, j, pieces } of ribbons) {
+			const pool = of.gravel && lanes ? lanes : ribbon;
 			pieces.forEach((p, k) => {
 				const key = j === 0 ? String(k) : `${j}:${k}`;
 				const d = Math.hypot(p.x - eye.x, p.z - eye.z) - p.r;
-				if (d <= REACH.near && !ribbon.has(key))
-					ribbon.add(
+				if (d <= REACH.near && !pool.has(key))
+					pool.add(
 						key,
 						road(of, {
-							width: ROAD_W,
-							shoulder: SHOULDER,
+							...ribbonOf(of),
 							rows: p.rows,
 							lift,
 							caps,
 						}),
 					);
-				else if (d > REACH.near * LEAVE) ribbon.drop(key);
+				else if (d > REACH.near * LEAVE) pool.drop(key);
 			});
+		}
 	}
 
 	const overview = new THREE.Mesh(
@@ -355,6 +358,8 @@ export function buildStage(
 				world.groundAt,
 				colors,
 				true,
+				// A gravel lane's: a farm bridge as wide as its gravel and grass edge.
+				s.route.gravel ? GRAVEL_W / 2 + GRAVEL_EDGE : undefined,
 			);
 			tunnels(works, `side${j}`, s.route, lift, s.tunnels, colors);
 		});
@@ -429,7 +434,7 @@ export function buildStage(
 					giveWays(
 						rounds,
 						world.sides
-							.filter((s) => s.route.widen)
+							.filter((s) => s.route.widen && !s.route.gravel)
 							.map((s) => ({
 								route: s.route,
 								surface: surfaceOf(s.route, liftOf(s.route, false)),
@@ -452,9 +457,8 @@ export function buildStage(
 						world.sides.map((s) => ({
 							length: s.route.length,
 							surface: surfaceOf(s.route, liftOf(s.route, false)),
-							mouths: s.mouths.map((m) =>
-								// Onto a roundabout nobody stops: no line, no STOP, no sign.
-								!m || (m.met > 0 && world.sides[m.met - 1].route.level)
+							mouths: stopped(s, world.sides).map((m) =>
+								m === null
 									? null
 									: {
 											...m,
@@ -658,6 +662,7 @@ export function buildStage(
 			for (const o of model ?? []) o.visible = on;
 			ground.mesh.visible = !on;
 			ribbon.mesh.visible = !on;
+			if (lanes) lanes.mesh.visible = !on;
 			horizon.visible = !on;
 			overview.visible = on;
 		},

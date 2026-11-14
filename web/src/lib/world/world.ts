@@ -37,7 +37,13 @@ import { createPlacer } from './props/placer';
 import { scatter, villageSites, type Prop } from './props/scatter';
 import { standTiles, type Stood } from './props/stand';
 import type { Placement } from './placement/types';
-import { drawnRows, FORMATION, ROAD_W, SHOULDER } from './terrain/road-profile';
+import {
+	drawnRows,
+	FORMATION,
+	GRAVEL_W,
+	ROAD_W,
+	SHOULDER,
+} from './terrain/road-profile';
 import {
 	ARM_M,
 	armsOf,
@@ -179,14 +185,25 @@ export function generate(
 	// The map's other roads, where they leave this one (side-roads.ts): the ground is shaped by them as by the road ridden.
 	const rings = ringsOf(route.scene);
 	const kept = [...rings, ...armsOf(route.scene)];
-	const beside = sideRoads(route, othersOf(route.scene), kept);
+	const others = othersOf(route.scene);
+	if (layout) drape(route, others, salt, layout);
+	const beside = sideRoads(route, others, kept).map((side) =>
+		side.route.gravel ? { ...side, route: apron(side) } : side,
+	);
 	const sideRows = beside.map((side) => drawnRows(side.route));
 	sideRows.forEach((r, j) =>
 		roads.push({
-			key: j < kept.length ? `ring:${j}` : `side:${j}`,
+			// A gravel lane's line is a lane's: the ground is shaped by it, and nothing is signed along it (setpieces.ts).
+			key:
+				j < kept.length
+					? `ring:${j}`
+					: beside[j].route.gravel
+						? `lane:${j}`
+						: `side:${j}`,
 			x: r.map((p) => p.x),
 			z: r.map((p) => p.z),
 			h: r.map((p) => p.ele),
+			...(beside[j].route.gravel && { light: true }),
 		}),
 	);
 	// A tunnel's road runs through the hill (designed.ts): past its portal's cut-and-cover the ground is left closed over it (terrain/ground.ts Line.bore).
@@ -413,14 +430,12 @@ export function generate(
 	let cover: ReturnType<typeof corridor> | null = null;
 	const chunks = () => (cover ??= corridor(ground.lines, margin)).chunks;
 	// The place's levels, not the corridor's: a streamed chunk is the one the props stood on.
+	// Fine along the streams, and along every shore: an island or a headland's tip drawn coarse stood out of its water.
 	const level = placeLevel(
 		ground.lines,
 		(scene?.waters ?? [])
-			.filter((w) => w.run)
-			.map((w) => ({
-				x: w.outline.map((p) => p[0]),
-				z: w.outline.map((p) => p[1]),
-			})),
+			.flatMap((w) => [w.outline, ...(w.islands ?? [])])
+			.map((o) => ({ x: o.map((p) => p[0]), z: o.map((p) => p[1]) })),
 	);
 	const land = landUse(ground.noise, scene);
 	const terrain = createTerrain(ground, level, land);
@@ -911,6 +926,107 @@ export function withCulverts(
 		else out.push(s);
 	}
 	return out;
+}
+
+/** A gravel lane's apron: where it meets a road it is drawn as wide as one, narrowing to its own width over these metres from its mouth. */
+const APRON = { full: 4, to: 18 };
+
+/**
+ * A gravel lane with an apron at each mouth (geometry.ts ribbonOf): a farm
+ * track's paved mouth, as wide as a road's formation, so the road it joins
+ * gives up its shoulder under it and the two are one surface.
+ */
+function apron(side: SideRoad): Route {
+	const r = side.route;
+	const flare = ROAD_W / GRAVEL_W - 1;
+	const at = (m: number) =>
+		1 + flare * (1 - smoothstep(APRON.full, APRON.to, m));
+	const [a, b] = side.mouths;
+	return {
+		...r,
+		widen: (d) => Math.max(a ? at(d) : 1, b ? at(r.length - d) : 1),
+	};
+}
+
+/** Metres between a gravel lane's samples its heights are smoothed over, either way. */
+const LANE_EASE = 5;
+/** A lane over running water wider than a sample stands this far over it, on a bridge. */
+const LANE_OVER_M = 5;
+
+/**
+ * A gravel lane's heights (designed.ts Lane): the ground's under it as the
+ * map's other roads shape it, smoothed, so a farm track lies on its field
+ * and a forest road on its hillside. Over a river it is lifted onto a
+ * bridge, eased up to it and down from it.
+ */
+function drape(
+	route: Route,
+	others: Route[],
+	salt: Salt,
+	scene: NonNullable<ReturnType<typeof sceneOf>>,
+) {
+	const lanes = others.filter((o) => o.gravel);
+	if (lanes.length === 0) return;
+	const lineOf = (r: Route, key: string): Line => ({
+		key,
+		x: r.x,
+		z: r.z,
+		h: r.ele,
+	});
+	const ground = makeGround(
+		[
+			lineOf(route, 'route'),
+			...others.flatMap((o, k) => (o.gravel ? [] : [lineOf(o, `o:${k}`)])),
+		],
+		{ salt, scene },
+	);
+	const water = ground.scene ?? scene;
+	for (const lane of lanes) {
+		const n = lane.x.length;
+		const raw = Array.from(lane.x, (x, i) => ground.heightAt(x, lane.z[i]));
+		const ele = raw.map((_, i) => {
+			let sum = 0;
+			let count = 0;
+			for (
+				let k = Math.max(0, i - LANE_EASE);
+				k <= Math.min(n - 1, i + LANE_EASE);
+				k++
+			) {
+				sum += raw[k];
+				count++;
+			}
+			return sum / count;
+		});
+		// Over a river: a run of wet samples, lifted onto a deck and eased to it.
+		const wet = Array.from(lane.x, (x, i) => water.waterAt(x, lane.z[i]));
+		for (let i = 0; i < n; i++) {
+			if (wet[i] === null) continue;
+			let j = i;
+			while (j + 1 < n && wet[j + 1] !== null) j++;
+			if (j > i) {
+				const deck =
+					Math.max(...wet.slice(i, j + 1).map((w) => w!)) + LANE_OVER_M;
+				for (
+					let k = Math.max(0, i - 2 * LANE_EASE);
+					k <= Math.min(n - 1, j + 2 * LANE_EASE);
+					k++
+				) {
+					const t =
+						k < i
+							? 1 - (i - k) / (2 * LANE_EASE)
+							: k > j
+								? 1 - (k - j) / (2 * LANE_EASE)
+								: 1;
+					const w = t * t * (3 - 2 * t);
+					ele[k] = Math.max(ele[k], ele[k] + (deck - ele[k]) * w);
+				}
+			}
+			i = j;
+		}
+		lane.ele.set(ele);
+		for (let i = 1; i < n; i++)
+			lane.grade[i] = ((ele[i] - ele[i - 1]) / lane.step) * 100;
+	}
 }
 
 /**

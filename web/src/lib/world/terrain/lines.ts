@@ -17,6 +17,8 @@ export type Line = {
 	open?: ArrayLike<number>;
 	/** Per vertex, 1 where the road runs through the hill, a tunnel: the ground is left closed over it, never cut down to it. Absent: none. */
 	bore?: ArrayLike<number>;
+	/** A gravel lane's (designed.ts Lane): its cut and fill bound the ground only within its own earthworks, not hundreds of metres down a hillside. */
+	light?: boolean;
 };
 
 export type Hit = {
@@ -51,6 +53,7 @@ export function canonical(lines: readonly Line[]): Line[] {
 				h: back(l.h),
 				...(l.open && { open: Uint8Array.from(l.open).reverse() }),
 				...(l.bore && { bore: Uint8Array.from(l.bore).reverse() }),
+				...(l.light && { light: true }),
 			};
 		});
 }
@@ -97,9 +100,12 @@ export function indexLines(lines: readonly Line[]) {
 	const open = new Uint8Array(N);
 	/** A vertex inside a tunnel (Line.bore). */
 	const bore = new Uint8Array(N);
+	/** A vertex of a light line (Line.light). */
+	const light = new Uint8Array(N);
 	lines.forEach((l, k) => {
 		if (l.open) open.set(Uint8Array.from(l.open), starts[k]);
 		if (l.bore) bore.set(Uint8Array.from(l.bore), starts[k]);
+		if (l.light) light.fill(1, starts[k], starts[k + 1]);
 		for (let i = 0; i < l.x.length; i++) {
 			x[starts[k] + i] = l.x[i];
 			z[starts[k] + i] = l.z[i];
@@ -130,12 +136,19 @@ export function indexLines(lines: readonly Line[]) {
 	};
 	const near = new Map<number, number[]>();
 	for (let g = 0; g < N; g++) bucket(near, CELL, g);
+	// A tunnel's vertices are no road to the land round it (Line.bore): the hill over it rises as if none ran there, the way the land had it. Only the nearest point, its exact neighbour, knows the road in it.
 	const wide = new Map<number, number[]>();
-	for (const g of thin(starts, x, z, 20)) bucket(wide, WIDE, g);
-	const far = thin(starts, x, z, 200);
+	for (const g of thin(starts, x, z, 20)) if (!bore[g]) bucket(wide, WIDE, g);
+	const far = thin(starts, x, z, 200).filter((g) => !bore[g]);
 
-	/** The nearest point of any segment within `rings` cells of (px, pz), on any line but `skip`; null past them. */
-	function nearest(px: number, pz: number, rings = 6, skip = -1): Hit | null {
+	/** The nearest point of any segment within `rings` cells of (px, pz), on any line but `skip`, and in no tunnel when `outside`; null past them. */
+	function nearest(
+		px: number,
+		pz: number,
+		rings = 6,
+		skip = -1,
+		outside = false,
+	): Hit | null {
 		const ci = Math.floor(px / CELL);
 		const cj = Math.floor(pz / CELL);
 		let best = Infinity;
@@ -143,6 +156,7 @@ export function indexLines(lines: readonly Line[]) {
 		let bt = 0;
 		const segment = (a: number) => {
 			if (a < 0 || last[a] || lineOf[a] === skip) return;
+			if (outside && bore[a] && bore[a + 1]) return;
 			const sx = x[a + 1] - x[a];
 			const sz = z[a + 1] - z[a];
 			const len2 = sx * sx + sz * sz || 1;
@@ -271,7 +285,7 @@ export function indexLines(lines: readonly Line[]) {
 		if (approx > cap) return null;
 		// Vertices 20 m apart put the true distance within 10 m below this.
 		if (approx <= EXACT_M + 10) {
-			const hit = nearest(px, pz, Math.ceil((approx + CELL) / CELL));
+			const hit = nearest(px, pz, Math.ceil((approx + CELL) / CELL), -1, true);
 			if (hit) return hit;
 		}
 		return { d: approx, h: bh };
@@ -343,6 +357,7 @@ export function indexLines(lines: readonly Line[]) {
 		last,
 		open,
 		bore,
+		light,
 	};
 }
 

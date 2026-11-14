@@ -32,7 +32,16 @@ export type MapData = {
 	/** Every loop id the picture's roads are. */
 	loops: string[];
 	/** SVG path data in the world's frame, metres. */
-	roads: { loops: string; spurs: string; bridges: string; galleries: string };
+	roads: {
+		loops: string;
+		spurs: string;
+		/** The gravel lanes: drawn finer than a road, dashed. */
+		lanes?: string;
+		bridges: string;
+		galleries: string;
+		/** Where a loop runs through a tunnel: its road dashed over the hill. */
+		tunnels?: string;
+	};
 	labels: Label[];
 	/** Each roundabout's centre: the page draws a ring there as a map's symbol, bigger than the 18 m ring itself. */
 	rings: { x: number; z: number }[];
@@ -253,9 +262,11 @@ export function renderLand(
 	// The water: lakes and rivers filled, streams a line at least 1.6 px wide.
 	const wet = new Float32Array(w * h);
 	const flowing = new Float32Array(w * h);
+	const isles = new Float32Array(w * h);
 	for (const water of world.waters) {
 		if (!water.run) {
 			fillRing(wet, w, h, water.outline, toPx);
+			for (const isle of water.islands ?? []) fillRing(isles, w, h, isle, toPx);
 			continue;
 		}
 		const o = water.outline;
@@ -270,6 +281,8 @@ export function renderLand(
 		}
 		strokeLine(flowing, w, h, mid, Math.max(1.6, wide / MAP_MPP));
 	}
+	// An island is land.
+	for (let k = 0; k < wet.length; k++) wet[k] = Math.max(0, wet[k] - isles[k]);
 	// How far each pixel of a lake or river lies from its shore, in pixels: the shallows are drawn by it.
 	const shoreDist = chamfer(wet, w, h);
 
@@ -461,7 +474,10 @@ export function mapData(world: World, route: Route): MapData {
 	const loops = MAP_LOOPS.map((id) =>
 		designedLine(DESIGNS.find((d) => d.id === id)!),
 	);
-	const spurs = world.sides.filter((s) => s.route.name === 'spur');
+	const spurs = world.sides.filter(
+		(s) => s.route.name === 'spur' && !s.route.gravel,
+	);
+	const lanes = world.sides.filter((s) => s.route.gravel);
 	const bridges: [number, number][][] = [];
 	for (const [from, to] of world.bridges)
 		bridges.push(pointsOf(route, from, to));
@@ -469,7 +485,7 @@ export function mapData(world: World, route: Route): MapData {
 		for (const [from, to] of s.bridges)
 			bridges.push(pointsOf(s.route, from, to));
 	const scene = sceneOf(route.scene)!;
-	const galleries = scene.galleries.flatMap(([a, b]) => {
+	const onLoops = ([a, b]: (typeof scene.galleries)[number]) => {
 		for (const l of loops) {
 			const ia = nearestOn(l, a[0], a[1]);
 			const ib = nearestOn(l, b[0], b[1]);
@@ -479,12 +495,14 @@ export function mapData(world: World, route: Route): MapData {
 			}
 		}
 		return [];
-	});
+	};
+	const galleries = scene.galleries.flatMap(onLoops);
+	const tunnels = scene.tunnels.flatMap(onLoops);
 	const labels = placeLabels(
 		world,
 		route,
 		loops,
-		spurs.map((s) => s.route),
+		[...spurs, ...lanes].map((s) => s.route),
 	);
 	return {
 		name: MAP_NAME,
@@ -501,8 +519,10 @@ export function mapData(world: World, route: Route): MapData {
 				true,
 			),
 			spurs: pathOf(spurs.map((s) => pointsOf(s.route, 0, s.route.length, 6))),
+			lanes: pathOf(lanes.map((s) => pointsOf(s.route, 0, s.route.length, 6))),
 			bridges: pathOf(bridges),
 			galleries: pathOf(galleries),
+			tunnels: pathOf(tunnels),
 		},
 		labels,
 		rings: roundaboutsOf(route.scene).map((r) => ({

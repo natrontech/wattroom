@@ -131,15 +131,34 @@ function segments(pts: readonly Pt[], closed: boolean) {
 	return Object.assign(nearest, { mayReach });
 }
 
-/** Where a closed outline crosses the line z = `z`, west to east. */
-function crossings(ring: readonly Pt[], z: number): number[] {
+/** Where closed outlines cross the line z = `z`, west to east: a lake's shore and its islands' together, so an island is a hole. */
+function crossings(rings: readonly (readonly Pt[])[], z: number): number[] {
 	const xs: number[] = [];
-	for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-		const [xi, zi] = ring[i];
-		const [xj, zj] = ring[j];
-		if (zi > z !== zj > z) xs.push(((xj - xi) * (z - zi)) / (zj - zi) + xi);
-	}
+	for (const ring of rings)
+		for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+			const [xi, zi] = ring[i];
+			const [xj, zj] = ring[j];
+			if (zi > z !== zj > z) xs.push(((xj - xi) * (z - zi)) / (zj - zi) + xi);
+		}
 	return xs.sort((a, b) => a - b);
+}
+
+/** The nearest bank of several closed outlines within a reach: a lake's shore or one of its islands'. */
+function banksOf(rings: readonly (readonly Pt[])[]) {
+	const all = rings.map((r) => segments(r, true));
+	if (all.length === 1) return all[0];
+	type Hit = ReturnType<(typeof all)[0]>;
+	const nearest = (x: number, z: number, reach: number): Hit => {
+		let best: Hit = null;
+		for (const s of all) {
+			const hit: Hit = s(x, z, best ? best.d : reach);
+			if (hit && (!best || hit.d < best.d)) best = hit;
+		}
+		return best;
+	};
+	const mayReach = (x: number, z: number, reach: number) =>
+		all.some((s) => s.mayReach(x, z, reach));
+	return Object.assign(nearest, { mayReach });
 }
 
 /** A point on the waterline, for what grows and lies at a shore (shore.ts). */
@@ -186,9 +205,10 @@ function still(
 	shore?: ShorePoint[],
 ) {
 	const ring = w.outline;
+	const rings = [ring, ...(w.islands ?? [])];
 	const bed = w.bed ?? { slope: 0.3, deep: 25 };
 	const y = yOf(route, w.level);
-	const banks = segments(ring, true);
+	const banks = banksOf(rings);
 	const course = w.course ? segments(w.course, false) : null;
 	let [x0, z0, x1, z1] = [Infinity, Infinity, -Infinity, -Infinity];
 	for (const [x, z] of ring) {
@@ -210,7 +230,7 @@ function still(
 	// Each corner's distance to the shore, + inside: the inside by the outline's crossings of its row.
 	for (let j = 0; j <= nj; j++) {
 		const z = (j0 + j) * S;
-		const xs = crossings(ring, z);
+		const xs = crossings(rings, z);
 		let k = 0;
 		for (let i = 0; i <= ni; i++) {
 			const x = (i0 + i) * S;
@@ -223,14 +243,18 @@ function still(
 	const depthAt = (c: number) => {
 		if (Number.isNaN(depth[c])) {
 			const s = sd[c];
-			// The design's bed past the shore's band, and its bank out of it: the drawn ground's own across it.
+			const x = (i0 + (c % row)) * S;
+			const z = (j0 + Math.floor(c / row)) * S;
+			// The design's bed past the shore's band (gentler in its shallows), and its bank out of it: the drawn ground's own across it.
 			depth[c] =
 				s >= READ_M
-					? Math.min(bed.deep, FREEBOARD_M + bed.slope * s)
+					? Math.min(
+							bed.deep,
+							FREEBOARD_M + (bed.fall ? bed.fall(x, z) : bed.slope) * s,
+						)
 					: s <= -READ_M
 						? -FREEBOARD_M
-						: w.level -
-							groundAt((i0 + (c % row)) * S, (j0 + Math.floor(c / row)) * S);
+						: w.level - groundAt(x, z);
 		}
 		return depth[c];
 	};
@@ -280,9 +304,19 @@ function still(
 	const take = (i: number, j: number, n: number) => {
 		for (let b = j; b < j + n; b++) taken.fill(1, b * ni + i, b * ni + i + n);
 	};
+	/** Whether every corner of a block stands over the bed at its deepest: always, where the bed falls the same everywhere; in a lake's shallows a chunk's band changes inside it. */
+	const deepest = Math.min(bed.deep, FREEBOARD_M + bed.slope * OPEN_M) - 0.01;
+	const deepAll = (i: number, j: number, n: number) =>
+		!bed.fall ||
+		[
+			[i, j],
+			[i + n, j],
+			[i, j + n],
+			[i + n, j + n],
+		].every(([a, b]) => depthAt(b * row + a) >= deepest);
 	for (let j = 0; j + 16 <= nj; j += 16)
 		for (let i = 0; i + 16 <= ni; i += 16)
-			if (open(i, j, 16, OPEN_M)) {
+			if (open(i, j, 16, OPEN_M) && deepAll(i, j, 16)) {
 				quad(i, j, 16);
 				take(i, j, 16);
 			}
