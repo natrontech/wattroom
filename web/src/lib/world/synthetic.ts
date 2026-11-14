@@ -145,8 +145,18 @@ function heightAlong(corners: Corner[], knots: number[], length: number) {
 export const PASS_LOOP: Shape = { corners: PASS_LOOP_CORNERS, seed: 3021 };
 
 export function syntheticPoints(shape: Shape = PASS_LOOP): TrackPoint[] {
-	const { points, knots, length } = centreline(shape.corners);
-	const ele = heightAlong(shape.corners, knots, length);
+	// A designed road's corners are computed (designs.ts), its roundabouts' by sine and cosine: rounded to a micrometre, every CPU starts the line from the same ones.
+	const corners = shape.drawn
+		? shape.corners.map((c) => ({
+				...c,
+				x: snap(c.x, 1e6),
+				y: snap(c.y, 1e6),
+				ele: snap(c.ele, 1e6),
+				r: snap(c.r, 1e6),
+			}))
+		: shape.corners;
+	const { points, knots, length } = centreline(corners);
+	const ele = heightAlong(corners, knots, length);
 	const noise = prng(shape.seed);
 	// A drawn line keeps a hair of it, 3 cm: on a true arc every turn is the same, and one that sits on a rounding edge would be stored a degree off at every step (road/profile.ts).
 	const off = shape.drawn ? 0.04 : 1;
@@ -172,12 +182,22 @@ export function syntheticPoints(shape: Shape = PASS_LOOP): TrackPoint[] {
 			{ x: at.x + 15, y: at.y + 0.5, ele: at.ele },
 		);
 	}
-	return track.map((p) => ({
+	const out = track.map((p) => ({
 		lat: LAT0 + p.y / M_PER_DEG,
 		lon: LON0 + p.x / (M_PER_DEG * Math.cos((LAT0 * Math.PI) / 180)),
 		ele: p.ele,
 	}));
+	// A designed road is known by its length to the centimetre (designed.ts), on every machine: an x86 CPU's sine can differ from an ARM's in the last bit, and that bit tipped a resampling step 0.5 m. Rounded to a tenth of a millimetre, both build the same road.
+	return shape.drawn
+		? out.map((p) => ({
+				lat: snap(p.lat, 1e9),
+				lon: snap(p.lon, 1e9),
+				ele: snap(p.ele, 1e4),
+			}))
+		: out;
 }
+
+const snap = (v: number, per: number) => Math.round(v * per) / per;
 
 export function syntheticGpx(): string {
 	const pts = syntheticPoints()

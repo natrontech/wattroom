@@ -1093,18 +1093,18 @@ const back = (s: Corner[]) => [...s].reverse();
 
 /** The loops, each from the village and back: by the time they take, about 30, 40, 60, 90 and 120 minutes. Each stretch is followed by the node it runs to. */
 export const DESIGNS: readonly Designed[] = [
-	loop('urnsee', 11151.47, 4340, round(SHORE, HEAD, TERRACE, HUB)),
-	loop('aare', 11993.04, 4404, round(GORGE_OUT, WEST, GORGE_HOME, HUB)),
+	loop('urnsee', 11151.77, 4340, round(SHORE, HEAD, TERRACE, HUB)),
+	loop('aare', 11992.98, 4404, round(GORGE_OUT, WEST, GORGE_HOME, HUB)),
 	loop(
 		'lac',
-		23143.95,
+		23144,
 		4406,
 		round(SHORE, HEAD, TERRACE, HUB, GORGE_OUT, WEST, GORGE_HOME, HUB),
 	),
-	loop('berne', 30628.62, 2101, round(COL, HEAD, TERRACE, HUB)),
+	loop('berne', 30628.63, 2101, round(COL, HEAD, TERRACE, HUB)),
 	loop(
 		'kette',
-		50886.1,
+		50886.45,
 		5050,
 		round(SHORE, HEAD, KETTE, WEST, back(GORGE_OUT), HUB),
 	),
