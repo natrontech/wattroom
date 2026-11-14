@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
+import { hairpinPass, legsRoad } from '#lib/road/fixtures.ts';
+import { toRoute } from '#lib/road/route.ts';
 import { at } from '#lib/road/along.ts';
 import type { Route } from '#lib/road/route.ts';
 import { sceneOf } from './designed';
 import { yOf } from './geometry';
+import { climateOf } from './land';
 import { roadIndex } from './field';
 import { makeRig } from './rig';
 import { routeOfRoad } from './road-route';
@@ -26,6 +29,7 @@ import {
 	Pieces,
 	roadEdges,
 	STONE_UNDER_SNOW_M,
+	stoneFromOf,
 	tunnels,
 } from './structures';
 import { makeGround } from './terrain/ground';
@@ -485,4 +489,87 @@ describe('Col de Berne', () => {
 		const mid = at(s.route, (g[0] + g[1]) / 2);
 		expect(world.roofedAt(mid.x, mid.z)).toBe(true);
 	});
+});
+
+describe('a road with no design (a rider’s own)', () => {
+	const climate = climateOf();
+	const stoneFrom = stoneFromOf(climate);
+	/** The hairpin pass fixture (900 m to 1,284 m), raised by `lift` metres. */
+	const pass = (lift: number) =>
+		routeOfRoad(
+			toRoute(hairpinPass().map((p) => ({ ...p, ele: p.ele! + lift }))).road,
+		);
+	const edges = (route: Route, world: World) =>
+		edgesOf(route, world.groundAt, [], stoneFrom);
+	const markers = (route: Route, world: World) => {
+		const seen = new Map<string, [number, number]>();
+		for (let d = 0; d < route.length; d += 100) {
+			const p = at(route, d);
+			for (const t of world.tilesWithin(p.x, p.z, 300))
+				seen.set(`${t[0]}:${t[1]}`, t);
+		}
+		return [...seen.values()]
+			.flatMap(([ti, tj]) => world.tile(ti, tj).pieces)
+			.filter((p) => p.kind === 'marker');
+	};
+
+	it('takes the generator’s climate: granite from the treeline', () => {
+		expect(stoneFrom).toBe(climate.treeline);
+		expect(climate.snowline).toBeGreaterThan(climate.treeline);
+	});
+
+	it(
+		'gets granite above the treeline, steel rails under it where the land drops, and no markers under the snowline',
+		() => {
+			// 1,500 m to 1,884 m: the treeline crossed, the snowline not reached.
+			const route = pass(climate.treeline - 1250);
+			const world = generate(route);
+			const runs = edges(route, world);
+			const stone = runs.filter((r) => r.edge !== 'rail');
+			const rails = runs.filter((r) => r.edge === 'rail');
+			expect(stone.length).toBeGreaterThan(0);
+			expect(rails.length).toBeGreaterThan(0);
+			for (const r of stone)
+				expect(
+					at(route, r.from).ele,
+					`${r.edge} at ${r.from} m`,
+				).toBeGreaterThanOrEqual(stoneFrom - 1);
+			for (const r of rails)
+				expect(at(route, r.to).ele, `rail at ${r.from} m`).toBeLessThan(
+					stoneFrom + 1,
+				);
+			expect(markers(route, world)).toEqual([]);
+		},
+		BUILD_MS,
+	);
+
+	it(
+		'is marked with yellow and black poles above the snowline only',
+		() => {
+			// 2,250 m to 2,634 m: the snowline crossed on the way up.
+			const route = pass(climate.snowline - 1000);
+			const world = generate(route);
+			const found = markers(route, world);
+			expect(found.length).toBeGreaterThan(10);
+			const { nearest } = roadIndex(route);
+			for (const m of found) {
+				const hit = nearest(m.x, m.z)!;
+				expect(at(route, (hit.i + hit.t) * route.step).ele).toBeGreaterThan(
+					climate.snowline - 5,
+				);
+			}
+		},
+		BUILD_MS,
+	);
+
+	it(
+		'leaves a flat valley road bare',
+		() => {
+			const route = routeOfRoad(legsRoad([6000, 0]));
+			const world = generate(route);
+			expect(edges(route, world)).toEqual([]);
+			expect(markers(route, world)).toEqual([]);
+		},
+		BUILD_MS,
+	);
 });

@@ -11,6 +11,14 @@ import type { Scene } from './designed';
 
 export type Cover = { biome: Biome; forest: number };
 
+/** Where snow lies and trees stop, metres above sea: a designed scene's own climate, else the generator's, a far summit's snowline. */
+export function climateOf(scene?: Pick<Scene, 'climate'>) {
+	return {
+		snowline: scene?.climate.snowline ?? 2350,
+		treeline: scene?.climate.treeline ?? 1850,
+	};
+}
+
 /** On a road's earthworks, steep ground is rock where the outcrop noise is above this (about a fifth of it). */
 const OUTCROP_CUT = 0.35;
 
@@ -22,8 +30,7 @@ export function landUse(
 	/** A designed scene (designed.ts): its water, the ground it lays out by hand, and where its snow and trees stop. */
 	scene?: Pick<Scene, 'waterAt' | 'coverAt' | 'climate'>,
 ) {
-	const snowline = scene?.climate.snowline ?? 2350;
-	const trees = scene?.climate.treeline ?? 1850;
+	const { snowline, treeline: trees } = climateOf(scene);
 	return (
 		x: number,
 		z: number,

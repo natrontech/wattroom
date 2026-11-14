@@ -17,6 +17,7 @@ import { batchBoards } from './boards';
 import { archOnRoad } from './furniture';
 import { Biome } from './biome';
 import { roundaboutsOf, sceneOf } from './designed';
+import { climateOf } from './land';
 import { giveWays, roundabouts, stopped, stops } from './scenery';
 import {
 	BORE_BOXES,
@@ -25,7 +26,7 @@ import {
 	galleries,
 	Pieces,
 	roadEdges,
-	STONE_UNDER_SNOW_M,
+	stoneFromOf,
 	tunnels,
 	type WorksColors,
 } from './structures';
@@ -354,7 +355,9 @@ export function buildStage(
 			);
 			if (dressed) built.push(dressed);
 		}
-		// And what is built along it (structures.ts): its bridges, rails and walls, galleries and tunnels, in pieces along each road, one batch culled piece by piece.
+	}
+	// And what is built along the road (structures.ts), in pieces along each road, one batch culled piece by piece: a scene's bridges, galleries and tunnels, laid out by its design; on any road its rails and granite, read off the ground beside it.
+	{
 		const palette = style.palette;
 		const colors: WorksColors = {
 			// Granite a shade paler than the villages' stone, as the pass road's is.
@@ -368,59 +371,61 @@ export function buildStage(
 			snow: palette[Biome.Snow] ?? c.wall,
 		};
 		const works = new Pieces();
-		bridges(
-			works,
-			'route',
-			route,
-			undefined,
-			world.bridges,
-			world.groundAt,
-			colors,
-		);
-		tunnels(works, 'route', route, undefined, world.tunnels, colors);
-		world.sides.forEach((s, j) => {
-			const lift = liftOf(s.route, false);
+		if (world.scene !== undefined) {
 			bridges(
 				works,
-				`side${j}`,
-				s.route,
-				lift,
-				s.bridges,
+				'route',
+				route,
+				undefined,
+				world.bridges,
 				world.groundAt,
 				colors,
-				true,
-				// A gravel lane's: a farm bridge as wide as its gravel and grass edge.
-				s.route.gravel ? GRAVEL_W / 2 + GRAVEL_EDGE : undefined,
 			);
-			tunnels(works, `side${j}`, s.route, lift, s.tunnels, colors);
-			// Its galleries, so a stretch another loop rides under a roof shows it from this road; its parapets and guard stones are the ridden road's only, thousands of blocks no other road shows.
+			tunnels(works, 'route', route, undefined, world.tunnels, colors);
+			world.sides.forEach((s, j) => {
+				const lift = liftOf(s.route, false);
+				bridges(
+					works,
+					`side${j}`,
+					s.route,
+					lift,
+					s.bridges,
+					world.groundAt,
+					colors,
+					true,
+					// A gravel lane's: a farm bridge as wide as its gravel and grass edge.
+					s.route.gravel ? GRAVEL_W / 2 + GRAVEL_EDGE : undefined,
+				);
+				tunnels(works, `side${j}`, s.route, lift, s.tunnels, colors);
+				// Its galleries, so a stretch another loop rides under a roof shows it from this road; its parapets and guard stones are the ridden road's only, thousands of blocks no other road shows.
+				galleries(
+					works,
+					`side${j}`,
+					s.route,
+					world.groundAt,
+					s.galleries,
+					snowline,
+					colors,
+					lift,
+				);
+			});
 			galleries(
 				works,
-				`side${j}`,
-				s.route,
+				'route',
+				route,
 				world.groundAt,
-				s.galleries,
+				world.galleries,
 				snowline,
 				colors,
-				lift,
 			);
-		});
-		galleries(
-			works,
-			'route',
-			route,
-			world.groundAt,
-			world.galleries,
-			snowline,
-			colors,
-		);
+		}
 		roadEdges(
 			works,
 			'route',
 			route,
 			world.groundAt,
 			[...world.bridges, ...world.galleries, ...world.tunnels],
-			snowline === undefined ? Infinity : snowline - STONE_UNDER_SNOW_M,
+			stoneFromOf(climateOf(sceneOf(route.scene))),
 			colors,
 		);
 		const pieces = works.geometries();
@@ -437,6 +442,8 @@ export function buildStage(
 			for (const [k, g] of pieces) pool.add(k, g);
 			group.add(tag('road', pool.mesh));
 		}
+	}
+	if (world.scene !== undefined) {
 		// The ground drawn across a tunnel's mouth or in its portal's cutting is cut out of the tube (styles.ts uBores).
 		const bores = [
 			...boreBoxes(route, undefined, world.tunnels),
