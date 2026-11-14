@@ -121,6 +121,9 @@ type Met = {
 	length: number;
 };
 
+/** Metres short of a met road's end within which a point reads as past it (meetingAt). */
+const PAST_M = 0.05;
+
 /**
  * How far the point (x, z) of the road at metre `d` lies from the centre
  * line of a pass it meets there, metres, CLEAR_M at the most, and which of
@@ -165,7 +168,9 @@ export function meetingAt(
 			if (off < near) {
 				near = off;
 				at = i;
-				past = (i === 0 && along < 0) || (i === last && along > 1);
+				// On its end line is past it too: a road running on from a roundabout's arm starts on the arm's square end, and that row read as on the arm took a wedge out of its asphalt and shoulder towards the next row.
+				const by = PAST_M / (Math.hypot(sx, sz) || 1);
+				past = (i === 0 && along < by) || (i === last && along > 1 - by);
 			}
 			mine = Math.min(mine, off);
 		}

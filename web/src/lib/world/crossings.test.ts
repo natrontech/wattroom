@@ -173,3 +173,29 @@ describe('a street ridden twice', () => {
 		expect(sample(to + 200)[0]).toBe(CLEAR_M);
 	});
 });
+
+describe('a road running on from another’s end', () => {
+	// A side road starting on a roundabout's arm's square end, the arm along the x axis to x = 30.
+	const side = {
+		x: Float64Array.from([30, 40]),
+		z: new Float64Array(2),
+		step: 10,
+		length: 10,
+		meets: [
+			{
+				from: 0,
+				to: 10,
+				x: [0, 10, 20, 30],
+				z: [0, 0, 0, 0],
+				role: JOINS,
+				near: [27.6, 0] as [number, number],
+			},
+		],
+	};
+
+	it('reads its first row, on the arm’s end line, as past the arm: none of its asphalt is taken out', () => {
+		for (const u of [0, 2, -3.2, 4.8])
+			expect(meetingAt(side, 0, 30, u)[0]).toBe(CLEAR_M);
+		expect(meetingAt(side, 0, 29, 0)[0]).toBeLessThan(CLEAR_M);
+	});
+});
