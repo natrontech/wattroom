@@ -95,13 +95,18 @@ export function endsMeet(route: Route): boolean {
  */
 export function ribbonRows(route: Route, step = 2) {
 	const ring = ringOf(route);
-	if (!ring)
+	if (!ring) {
+		// A road with two ends has a last row at its very end: rows a step apart from its start stopped up to a step short of it, and where a road runs on from a roundabout's arm, end to end, the ground showed in a strip between the two.
+		const count = rowCount(route, step);
+		const short = (count - 1) * step < route.length - 0.01;
+		const metre = (k: number) => Math.min(k * step, route.length);
 		return {
 			ring,
-			count: rowCount(route, step),
-			metre: (k: number) => k * step,
-			row: (k: number) => at(route, k * step),
+			count: short ? count + 1 : count,
+			metre,
+			row: (k: number) => at(route, metre(k)),
 		};
+	}
 	const round = { ...route, loop: true };
 	const per = Math.max(3, Math.ceil(route.length / step - 0.25));
 	const metre = (k: number) => {
