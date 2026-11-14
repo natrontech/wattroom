@@ -481,6 +481,64 @@ export function waterSheets(
 	return g;
 }
 
+/** Metres a side of the tiles the water is drawn in: each culled on its own, so a lake behind the camera costs nothing. */
+export const WATER_TILE_M = 320;
+
+/**
+ * The water cut into square tiles by where each triangle lies, each its
+ * own geometry with the vertices it uses: drawn as pieces of one batch
+ * (piece-pool.ts), each culled on its own. Drawn as one mesh, the map's
+ * every lake and stream was 37k triangles in every frame that saw any of it.
+ */
+export function waterTiles(
+	sheet: THREE.BufferGeometry,
+	size = WATER_TILE_M,
+): THREE.BufferGeometry[] {
+	const pos = sheet.attributes.position.array as ArrayLike<number>;
+	const index = sheet.index!.array as ArrayLike<number>;
+	const names = Object.keys(sheet.attributes);
+	const tiles = new Map<string, number[]>();
+	for (let t = 0; t < index.length; t += 3) {
+		let cx = 0;
+		let cz = 0;
+		for (let k = 0; k < 3; k++) {
+			cx += pos[index[t + k] * 3] / 3;
+			cz += pos[index[t + k] * 3 + 2] / 3;
+		}
+		const key = `${Math.floor(cx / size)},${Math.floor(cz / size)}`;
+		const list = tiles.get(key);
+		if (list) list.push(index[t], index[t + 1], index[t + 2]);
+		else tiles.set(key, [index[t], index[t + 1], index[t + 2]]);
+	}
+	return [...tiles.values()].map((tri) => {
+		const local = new Map<number, number>();
+		const order: number[] = [];
+		const idx = tri.map((v) => {
+			let at = local.get(v);
+			if (at === undefined) {
+				at = order.length;
+				local.set(v, at);
+				order.push(v);
+			}
+			return at;
+		});
+		const g = new THREE.BufferGeometry();
+		for (const name of names) {
+			const a = sheet.attributes[name] as THREE.BufferAttribute;
+			const n = a.itemSize;
+			const out = new Float32Array(order.length * n);
+			order.forEach((v, i) => {
+				for (let c = 0; c < n; c++) out[i * n + c] = a.array[v * n + c];
+			});
+			g.setAttribute(name, new THREE.BufferAttribute(out, n));
+		}
+		g.setIndex(idx);
+		g.computeBoundingBox();
+		g.computeBoundingSphere();
+		return g;
+	});
+}
+
 /** The water's colours: a look's own, or made from its water and its snow where it names none. */
 export function waterColors(style: Style) {
 	const own = style.water;

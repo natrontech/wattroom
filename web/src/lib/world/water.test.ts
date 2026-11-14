@@ -5,7 +5,12 @@ import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
 import type { Water } from './designed';
 import { routeOfRoad } from './road-route';
 import { generate, type World } from './world';
-import { waterSheets, type ShorePoint } from './water';
+import {
+	WATER_TILE_M,
+	waterSheets,
+	waterTiles,
+	type ShorePoint,
+} from './water';
 import { shoreDressing } from './shore';
 import { rideLook } from './look';
 import { FORMATION } from './terrain/road-profile';
@@ -120,6 +125,53 @@ describe('the water of a designed road', () => {
 		expect(m[0]).toBeLessThan(m[1]);
 		expect(m[1]).toBeLessThan(m[2]);
 		expect(m[2]).toBeLessThan(m[3]);
+	});
+
+	it('leaves its island dry: a hole in the sheet, with a waterline of its own', () => {
+		const isle = lake.islands![0];
+		const ring = (x: number, z: number) => {
+			let odd = false;
+			let best = Infinity;
+			for (let i = 0, j = isle.length - 1; i < isle.length; j = i++) {
+				const [xi, zi] = isle[i];
+				const [xj, zj] = isle[j];
+				if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi)
+					odd = !odd;
+				const sx = xi - xj;
+				const sz = zi - zj;
+				const t = Math.min(
+					1,
+					Math.max(0, ((x - xj) * sx + (z - zj) * sz) / (sx * sx + sz * sz)),
+				);
+				best = Math.min(best, Math.hypot(xj + sx * t - x, zj + sz * t - z));
+			}
+			return { on: odd, off: best };
+		};
+		const pos = still.getAttribute('position');
+		for (let i = 0; i < pos.count; i++) {
+			const r = ring(pos.getX(i), pos.getZ(i));
+			// The sheet reaches a lattice cell or two up its shore, where the drawn ground stands over it, and no further.
+			if (r.on) expect(r.off).toBeLessThan(25);
+		}
+		const own = waterline.filter((p) => {
+			const r = ring(p.x, p.z);
+			return r.off < 15;
+		});
+		expect(own.length).toBeGreaterThan(10);
+	});
+
+	it('is drawn in tiles, every triangle in one of them', () => {
+		const tiles = waterTiles(still);
+		expect(tiles.length).toBeGreaterThan(4);
+		expect(tiles.reduce((n, g) => n + g.index!.count, 0)).toBe(
+			still.index!.count,
+		);
+		for (const g of tiles) {
+			const b = g.boundingBox!;
+			// A triangle belongs to the tile its middle lies in, and reaches a lattice cell or a chunk past it at the most.
+			expect(b.max.x - b.min.x).toBeLessThan(WATER_TILE_M + 2 * 160);
+			expect(b.max.z - b.min.z).toBeLessThan(WATER_TILE_M + 2 * 160);
+		}
 	});
 
 	it('runs down a stream, faster where it falls', () => {

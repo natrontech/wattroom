@@ -47,7 +47,12 @@ import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
 import { merge } from './model';
 import { shoreDressing } from './shore';
-import { waterMaterial, waterSheets, type ShorePoint } from './water';
+import {
+	waterMaterial,
+	waterSheets,
+	waterTiles,
+	type ShorePoint,
+} from './water';
 import { CHUNK_M } from './place/lattice';
 import { prng } from './rand';
 import type { Route } from '#lib/road/route.ts';
@@ -310,15 +315,25 @@ export function buildStage(
 		both.side = THREE.DoubleSide;
 		if (world.waters.length > 0) {
 			const waterline: ShorePoint[] = [];
-			group.add(
-				tag(
-					'terrain',
-					new THREE.Mesh(
-						waterSheets(route, world.waters, world.heightAt, waterline),
-						waterMaterial(style, groundMat),
-					),
-				),
+			// In tiles, one batch, each tile culled on its own: a lake out of view is not drawn.
+			const tiles = waterTiles(
+				waterSheets(route, world.waters, world.heightAt, waterline),
 			);
+			if (tiles.length > 0) {
+				let vertices = 0;
+				let indices = 0;
+				for (const g of tiles) {
+					vertices += g.attributes.position.count;
+					indices += g.index!.count;
+				}
+				const water = piecePool(waterMaterial(style, groundMat), {
+					pieces: tiles.length,
+					vertices,
+					indices,
+				});
+				tiles.forEach((g, k) => water.add(`water:${k}`, g));
+				group.add(tag('terrain', water.mesh));
+			}
 			// Reeds and stones at its edge.
 			const dressed = shoreDressing(route, waterline, world.clearOf, c);
 			if (dressed) built.push(dressed);
