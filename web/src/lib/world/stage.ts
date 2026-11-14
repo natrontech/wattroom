@@ -47,6 +47,7 @@ import { LAMP_ARM } from './props';
 import { piecePool } from './piece-pool';
 import { merge } from './model';
 import { shoreDressing } from './shore';
+import { HARBOUR_CLEAR_M, harbour, harbourPieces } from './harbour';
 import {
 	waterMaterial,
 	waterSheets,
@@ -334,8 +335,23 @@ export function buildStage(
 				tiles.forEach((g, k) => water.add(`water:${k}`, g));
 				group.add(tag('terrain', water.mesh));
 			}
-			// Reeds and stones at its edge.
-			const dressed = shoreDressing(route, waterline, world.clearOf, c);
+			// A hamlet's harbour: its jetty, boats and boathouse, with the reeds and stones in its one draw.
+			const harbours = (sceneOf(route.scene)?.names.hamlets ?? []).flatMap(
+				(h) => (h.harbour ? harbourPieces(h.harbour, world, c) : []),
+			);
+			const moored = harbour(route, harbours);
+			if (moored) built.push(moored);
+			// Reeds and stones at its edge, none in a harbour's way.
+			const dressed = shoreDressing(
+				route,
+				waterline.filter((p) =>
+					harbours.every(
+						(h) => Math.hypot(p.x - h.x, p.z - h.z) > HARBOUR_CLEAR_M,
+					),
+				),
+				world.clearOf,
+				c,
+			);
 			if (dressed) built.push(dressed);
 		}
 		// And what is built along it (structures.ts): its bridges, rails and walls, galleries and tunnels, in pieces along each road, one batch culled piece by piece.

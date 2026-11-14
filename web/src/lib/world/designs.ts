@@ -795,7 +795,7 @@ const MAP = {
 		],
 		// The harbour on the east shore, and the Kettental's village.
 		hamlets: [
-			{ name: 'Schifftritt', at: [960, 1240] },
+			{ name: 'Schifftritt', at: [960, 1240], harbour: [860, 1250] },
 			{ name: 'Nabenwil', at: [-7350, 600] },
 		],
 	},

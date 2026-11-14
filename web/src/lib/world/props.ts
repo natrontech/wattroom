@@ -9,7 +9,7 @@ import type { PropColors } from './styles';
 export * from './trees';
 
 // A gabled roof as an extruded triangle.
-function roof(w: number, d: number, h: number, overhang: number) {
+export function roof(w: number, d: number, h: number, overhang: number) {
 	const s = new THREE.Shape();
 	s.moveTo(-w / 2 - overhang, 0);
 	s.lineTo(0, h);

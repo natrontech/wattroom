@@ -65,7 +65,13 @@ export type PlaceNames = {
 	/** Villages, by the 5 km tile each stands in: sixteen names, so no two tiles within 20 km share one. */
 	villages: readonly string[];
 	/** Hamlets and villages that stand where the map draws them, on the road nearest each, by their own names. */
-	hamlets?: { name: string; x: number; z: number }[];
+	hamlets?: {
+		name: string;
+		x: number;
+		z: number;
+		/** Its harbour's spot on the bank, in the world's frame (harbour.ts). */
+		harbour?: [number, number];
+	}[];
 };
 
 export type Scene = {
@@ -172,7 +178,8 @@ export type Designed = {
 	names?: {
 		passes: readonly { name: string; at: Spot }[];
 		villages: readonly string[];
-		hamlets?: readonly { name: string; at: Spot }[];
+		/** A hamlet's name where it stands, and a harbour's spot on its lake's bank: a jetty, boats and a boathouse (harbour.ts). */
+		hamlets?: readonly { name: string; at: Spot; harbour?: Spot }[];
 	};
 	/** The map's other loops, by id: their roads are drawn where they leave this one. */
 	others?: readonly string[];
@@ -811,7 +818,12 @@ function build(d: Designed): Built {
 		villages: d.names?.villages ?? [],
 		hamlets: (d.names?.hamlets ?? []).map((h) => {
 			const [x, z] = world(h.at);
-			return { name: h.name, x, z };
+			return {
+				name: h.name,
+				x,
+				z,
+				...(h.harbour && { harbour: world(h.harbour) }),
+			};
 		}),
 	};
 	const galleries = (d.galleries ?? []).map(
