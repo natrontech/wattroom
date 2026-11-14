@@ -926,6 +926,8 @@ function retaining(
 
 /** How far a gallery's ribs and beams run up into its slab: past what the slab's straight runs between frames stray from them. */
 const INTO_SLAB = 0.4;
+/** Metres under the road a gallery's back wall reaches down to. */
+const WALL_FOOT = -3;
 
 /**
  * A road's avalanche galleries: a heavy concrete roof sloping up into the
@@ -1000,11 +1002,12 @@ export function galleries(
 				f.pt(uHill, foot - 0.6),
 			];
 		};
+		// Its foot well into the ground: beside a cutting's ditch the ground at its face lies more than a metre under the road.
 		const wall = (f: Frame) => [
-			f.pt(uWall, -1),
+			f.pt(uWall, WALL_FOOT),
 			f.pt(uWall, clear),
 			f.pt(uBack, clear),
-			f.pt(uBack, -1),
+			f.pt(uBack, WALL_FOOT),
 		];
 		const n = Math.max(1, Math.round((to - from) / 4));
 		let prev: Frame | null = null;
@@ -1066,6 +1069,36 @@ export function galleries(
 				tint,
 			);
 			b.cap([p2, p3, p4], tint);
+			// And the end face closed down to the ground, each part sharing only edges with the faces beside it, so none lies on another: behind the wall, under the roof's back as it reaches into the hill; and under the bank, from its foot to the ground below.
+			const ground = (u: number) => {
+				const p = f.pt(u, 0);
+				return yOf(route, groundAt(p.x, p.z)) - f.y;
+			};
+			const behind = Math.min(WALL_FOOT, ground(uBack), ground(uHill)) - 0.5;
+			b.cap(
+				[
+					f.pt(uBack, clear),
+					f.pt(uHill, clear + rise - 0.6),
+					f.pt(uHill, behind),
+					f.pt(uBack, behind),
+				],
+				tint,
+			);
+			const below =
+				Math.min(
+					p4.y,
+					yOf(route, groundAt(p4.x, p4.z)),
+					yOf(route, groundAt(p3.x, p3.z)),
+				) - 0.5;
+			b.cap(
+				[
+					p4,
+					p3,
+					new THREE.Vector3(p3.x, below, p3.z),
+					new THREE.Vector3(p4.x, below, p4.z),
+				],
+				tint,
+			);
 		}
 		// Pillars every 6 m on the open side, a rib under the roof at each, and the beam between them arched.
 		const bays = Math.max(1, Math.round((to - from) / bay));

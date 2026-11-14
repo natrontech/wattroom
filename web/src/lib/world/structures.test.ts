@@ -9,7 +9,14 @@ import { roadIndex } from './field';
 import { makeRig } from './rig';
 import { routeOfRoad } from './road-route';
 import type { SimRider } from './sim';
-import { GALLERY, PORTAL, PORTAL_M, TUBE } from './structure-sizes';
+import {
+	GALLERY,
+	GALLERY_BACK,
+	PORTAL,
+	PORTAL_M,
+	TUBE,
+} from './structure-sizes';
+import { liftOf } from './road-surface';
 import {
 	BRIDGE,
 	bridgeKind,
@@ -204,6 +211,98 @@ describe('Col de Berne', () => {
 			expect(roof?.floor, mode).toBeTypeOf('number');
 			expect(camera.position.y, mode).toBeLessThan(roof!.floor! + TUBE.crown);
 			expect(camera.position.y, mode).toBeGreaterThan(roof!.floor! + 1);
+		}
+	});
+
+	it('closes each gallery’s mouths from the wall into the hill and under its bank, down to the ground', () => {
+		const colors = {
+			stone: '#888',
+			concrete: '#aaa',
+			steel: '#999',
+			dark: '#333',
+			lamp: '#fff',
+			band: '#ff0',
+			earth: '#0f0',
+			snow: '#fff',
+		};
+		// The pass road's gallery, and the east shore's on another loop's road: the Urnersee's, drawn from here.
+		const roads = [
+			{
+				r: route,
+				lift: undefined as number | undefined,
+				spans: world.galleries,
+			},
+			...world.sides
+				.filter((s) => s.galleries.length > 0)
+				.map((s) => ({
+					r: s.route,
+					lift: liftOf(s.route, false),
+					spans: s.galleries,
+				})),
+		];
+		expect(roads.length).toBe(2);
+		const E = FORMATION + GALLERY.out;
+		for (const { r, lift, spans } of roads) {
+			const out = new Pieces();
+			galleries(out, 'g', r, world.groundAt, spans, undefined, colors, lift);
+			const tris: THREE.Vector3[][] = [];
+			for (const g of out.geometries().values()) {
+				const pos = g.attributes.position.array;
+				for (let t = 0; t < pos.length; t += 9)
+					tris.push(
+						[0, 3, 6].map(
+							(k) =>
+								new THREE.Vector3(pos[t + k], pos[t + k + 1], pos[t + k + 2]),
+						),
+					);
+			}
+			const frame = framer(r, lift);
+			for (const [from, to] of spans) {
+				const mid = at(r, (from + to) / 2);
+				const lx = Math.cos(mid.heading);
+				const lz = -Math.sin(mid.heading);
+				const over = (side: number) =>
+					world.groundAt(mid.x + lx * side * 60, mid.z + lz * side * 60);
+				const back = over(1) >= over(-1) ? 1 : -1;
+				for (const d of [from, to]) {
+					const f = frame(d);
+					// The faces in the mouth's plane, as (metres left, height).
+					const flat = tris
+						.filter((t) =>
+							t.every(
+								(p) => Math.abs((p.x - f.x) * f.tx + (p.z - f.z) * f.tz) < 0.02,
+							),
+						)
+						.map((t) =>
+							t.map((p) => [(p.x - f.x) * f.lx + (p.z - f.z) * f.lz, p.y]),
+						);
+					const inside = (u: number, y: number) =>
+						flat.some(([a, b, c]) => {
+							const s = (p: number[], q: number[]) =>
+								(q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (u - p[0]);
+							const [d1, d2, d3] = [s(a, b), s(b, c), s(c, a)];
+							return !(
+								(d1 < 0 || d2 < 0 || d3 < 0) &&
+								(d1 > 0 || d2 > 0 || d3 > 0)
+							);
+						});
+					const gaps: string[] = [];
+					// From the wall's face into the hill, past the roof's back and under the bank, the ground to the roof's underside.
+					for (let k = E + 0.1; k <= E + GALLERY_BACK + 1.5; k += 0.3) {
+						const u = back * k;
+						const p = f.pt(u, 0);
+						const ground = yOf(r, world.groundAt(p.x, p.z));
+						for (
+							let y = ground + 0.3;
+							y < f.pt(u, GALLERY.clear - 0.2).y;
+							y += 0.3
+						)
+							if (!inside(u, y))
+								gaps.push(`${k.toFixed(1)} m in, ${(y - f.y).toFixed(1)} m up`);
+					}
+					expect(gaps, `the mouth at ${d.toFixed(0)} m`).toEqual([]);
+				}
+			}
 		}
 	});
 
