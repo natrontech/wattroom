@@ -4,6 +4,7 @@ import {
 	PIXEL_LAND,
 	SNOW_TINT_LEAN,
 	snowRockCut,
+	landSheetLean,
 	terrainMaterial,
 } from './styles';
 import { RIDE } from './look.test-helper';
@@ -47,17 +48,40 @@ describe('Diorama 3D’s snow is closed on gentle ground', () => {
 		expect(snowRockCut(up(5), 1)).toBeLessThan(snowRockCut(up(5)) - 0.4);
 	});
 
-	it('tints a road’s cut and fill (up to 25°) at most half, a mountain’s wall whole', () => {
+	/** The share of the sun's or the shade's tint a snow face of `deg` takes, as snowLand reads it. */
+	const tint = (deg: number) => {
 		const [a, b] = SNOW_TINT_LEAN.map(Number);
-		const tint = (deg: number) => {
-			const t = Math.min(
-				1,
-				Math.max(0, (Math.sin((deg * Math.PI) / 180) - a) / (b - a)),
-			);
-			return t * t * (3 - 2 * t);
-		};
+		const lean = Math.sin((deg * Math.PI) / 180) * landSheetLean(up(deg));
+		const t = Math.min(1, Math.max(0, (lean - a) / (b - a)));
+		return t * t * (3 - 2 * t);
+	};
+
+	it('tints a road’s cut and fill (up to 25°) at most half, a mountain’s wall whole', () => {
 		expect(tint(25)).toBeLessThan(0.5);
 		expect(tint(45)).toBe(1);
+	});
+
+	it('tints no face of closed snow, up to 35°: a pass’s slopes are one snowfield, not pink and lilac triangles', () => {
+		for (const deg of [10, 20, 30, 35]) expect(tint(deg)).toBeLessThan(0.05);
+	});
+
+	it('lights the land as one sheet, meadow and snow alike: two faces turned to and from the sun differ by less than a band', () => {
+		// Diorama 3D lights in four steps of a quarter (half-Lambert). Two 35° faces, one turned to a sun 30° up and one away, lit as they stand, were a band and more apart: a meadow's or a pass's 10 m faces a patchwork from a raised camera.
+		const sun = (30 * Math.PI) / 180;
+		const lam = (deg: number, to: 1 | -1, k = landSheetLean(up(deg))) => {
+			const lean = Math.sin((deg * Math.PI) / 180) * k;
+			const n = [to * lean, up(deg)];
+			const len = Math.hypot(n[0], n[1]);
+			return ((n[0] * Math.cos(sun) + n[1] * Math.sin(sun)) / len) * 0.5 + 0.5;
+		};
+		for (const deg of [15, 25, 35])
+			expect(lam(deg, 1) - lam(deg, -1)).toBeLessThan(0.25);
+		expect(lam(35, 1, 1) - lam(35, -1, 1)).toBeGreaterThan(0.25);
+	});
+
+	it('lights and tints a crag (from 45°) as it stands', () => {
+		for (const deg of [45, 60, 80]) expect(landSheetLean(up(deg))).toBe(1);
+		expect(landSheetLean(up(30))).toBeCloseTo(0.35);
 	});
 
 	it('tints no face that lies near flat', () => {
