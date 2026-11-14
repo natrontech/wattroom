@@ -22,7 +22,7 @@ import type { Village } from './props/scatter';
 import { tileKey, tileOf, type Candidate } from './props/tiles';
 import type { Biome } from './biome';
 import { prng } from './rand';
-import { planStroke, type Group } from './setpieces-stroke';
+import { planLane, planStroke, type Group } from './setpieces-stroke';
 import type { Ground, Origin } from './terrain/ground';
 import { indexLines } from './terrain/lines';
 import { FORMATION } from './terrain/road-profile';
@@ -126,12 +126,13 @@ export function setPieces(c: Ctx) {
 		named: (n: Names) => (names ??= n),
 		free: offOthers(ground),
 	};
-	// A roundabout's ring is no stroke: a circle would be signed as one long hairpin. Nor is a gravel lane: no post, sign or arch stands along a farm track.
-	ground.lines.forEach(
-		(line, k) =>
-			line.key.startsWith('ring') ||
-			line.key.startsWith('lane') ||
-			planStroke(line, k, plan),
+	// A roundabout's ring is no stroke: a circle would be signed as one long hairpin. Nor is a gravel lane: no post, sign or arch stands along a farm track, only the farm it leads to at its end.
+	ground.lines.forEach((line, k) =>
+		line.key.startsWith('ring')
+			? undefined
+			: line.key.startsWith('lane')
+				? planLane(line, k, plan)
+				: planStroke(line, k, plan),
 	);
 
 	const first = ground.lines[0];

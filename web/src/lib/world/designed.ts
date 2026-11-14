@@ -88,6 +88,8 @@ export type Scene = {
 	/** Its tunnels, each from one portal on the road to the other, in the world's frame: the road through the hill, the ground left closed over it. */
 	tunnels: [from: [number, number], to: [number, number]][];
 	waters: Water[];
+	/** Whether (x, z) lies in a stream's channel, its bed and the level ground beside it: under a bridge the road's fill gives way to it (terrain/ground.ts). */
+	channelAt?(x: number, z: number): boolean;
 };
 
 /**
@@ -377,6 +379,8 @@ type Part = {
 	waterAt?(x: number, z: number): number | null;
 	/** The ground it lays by hand at (x, z), over the design's own covers: a river's gravel bars. */
 	coverAt?(x: number, z: number): Cover | null;
+	/** Whether (x, z) lies in its channel: a stream's. */
+	channelAt?(x: number, z: number): boolean;
 	water?: Water;
 };
 type Solid = Exclude<Feature, { kind: 'stream' | 'land' }>;
@@ -389,10 +393,26 @@ const STREAM_CUT_M = 1.4;
 const STREAM_DEEP_M = 0.6;
 /** Metres past its last drawn spot a stream runs on to meet the water it feeds. */
 const STREAM_ON_M = 400;
+/** Where a road crosses a stream, its water lies this far under the asphalt at the most: a slab's 0.9 m deck and a metre of air under it. */
+export const STREAM_UNDER_M = 2;
+/** A road crosses a stream where it passes this near a cross-section's centre: half its 10 m step, and a little. */
+const CROSSING_M = 6;
+/** Metres past its banks a stream reads the land beside it, to lie no higher than the higher side: in its swale. */
+const SPINE_M = 6;
+/** Metres a stream dug under a road falls a cross-section on the way down to it: calm water, under FOAM's first. */
+const DIG_FALL = 0.6;
+/** A harbour's terrace: metres over its lake, its level round its spot, and the metres over which the bank behind rises back to the land. Only ever cut: the lake keeps its shore. */
+const TERRACE = { over: 0.6, r: 26, ease: 14 };
+/** Farthest a harbour's spot lies from its lake. */
+const HARBOUR_REACH_M = 120;
+/** A road this far and more under the land a stream crosses runs through the hill under it: the stream keeps its level over it. */
+const TUNNEL_UNDER_M = 5;
 /** Cross-sections over which a stream falls to the water it runs into. */
 const STREAM_MOUTH = 3;
 /** Metres past its banks the ground is levelled to its bed: a terrain vertex stands every 10 m, and one at the least must stand in it. */
 const SWALE_M = 9;
+/** Metres past its banks a bridge leaves a stream's swale open under its deck: a terrain vertex 10 m apart in it each side of the water, and the abutments' fill kept clear of the road's ends. */
+export const CHANNEL_M = 5;
 /** Past the swale its gully's sides rise no steeper than this. */
 const GULLY_SLOPE = 0.7;
 /** The fall along a stream at which its water starts to whiten, and at which it is a waterfall. */
@@ -450,6 +470,8 @@ function stream(
 	world: World,
 	ground: (x: number, z: number) => number,
 	standing: (x: number, z: number) => number | null,
+	/** The asphalt's height where a road crosses (x, z), or null: the map's paved roads, lanes aside (world.ts drape lifts a lane over its water). */
+	road: (x: number, z: number, above: number) => number | null,
 ): Part | null {
 	const all = stepped(rounded(f.course.map(world), false), STREAM_STEP_M);
 	const wet = (p: readonly [number, number]) => standing(p[0], p[1]) !== null;
@@ -479,14 +501,35 @@ function stream(
 	const levels: number[] = [];
 	let level = Infinity;
 	const drawn = f.levels && levelsAlong(f.course, f.levels, n);
-	course.forEach(([x, z], i) =>
+	const half = (f.width ?? 7) / 2;
+	course.forEach(([x, z], i) => {
+		// The land it runs down: on a spine, where the land falls away on both sides, the higher of the two beside its swale, so it runs in a bed cut into the spine and never on a wall stood on it.
+		const a = course[Math.max(0, i - 1)];
+		const b = course[Math.min(n - 1, i + 1)];
+		const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+		const [sx, sz] = [
+			(-(b[1] - a[1]) / len) * (half + SPINE_M),
+			((b[0] - a[0]) / len) * (half + SPINE_M),
+		];
+		const land = Math.min(
+			ground(x, z),
+			Math.max(ground(x + sx, z + sz), ground(x - sx, z - sz)),
+		);
+		// Under a road it is dug down to run clear of the deck, and runs on from there no higher: a bridge, never a dam. Not under a road through the hill, which the stream runs over.
+		const over = road(x, z, land - TUNNEL_UNDER_M);
+		const under = over === null ? Infinity : over - STREAM_UNDER_M;
 		levels.push(
 			(level = Math.min(
 				level,
-				drawn ? drawn[i] : ground(x, z) - (f.cut ?? STREAM_CUT_M),
+				drawn ? drawn[i] : land - (f.cut ?? STREAM_CUT_M),
+				under,
 			)),
-		),
-	);
+		);
+		// And eased down to that over the stretch before it: a run, not a step at the bridge.
+		if (under < Infinity)
+			for (let k = i - 1; k >= 0 && levels[k] > level + (i - k) * DIG_FALL; k--)
+				levels[k] = level + (i - k) * DIG_FALL;
+	});
 	// And never lower than the water it runs into: there it would have ponded.
 	const into = end < 0 ? null : standing(course[n - 1][0], course[n - 1][1]);
 	if (into !== null) {
@@ -508,7 +551,6 @@ function stream(
 			(levels[a] - levels[b]) / ((b - a) * STREAM_STEP_M),
 		);
 	});
-	const half = (f.width ?? 7) / 2;
 	const plain = f.plain;
 	/** The most `near` is asked to reach: the ground's shape, out to its swale's or its plain's edge. */
 	const REACH = half + (plain ? plain.bank + PLAIN_EASE_M : SWALE_M + 40);
@@ -595,7 +637,8 @@ function stream(
 			const bed = s.level - STREAM_DEEP_M - 2 * s.fall;
 			const out = s.off - half;
 			if (out <= 3) return bed;
-			if (out <= SWALE_M) return Math.min(h, bed);
+			// A valley's river lies in its floor: a hollow of the land's beside it is filled to its swale and floor, never a wall it runs along the top of.
+			if (out <= SWALE_M) return plain ? bed : Math.min(h, bed);
 			let land = Math.min(h, bed + GULLY_SLOPE * (out - SWALE_M));
 			// Its floor, flat to the valley's sides and rising up them; let go of over the last PLAIN_EASE_M.
 			if (plain) {
@@ -605,6 +648,11 @@ function stream(
 				);
 				const w = 1 - smoothstep(plain.bank, plain.bank + PLAIN_EASE_M, out);
 				land = Math.min(land, h + (Math.min(h, cap) - h) * w);
+				const fill = Math.min(
+					s.level + floor,
+					bed + GULLY_SLOPE * (out - SWALE_M),
+				);
+				if (land < fill) land += (fill - land) * w;
 			}
 			return land;
 		},
@@ -612,6 +660,7 @@ function stream(
 			const s = near(x, z, half);
 			return s && s.level;
 		},
+		channelAt: (x, z) => near(x, z, half + CHANNEL_M) !== null,
 		...(f.gravel && {
 			coverAt: (x: number, z: number) =>
 				near(x, z, half + f.gravel!) ? ('gravel' as const) : null,
@@ -778,6 +827,7 @@ function sceneFrom(
 ): Scene {
 	const wet = parts.filter((p) => p.waterAt);
 	const laid = parts.filter((p) => p.coverAt);
+	const channels = parts.filter((p) => p.channelAt);
 	return {
 		shape(x, z, h, dist) {
 			let out = h;
@@ -806,6 +856,10 @@ function sceneFrom(
 		galleries,
 		tunnels,
 		waters: parts.flatMap((p) => (p.water ? [p.water] : [])),
+		...(channels.length > 0 && {
+			channelAt: (x: number, z: number) =>
+				channels.some((p) => p.channelAt!(x, z)),
+		}),
 	};
 }
 
@@ -892,9 +946,42 @@ function build(d: Designed): Built {
 		world(a),
 		world(b),
 	]);
-	const dry = sceneFrom(parts, covers, climate, names, galleries, tunnels);
+	const bare = sceneFrom(parts, covers, climate, names, galleries, tunnels);
+	// A harbour's terrace: the bank cut down to a level shelf a little over its lake, where its boathouse stands and its jetty starts (harbour.ts).
+	const terraces = (names.hamlets ?? []).flatMap((h) => {
+		if (!h.harbour) return [];
+		const [hx, hz] = h.harbour;
+		for (let d = 0; d <= HARBOUR_REACH_M; d += 2)
+			for (let k = 0; k < 32; k++) {
+				const a = (k / 32) * Math.PI * 2;
+				const level = bare.waterAt(hx + Math.cos(a) * d, hz + Math.sin(a) * d);
+				if (level !== null)
+					return [{ x: hx, z: hz, top: level + TERRACE.over }];
+			}
+		return [];
+	});
+	const dry: Scene =
+		terraces.length === 0
+			? bare
+			: {
+					...bare,
+					shape(x, z, h, dist) {
+						let out = bare.shape(x, z, h, dist);
+						for (const t of terraces) {
+							if (out <= t.top) continue;
+							const r = Math.hypot(x - t.x, z - t.z);
+							if (r >= TERRACE.r + TERRACE.ease) continue;
+							out =
+								t.top +
+								(out - t.top) *
+									smoothstep(TERRACE.r, TERRACE.r + TERRACE.ease, r);
+						}
+						return out;
+					},
+				};
 	const streams = d.features.filter((f) => f.kind === 'stream');
 	const laid = new Map<string, Scene>();
+	let roads: ReturnType<typeof roadsOver> | undefined;
 	b = {
 		line,
 		scene: {
@@ -914,8 +1001,15 @@ function build(d: Designed): Built {
 					}
 					return null;
 				};
+				// Each on the land the ones before it cut: a stream that runs into a valley's river comes down onto the floor that river levelled, never across it at the height of the land before.
+				const cut = (x: number, z: number) => {
+					let h = ground(x, z);
+					for (const p of run) h = p.shape(x, z, h, Infinity);
+					return h;
+				};
+				const road = (roads ??= roadsOver(d));
 				for (const f of streams) {
-					const p = stream(f, world, ground, standing);
+					const p = stream(f, world, cut, standing, road);
 					if (p) run.push(p);
 				}
 				// The streams are cut into the ground they were laid on, and the standing water they run into is asked first.
@@ -944,6 +1038,67 @@ function build(d: Designed): Built {
 	};
 	built.set(d.id, b);
 	return b;
+}
+
+/**
+ * The asphalt's height where one of the map's paved roads (its loops and
+ * their spurs) passes within CROSSING_M of (x, z), the lowest of them over
+ * `above`; null where none does. What a stream is dug under (stream).
+ */
+function roadsOver(
+	d: Designed,
+): (x: number, z: number, above: number) => number | null {
+	const lines = DESIGNS.filter(
+		(k) => k === d || d.others?.includes(k.id),
+	).flatMap((k) => {
+		const own = build(k).line;
+		return [
+			own,
+			...(k.spurs ?? []).flatMap((s) => (isLane(s) ? [] : [spur(s, own)])),
+		];
+	});
+	const CELL = 32;
+	const key = (i: number, j: number) => i * 100_003 + j;
+	const cells = new Map<number, [Route, number][]>();
+	for (const l of lines)
+		for (let k = 0; k + 1 < l.x.length; k++) {
+			const [ax, az, bx, bz] = [l.x[k], l.z[k], l.x[k + 1], l.z[k + 1]];
+			for (
+				let i = Math.floor((Math.min(ax, bx) - CROSSING_M) / CELL);
+				i <= Math.floor((Math.max(ax, bx) + CROSSING_M) / CELL);
+				i++
+			)
+				for (
+					let j = Math.floor((Math.min(az, bz) - CROSSING_M) / CELL);
+					j <= Math.floor((Math.max(az, bz) + CROSSING_M) / CELL);
+					j++
+				) {
+					const list = cells.get(key(i, j));
+					if (list) list.push([l, k]);
+					else cells.set(key(i, j), [[l, k]]);
+				}
+		}
+	return (x, z, above) => {
+		let low: number | null = null;
+		for (const [l, k] of cells.get(
+			key(Math.floor(x / CELL), Math.floor(z / CELL)),
+		) ?? []) {
+			const sx = l.x[k + 1] - l.x[k];
+			const sz = l.z[k + 1] - l.z[k];
+			const t = Math.min(
+				1,
+				Math.max(
+					0,
+					((x - l.x[k]) * sx + (z - l.z[k]) * sz) / (sx * sx + sz * sz || 1),
+				),
+			);
+			if (Math.hypot(l.x[k] + sx * t - x, l.z[k] + sz * t - z) > CROSSING_M)
+				continue;
+			const h = l.ele[k] + (l.ele[k + 1] - l.ele[k]) * t;
+			if (h > above) low = low === null ? h : Math.min(low, h);
+		}
+		return low;
+	};
 }
 
 /** The design a road was built from, if it is one of WattRoom's designed roads. */

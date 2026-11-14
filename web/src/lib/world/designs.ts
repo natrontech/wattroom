@@ -575,14 +575,16 @@ const LAND: Feature[] = [
 			[-7250, 1000],
 		],
 	},
+	// North of the hollow under the range, never across it: there the land lies 100 m under the river, and the stream stood on a wall over it.
 	{
 		kind: 'stream',
 		course: [
 			[-5200, -3200],
-			[-5800, -2900],
-			[-6400, -2600],
-			[-7000, -2300],
-			[-7300, -2330],
+			[-5700, -2900],
+			[-6100, -2420],
+			[-6450, -1980],
+			[-6800, -1800],
+			[-7130, -1780],
 		],
 	},
 
@@ -792,9 +794,9 @@ const MAP = {
 			'Isenkette',
 			'Urnried',
 		],
-		// The hamlet on the east shore, its harbour where the road comes off the inlet's bridge onto the shore, ahead of a rider all the way over it (the bay's bank hid it from the road); and the Kettental's village.
+		// The hamlet on the east shore, its harbour on its terrace on the shore ahead and to the left of the inlet's bridge, in a rider's sight over the water most of the way over it (the bay's bank hid it from the road, and at the bridge's end it stood half in the bank); and the Kettental's village.
 		hamlets: [
-			{ name: 'Schifftritt', at: [960, 1240], harbour: [870, 3485] },
+			{ name: 'Schifftritt', at: [960, 1240], harbour: [797, 3585] },
 			{ name: 'Nabenwil', at: [-7350, 600] },
 		],
 	},
@@ -853,9 +855,56 @@ const MAP = {
 			{ x: -7380, y: -5800, ele: 1310, r: 0 },
 			{ x: -7250, y: -6800, ele: 1302, r: 0 },
 		],
-		// Gravel lanes, each ending where the land steepens past what a farm track climbs (designed.test.ts: none steeper than LANE_GRADE): Wattalp's valleys are narrow and their sides steep, and a lane run on drove straight up them, one to the snow under the col.
+		// Gravel lanes where farm tracks run: along the valleys' floors, round the alp's pasture and along the contour of a gentle slope, never straight up a valley's side (designed.test.ts: none steeper than LANE_GRADE). Wattalp's valleys are narrow and their sides steep: a lane run up one drove into the snow under the col.
+		// Each lane leads somewhere: an end that meets no road ends at the farm or the alp hut it serves (setpieces-stroke.ts planLane).
+		// The Kettental: east of its road, along the edge of the fields under the valley's head; up the stream's side valley west of the road, round the shoulder at its mouth; to the farm over the river from Nabenwil; out along the fields east of the road and over the river onto the west bank's; across its lower fields where it opens out south.
+		lane([-7400, 5200], [-7560, 4950], [-7600, 4450]),
+		lane(
+			[-7480, 1000],
+			[-7600, 985],
+			[-7700, 1090],
+			[-7750, 1150],
+			[-7900, 1450],
+			[-7970, 1500],
+			[-8120, 1500],
+			[-8570, 1250],
+		),
+		lane([-7480, 400], [-7250, 330], [-7140, 380]),
+		lane([-7440, -2780], [-7250, -2830], [-7220, -3100], [-7100, -3500]),
+		lane([-7490, -2960], [-7690, -2920], [-7830, -2980], [-7900, -3200]),
+		lane([-7350, -6150], [-6850, -6200], [-6320, -6130]),
 		// A forest road into the foot of the Kettental's side.
 		lane([-7200, -1800], [-6880, -1740]),
+		// The alp: along its lake's south shore, out of sight of the road on the north; and off the ridge road to the hut on the pasture east of it.
+		lane(
+			[-3650, 6650],
+			[-3610, 6560],
+			[-3660, 6440],
+			[-3550, 6280],
+			[-3400, 6200],
+			[-3100, 6200],
+			[-2850, 6340],
+			[-2700, 6460],
+		),
+		lane([-4820, 4100], [-4560, 4160], [-4470, 4330]),
+		// Along the plateau's edge south of the road, to the farm over the gorge.
+		lane(
+			[-2000, -1080],
+			[-1940, -1180],
+			[-1700, -1160],
+			[-1320, -1110],
+			[-1050, -1180],
+		),
+		// Across the dry valley's floor, from the valley road to the road through it.
+		lane([3500, -1760], [3630, -2050], [3640, -2370], [3500, -2680]),
+		// Off the terrace road down to the lake's west beach.
+		lane([-560, 470], [-560, 740], [-460, 860]),
+		// Short lanes off a road up to a farm, where the land by the road is gentle: on the Kettental's floor either side of its road, under the terrace road, and off the gorge road above the village.
+		lane([-7650, 5000], [-7800, 5030]),
+		lane([-7640, 3250], [-7470, 3230]),
+		lane([-1265, 1000], [-1420, 1010]),
+		lane([-1075, 1300], [-1240, 1280]),
+		lane([180, -900], [380, -940]),
 		// By the village: out through its fields, and down to its beach.
 		lane([300, -350], [750, -480], [1100, -650]),
 		lane([450, 590], [260, 620], [90, 650]),

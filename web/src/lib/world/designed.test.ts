@@ -28,6 +28,7 @@ import {
 	stopped,
 	stops,
 } from './scenery';
+import { LANE_FARM_M } from './setpieces-stroke';
 import { sharedAt } from './shared-road';
 import { FORMATION, ROAD_W } from './terrain/road-profile';
 import { BUILD_MS } from './world.test-helper';
@@ -259,7 +260,7 @@ describe('Urnsee-Rundfahrt', () => {
 			expect(Math.max(...over)).toBeGreaterThan(20);
 			expect(world.tunnels).toHaveLength(1);
 			// The inlet's mouth, and the outlet under the terrace; a stream's short bridge aside.
-			expect(world.bridges.filter(([a, b]) => b - a > 40)).toHaveLength(2);
+			expect(world.bridges.filter(([a, b]) => b - a > 60)).toHaveLength(2);
 			expect(world.galleries).toHaveLength(1);
 			expect(world.galleries[0][1] - world.galleries[0][0]).toBeGreaterThan(
 				300,
@@ -309,7 +310,7 @@ describe('Kettental-Runde', () => {
 			expect(fields).toBeGreaterThan(30);
 			// The valley's river, twice, each time on a bridge over it: a stream's short span aside.
 			const kette = world.bridges.filter(([a, b]) => {
-				if (b - a <= 40) return false;
+				if (b - a <= 60) return false;
 				const mid = at(route, (a + b) / 2);
 				if (mid.x > -6000) return false;
 				for (let d = a; d <= b; d += 2) {
@@ -791,7 +792,7 @@ describe('the map’s land', () => {
 		['urnsee', 5, LANE_GRADE],
 		['valley', 8, Infinity],
 	] as const)(
-		'%s: lays gravel lanes on the land: narrow, with no stop or sign, never beside a road, never straight up a mountain',
+		'%s: lays gravel lanes on the land: narrow, with no stop or sign, never beside a road, never straight up a mountain, each to a road or a farm',
 		async (id, least, steepest) => {
 			const route = routeOfRoad(await roadOf(id));
 			const world = generate(route);
@@ -801,9 +802,23 @@ describe('the map’s land', () => {
 				route,
 				...world.sides.filter((s) => !s.route.gravel).map((s) => s.route),
 			];
+			const buildings = world.pieces.filter((p) =>
+				['house', 'barn', 'hut'].includes(p.kind),
+			);
 			for (const lane of lanes) {
 				const r = lane.route;
 				expect(ribbonOf(r).width).toBe(GRAVEL_W);
+				// It leads somewhere: an end that meets no road ends at the farm or the hut it serves.
+				lane.mouths.forEach((m, end) => {
+					if (m) return;
+					const i = end ? r.x.length - 1 : 0;
+					expect(
+						Math.min(
+							...buildings.map((b) => Math.hypot(b.x - r.x[i], b.z - r.z[i])),
+						),
+						`${id}: the lane's end at ${Math.round(r.x[i])}, ${Math.round(-r.z[i])}`,
+					).toBeLessThan(LANE_FARM_M);
+				});
 				expect(stopped(lane, world.sides)).toEqual([null, null]);
 				const [from, to] = [
 					lane.mouths[0] ? 60 : 0,
@@ -1128,6 +1143,37 @@ describe('a roundabout', () => {
 				);
 		}
 		expect(bad.slice(0, 5)).toEqual([]);
+	});
+
+	it('runs each road on from an arm’s far end with no ground between the two', () => {
+		const bad: string[] = [];
+		let joined = 0;
+		for (const ring of rings())
+			for (const arm of ring.arms) {
+				const r = arm.route;
+				const last = r.x.length - 1;
+				const end = { x: r.x[last], z: r.z[last] };
+				for (const s of world.sides) {
+					if (s.square) continue;
+					const n = s.route.x.length - 1;
+					for (const k of [0, n]) {
+						const gap = Math.hypot(s.route.x[k] - end.x, s.route.z[k] - end.z);
+						if (gap > 5) continue;
+						joined++;
+						// Its end at the arm's or a hair under the arm's asphalt, on the arm's line: not short of it.
+						const out =
+							(s.route.x[k] - ring.x) * arm.v[0] +
+							(s.route.z[k] - ring.z) * arm.v[1] -
+							ring.r;
+						if (out > ARM_M + 0.01 || gap > 1)
+							bad.push(
+								`${ring.statue}: ${(out - ARM_M).toFixed(2)} m past the arm's end, ${gap.toFixed(2)} m off it`,
+							);
+					}
+				}
+			}
+		expect(joined).toBeGreaterThan(0);
+		expect(bad).toEqual([]);
 	});
 
 	it('dashes the ring’s edge line across the whole of each mouth', () => {

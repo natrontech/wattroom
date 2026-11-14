@@ -157,6 +157,26 @@ describe('a road with two ends', () => {
 		);
 	});
 
+	it('draws it to its very end, though its length is no whole number of rows', () => {
+		// A road running on from a roundabout's arm, end to end, met the arm's square end with up to a row's 2 m of ground between.
+		const x = Float64Array.from({ length: 11 }, (_, k) => k * 0.97);
+		const route = {
+			step: 0.97,
+			length: 9.7,
+			loop: false,
+			x,
+			z: new Float64Array(11),
+			ele: new Float64Array(11),
+			grade: new Float64Array(11),
+			minEle: 0,
+		} as unknown as Route;
+		const rows = ribbonRows(route);
+		expect(rows.metre(rows.count - 1)).toBeCloseTo(9.7, 6);
+		expect(rows.metre(rows.count - 2)).toBe(8);
+		const g = road(route, { shoulder: SHOULDER, caps: [false, false] });
+		expect(row(g, 'position', rowsOf(g) - 1)[6]).toBeCloseTo(9.7, 4);
+	});
+
 	it('is one place where its ends meet, whichever way it comes home', () => {
 		expect(endsMeet(outAndBack())).toBe(true);
 		const open = outAndBack();

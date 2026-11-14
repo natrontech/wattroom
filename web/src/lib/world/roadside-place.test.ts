@@ -202,6 +202,18 @@ describe('where the roadside stands', () => {
 					(s.y > ground + 1e-6 || ground - s.y > COW_SLOPE_M * 1.2)
 				)
 					off.push('a cow off its bank');
+				// Whichever way the bank falls: a cow on a cliff, seen face on, was never on a gentle one.
+				if (name === 'cow') {
+					const r = reach(s.art) * 0.8;
+					const h = [
+						[r, 0],
+						[-r, 0],
+						[0, r],
+						[0, -r],
+					].map(([dx, dz]) => c.world.heightAt(s.x + dx, s.z + dz));
+					if (Math.max(...h) - Math.min(...h) > COW_SLOPE_M * 1.5)
+						off.push('a cow on a steep bank');
+				}
 			}
 			expect(off, c.name).toEqual([]);
 		}

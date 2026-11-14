@@ -173,6 +173,28 @@ export const SNOW_ROCK_CUT = {
  * triangles.
  */
 export const SNOW_TINT_LEAN = ['0.15', '0.7'] as const;
+/**
+ * Diorama 3D's land is lit as one sheet, of every cover: a face gentler than
+ * a crag takes the light (and, on snow, the sun's or shade's tint) as if it
+ * leaned `lean` as far as it does, and the light in no steps, so a meadow's or
+ * a pass's slopes, their 10 m faces turned every way, differ face to face by
+ * a shade, not by a band: one meadow, one snowfield, not a patchwork of green
+ * or of pink and lilac triangles seen from a raised camera. The low-poly
+ * outline stays; from `crag` (n.y 0.71, 45°) a face is lit and tinted as it
+ * stands, in the diorama's steps, so a crag stands out as rock; up to
+ * `closed` (35°) the sheet holds whole.
+ */
+export const LAND_SHEET = {
+	crag: '0.71',
+	closed: '0.82',
+	lean: '0.35',
+} as const;
+/** How far a face at up (n.y) is lit as leaning: 1 as it stands, LAND_SHEET.lean in the sheet. */
+export const landSheetLean = (up: number) => {
+	const [crag, closed] = [+LAND_SHEET.crag, +LAND_SHEET.closed];
+	const t = Math.min(1, Math.max(0, (up - crag) / (closed - crag)));
+	return 1 + (+LAND_SHEET.lean - 1) * t * t * (3 - 2 * t);
+};
 /** The cut at a face's up (n.y) and crest (0 to 1), as the shader reads it. */
 export const snowRockCut = (up: number, crest = 0) =>
 	+SNOW_ROCK_CUT.flat -
@@ -232,12 +254,15 @@ export const PIXEL_LAND = /* glsl */ `
 	// colours, so the mountain's form reads from overhead in any light: the whole face, rock and
 	// snow alike, so an outcrop lies on the face and never shows through it as through a sheet.
 	// Gentle ground is one closed sheet: no rock, and no tint until a face leans like a slope.
+	// The land's sheet's share of a face at up (n.y): none on a crag, whole under 35° (LAND_SHEET).
+	float landSheet(float up) { return smoothstep(${LAND_SHEET.crag}, ${LAND_SHEET.closed}, up); }
 	vec3 snowLand(vec3 c, vec3 pos, float dist, vec3 n, float crest) {
 		float up = n.y;
-		float lean = length(n.xz);
+		float bare = length(n.xz);
+		float lean = bare * mix(1.0, ${LAND_SHEET.lean}, landSheet(up));
 		float sunLean = length(uSun.xz);
-		float face = lean > 1e-3 && sunLean > 1e-3
-			? dot(n.xz / lean, uSun.xz / sunLean) * smoothstep(${SNOW_TINT_LEAN[0]}, ${SNOW_TINT_LEAN[1]}, lean)
+		float face = bare > 1e-3 && sunLean > 1e-3
+			? dot(n.xz / bare, uSun.xz / sunLean) * smoothstep(${SNOW_TINT_LEAN[0]}, ${SNOW_TINT_LEAN[1]}, lean)
 			: 0.0;
 		vec3 warm = uWarm / max(max(uWarm.r, uWarm.g), max(uWarm.b, 1e-3));
 		vec3 cool = uShade / max(max(uShade.r, uShade.g), max(uShade.b, 1e-3));
@@ -409,17 +434,20 @@ export function terrainMaterial(
 					float hs = clamp(dot(n, normalize(vec3(-1.0, 1.4, -1.0))), 0.0, 1.0);
 					col = mix(uValley, uPeak, hs) * (base / max(max(base.r, base.g), max(base.b, 0.001)) * 0.12 + 0.88);
 				} else {
-					float lam = dot(n, uFrom) * 0.5 + 0.5; // half-Lambert, from the sun or, once it has set, the zenith
+					// Diorama 3D's land: lit as one sheet, each face under a crag as if it leaned a third as far, in no steps (LAND_SHEET).
+					float sheet = uDiorama > 0.5 ? landSheet(n.y) : 0.0;
+					vec3 nl = normalize(vec3(n.x, n.y / mix(1.0, ${LAND_SHEET.lean}, sheet), n.z));
+					float lam = dot(nl, uFrom) * 0.5 + 0.5; // half-Lambert, from the sun or, once it has set, the zenith
 					if (uBands > 1.5 || uDiorama > 0.5) {
 						float nb = uBands > 1.5 ? uBands : 4.0; // Diorama 3D: the room's four steps, with soft edges
 						// Soft band edges, blurred with distance so far facets never crawl; never sharper than 0.02 of light, or a face lit
 						// right on an edge speckled between two bands, its normal (from screen derivatives) jittering pixel to pixel.
 						float fw = max(fwidth(lam), 0.02) * (1.0 + dist / 800.0);
 						float q = lam * nb;
-						lam = (floor(q) + smoothstep(0.5 - fw * nb, 0.5 + fw * nb, fract(q))) / nb;
+						lam = mix((floor(q) + smoothstep(0.5 - fw * nb, 0.5 + fw * nb, fract(q))) / nb, lam, sheet);
 					} else if (uBands > 0.5) lam = 0.72;
 					vec3 lit = base * mix(uShade * 2.2 + 0.15, uKey, lam); // shadow is the tint, never black
-					col = lit + base * uSkyTop * uSkyFill * max(n.y, 0.0);
+					col = lit + base * uSkyTop * uSkyFill * max(nl.y, 0.0);
 				}
 				col *= mix(0.55, 1.0, vAo);
 				if (uGridAlpha > 0.0) { // synthwave: a disciplined grid on the flats only, fading by 3 km

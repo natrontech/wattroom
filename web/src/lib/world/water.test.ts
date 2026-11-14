@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type * as THREE from 'three';
 import type { Route } from '#lib/road/route.ts';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
-import { wetWithin, type Water } from './designed';
+import { at } from '#lib/road/along.ts';
+import { STREAM_UNDER_M, wetWithin, type Water } from './designed';
 import { landOf } from './designs';
 import { routeOfRoad } from './road-route';
 import { generate, type World } from './world';
@@ -216,7 +217,7 @@ describe('the water of a designed road', () => {
  * the water it feeds or off the map, the drawn ground never standing over it,
  * and nothing standing in it.
  */
-describe.each(['urnsee', 'valley'])('the water of %s’s land', (id) => {
+describe.each(['urnsee', 'kette', 'valley'])('the water of %s’s land', (id) => {
 	let world: World;
 	let route: Route;
 	beforeAll(async () => {
@@ -307,6 +308,107 @@ describe.each(['urnsee', 'valley'])('the water of %s’s land', (id) => {
 			});
 		}
 		expect(gaps, 'ground over running water').toEqual([]);
+	});
+
+	it('carries the road over every stream on a bridge, the stream running on under its deck with air over it', () => {
+		const wrong: string[] = [];
+		let crossings = 0;
+		for (const w of world.waters.filter((v) => v.run)) {
+			const lv = w.run!.levels;
+			for (let i = 0; i + 1 < lv.length; i++) {
+				const a = mid(w, i);
+				const b = mid(w, i + 1);
+				const [ex, ez] = [b.x - a.x, b.z - a.z];
+				const len = Math.hypot(ex, ez);
+				for (let k = 0; k + 1 < route.x.length; k++) {
+					const dx = route.x[k + 1] - route.x[k];
+					const dz = route.z[k + 1] - route.z[k];
+					const den = dx * ez - dz * ex;
+					if (Math.abs(den) < 1e-9) continue;
+					const [rx, rz] = [a.x - route.x[k], a.z - route.z[k]];
+					const t = (rx * ez - rz * ex) / den;
+					const u = (rx * dz - rz * dx) / den;
+					if (t < 0 || t > 1 || u < 0 || u > 1) continue;
+					crossings++;
+					const m = (k + t) * route.step;
+					const level = lv[i] + (lv[i + 1] - lv[i]) * u;
+					const where = `${Math.round(m)} m`;
+					if (!world.bridges.some(([p, q]) => p <= m && m <= q))
+						wrong.push(`${where}: no bridge`);
+					const air = at(route, m).ele - level;
+					if (air < STREAM_UNDER_M - 0.5)
+						wrong.push(`${where}: the deck ${air.toFixed(1)} m over the water`);
+					// Down its middle through the bridge, the drawn ground under its water: never a dam under the deck.
+					for (let s = -15; s <= 15; s += 1) {
+						const x = a.x + ex * u + (ex / len) * s;
+						const z = a.z + ez * u + (ez / len) * s;
+						const water = world.waterAt(x, z);
+						const over = water === null ? 1 : world.heightAt(x, z) - water;
+						if (over > -0.1) {
+							wrong.push(
+								`${where}: ground ${over.toFixed(2)} m over the water ${s} m along it`,
+							);
+							break;
+						}
+					}
+				}
+			}
+		}
+		expect(crossings).toBeGreaterThan(id === 'valley' ? 0 : 3);
+		expect(wrong).toEqual([]);
+	});
+
+	it('runs every stream down its land: its water and banks never on a wall over the land beside it', () => {
+		const SEEN_M = 400;
+		const { west, east, south, north } = landOf(id)!.bounds;
+		const walls: string[] = [];
+		for (const w of world.waters.filter((v) => v.run)) {
+			const o = w.outline;
+			w.run!.levels.forEach((_, i) => {
+				const { x, z, half } = mid(w, i);
+				if (Math.min(x - west, east - x, -z - south, north + z) < 50) return;
+				// Where the ride draws the land: within sight of its road.
+				let near = false;
+				for (let k = 0; k < route.x.length && !near; k += 3)
+					near = Math.hypot(route.x[k] - x, route.z[k] - z) < SEEN_M;
+				if (!near) return;
+				const [l] = [o[i]];
+				const [nx, nz] = [(l[0] - x) / half, (l[1] - z) / half];
+				// The land past its banks, in its swale: the higher side, on a hillside the uphill one.
+				const beside = Math.max(
+					...[1, -1].map((s) => {
+						const [px, pz] = [x + s * nx * (half + 6), z + s * nz * (half + 6)];
+						return world.waterAt(px, pz) !== null
+							? Infinity
+							: world.groundAt(px, pz);
+					}),
+				);
+				const over = world.groundAt(x, z) - beside;
+				if (over > 1.5)
+					walls.push(
+						`${Math.round(x)}, ${Math.round(-z)}: ${over.toFixed(1)} m`,
+					);
+			});
+		}
+		expect(walls, 'stream beds standing over the land beside them').toEqual([]);
+	});
+
+	it('runs every ripple down its stream as the stream falls, on every stretch and at any hour', () => {
+		const wrong: string[] = [];
+		for (const w of world.waters.filter((v) => v.run)) {
+			const g = waterSheets(route, [w], world.heightAt);
+			const flow = g.getAttribute('flow');
+			const lv = w.run!.levels;
+			// Three vertices a cross-section: its banks and its middle, all drifting alike.
+			for (let i = 1; i < lv.length; i++) {
+				const [a, b] = [(i - 1) * 3 + 1, i * 3 + 1];
+				if (lv[i] > lv[i - 1] + 1e-9) wrong.push(`rises at ${i}`);
+				if (!(flow.getX(b) > flow.getX(a))) wrong.push(`along at ${i}`);
+				// The shader moves each ripple by one speed for all: a drift that grows down the stream carries every ripple down it, never back up, however long the ride.
+				if (!(flow.getW(b) > flow.getW(a))) wrong.push(`drift at ${i}`);
+			}
+		}
+		expect(wrong).toEqual([]);
 	});
 
 	it(

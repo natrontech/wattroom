@@ -48,6 +48,7 @@ import {
 	ARM_M,
 	armsOf,
 	armWiden,
+	CHANNEL_M,
 	othersOf,
 	ringSignAt,
 	ringsOf,
@@ -860,8 +861,8 @@ export function spansAlong(
 	});
 }
 
-/** A stream's bridge (a culvert's, where none carries the road already): its deck this far over the water at the least, and as long as the water is wide and this much more each side, past a road's formation and the fill's fall to the bank. */
-const CULVERT = { over: 0.5, beyond: FORMATION + 2.5 };
+/** A stream's bridge (a culvert's, where none carries the road already): its deck this far over the water at the least, and as long as its channel is wide (designed.ts CHANNEL_M, its swale left open under the deck) and this much more each side: past a road's formation, the fill's fall to the bank and most of half a terrain cell (a square crossing still a slab, BRIDGE.slab), so no 10 m triangle of the open channel reaches under the road past the deck. */
+const CULVERT = { over: 0.5, beyond: FORMATION + 6.5 };
 
 /**
  * Where a stream runs under the road and the road is not carried over it
@@ -948,7 +949,8 @@ export function culvertsOf(
 				const cos =
 					Math.abs(dx * ez - dz * ex) /
 					(Math.hypot(dx, dz) * Math.hypot(ex, ez) || 1);
-				const half = wide / 2 / Math.max(0.5, cos) + CULVERT.beyond;
+				const half =
+					(wide / 2 + CHANNEL_M) / Math.max(0.5, cos) + CULVERT.beyond;
 				out.push([
 					Math.max(0, m - half),
 					Math.min((rows.length - 1) * ROW_M, m + half),
