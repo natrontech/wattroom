@@ -88,15 +88,28 @@ const FADE = /* glsl */ `
 	float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.);
 	if (keep < (bayer[by * 4 + bx] + 0.5) / 16.0) discard;`;
 
+/** A face turned down leaning less than this out (its normal's level part, about 15°) has no side of its own. */
+const FLAT_UNDER = '0.25';
+
 // A face turned to the ground is lit as one turned out (#4256): the
 // hemisphere's ground colour alone takes a tier's or an eave's underside to
-// black, and the world's shadow is a tint, never black (ADR-0072).
+// black, and the world's shadow is a tint, never black (ADR-0072). One that
+// faces about straight down, a gallery's or a bridge's soffit, has no way
+// out of its own: what little it leans is a bank's hundredth or the noise of
+// a flat normal taken from screen derivatives, and lit by that it came out
+// light and dark in bands and specks. It is lit as a face side-on to the
+// sun, one shade all over, as an underside is: in the shade, never black.
 const UNDERSIDE = /* glsl */ `
 	vec3 upView = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
 	float toSky = dot( normal, upView );
 	if ( toSky < 0.0 ) {
 		vec3 level = normal - toSky * upView;
-		normal = length( level ) > 1e-3 ? normalize( level ) : normalize( cross( upView, vec3( 0.0, 0.0, 1.0 ) ) );
+		vec3 side = normalize( ( viewMatrix * vec4( 1.0, 0.0, 0.0, 0.0 ) ).xyz );
+		#if NUM_DIR_LIGHTS > 0
+			vec3 sunward = directionalLights[ 0 ].direction - dot( directionalLights[ 0 ].direction, upView ) * upView;
+			if ( length( sunward ) > 1e-3 ) side = normalize( cross( upView, sunward ) );
+		#endif
+		normal = length( level ) > ${FLAT_UNDER} ? normalize( level ) : side;
 	}`;
 
 /** What a tree's colours are multiplied by where it stands in snow (props/batch.ts): far past any colour, so the material reads it as a mark, and divides it out again. */

@@ -924,6 +924,9 @@ function retaining(
 
 // ── Galleries ───────────────────────────────────────────────────────────
 
+/** How far a gallery's ribs and beams run up into its slab: past what the slab's straight runs between frames stray from them. */
+const INTO_SLAB = 0.4;
+
 /**
  * A road's avalanche galleries: a heavy concrete roof sloping up into the
  * hill on its back wall, on the open side a row of square pillars joined
@@ -1047,7 +1050,20 @@ export function galleries(
 			const b = out.at(key, d);
 			b.cap(roof(f), concrete);
 			b.cap(wall(f), concrete);
-			b.cap(cover(f), dress(f.ele));
+			// The earth's own section only, over the roof's and behind it: a fan over all of it lay on the roof's face, and hung down across the mouth.
+			const [, p1, p2, p3, p4] = cover(f);
+			const tint = dress(f.ele);
+			b.cap(
+				[
+					// The roof's top there, rising 13 % into the hill.
+					f.pt(uOpen + back * 0.4, clear + thick + 0.13 * 0.4),
+					p1,
+					p2,
+					f.pt(uHill, clear + thick + rise),
+				],
+				tint,
+			);
+			b.cap([p2, p3, p4], tint);
 		}
 		// Pillars every 6 m on the open side, a rib under the roof at each, and the beam between them arched.
 		const bays = Math.max(1, Math.round((to - from) / bay));
@@ -1057,15 +1073,27 @@ export function galleries(
 			const d = from + k * len;
 			const f = frame(d);
 			const b = out.at(key, d);
-			column(b, f, uPillar, 0.85, 0.85, f.y - 1, f.y + clear, pillar);
+			// Up to the roof's underside, banked as it is.
+			column(
+				b,
+				f,
+				uPillar,
+				0.85,
+				0.85,
+				f.y - 1,
+				f.pt(uPillar, clear).y,
+				pillar,
+			);
+			// A rib runs well up into the slab and the wall: its top a hair over the underside, the slab drawn between other frames, came through it in stripes.
 			const rib = (a: number) => [
 				f.pt(uPillar, clear - 0.7, a),
-				f.pt(uPillar, clear + 0.02, a),
-				f.pt(uWall, clear + 0.02, a),
-				f.pt(uWall, clear - 0.7, a),
+				f.pt(uPillar, clear + INTO_SLAB, a),
+				f.pt(uWall + back * 0.3, clear + INTO_SLAB, a),
+				f.pt(uWall + back * 0.3, clear - 0.7, a),
 			];
-			const [r0, r1] = [rib(-0.3), rib(0.3)];
-			b.skin(r0, r1, under);
+			// The end ribs kept inside the mouths, off the roof's end face.
+			const a0 = k === 0 ? 0.1 : k === bays ? -0.7 : -0.3;
+			b.skin(rib(a0), rib(a0 + 0.6), under);
 			if (k === bays) continue;
 			// The beam along the open edge, low at each pillar and high mid-bay: an arch each bay.
 			const STEPS = 6;
@@ -1073,10 +1101,12 @@ export function galleries(
 			for (let s = 0; s <= STEPS; s++) {
 				const g = frame(d + (len * s) / STEPS);
 				const low = clear - 1.35 + 0.95 * Math.sin((Math.PI * s) / STEPS);
+				// Its face stops just under the roof's and its top runs up into the slab, a chamfer between: nothing of it lies on the roof's faces.
 				const ring = [
 					g.pt(uOpen, low),
-					g.pt(uOpen, clear + 0.01),
-					g.pt(uPillar + back * 0.55, clear + 0.01),
+					g.pt(uOpen, clear - 0.04),
+					g.pt(uOpen + back * 0.25, clear + INTO_SLAB),
+					g.pt(uPillar + back * 0.55, clear + INTO_SLAB),
 					g.pt(uPillar + back * 0.55, low),
 				];
 				if (last) b.skin(last, ring, pillar);

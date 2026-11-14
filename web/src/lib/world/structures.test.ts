@@ -8,17 +8,20 @@ import { yOf } from './geometry';
 import { makeRig } from './rig';
 import { routeOfRoad } from './road-route';
 import type { SimRider } from './sim';
-import { PORTAL, PORTAL_M, TUBE } from './structure-sizes';
+import { GALLERY, PORTAL, PORTAL_M, TUBE } from './structure-sizes';
 import {
 	BRIDGE,
 	bridgeKind,
 	edgesOf,
+	framer,
+	galleries,
 	Pieces,
 	roadEdges,
 	STONE_UNDER_SNOW_M,
 	tunnels,
 } from './structures';
 import { makeGround } from './terrain/ground';
+import { FORMATION } from './terrain/road-profile';
 import type { Line } from './terrain/lines';
 import { generate, withCulverts, type World } from './world';
 import { BUILD_MS } from './world.test-helper';
@@ -201,6 +204,92 @@ describe('Col de Berne', () => {
 			expect(camera.position.y, mode).toBeLessThan(roof!.floor! + TUBE.crown);
 			expect(camera.position.y, mode).toBeGreaterThan(roof!.floor! + 1);
 		}
+	});
+
+	it('keeps its gallery’s earth on the roof and behind it, and its ribs off the roof’s underside', () => {
+		const out = new Pieces();
+		const colors = {
+			stone: '#888',
+			concrete: '#aaa',
+			steel: '#999',
+			dark: '#333',
+			lamp: '#fff',
+			band: '#ff0',
+			earth: '#0f0',
+			snow: '#fff',
+		};
+		expect(world.galleries).toHaveLength(1);
+		const [from, to] = world.galleries[0];
+		galleries(
+			out,
+			'route',
+			route,
+			world.groundAt,
+			world.galleries,
+			undefined,
+			colors,
+		);
+		const frame = framer(route);
+		const frames: ReturnType<typeof frame>[] = [];
+		for (let d = from - 2; d <= to + 2; d += 0.5) frames.push(frame(d));
+		/** A point's metres left of the road, and over its surface there. */
+		const across = (x: number, y: number, z: number) => {
+			let f = frames[0];
+			let best = Infinity;
+			for (const g of frames) {
+				const d = Math.abs((x - g.x) * g.tx + (z - g.z) * g.tz);
+				if (d < best) [best, f] = [d, g];
+			}
+			const u = (x - f.x) * f.lx + (z - f.z) * f.lz;
+			return { u, over: y - f.pt(u, 0).y };
+		};
+		const rib = new THREE.Color('#aaa').multiplyScalar(1 - 0.09 * 0.9);
+		const roofTop = GALLERY.clear + GALLERY.thick;
+		let earth = 0;
+		let ribs = 0;
+		for (const g of out.geometries().values()) {
+			const pos = g.attributes.position.array;
+			const col = g.attributes.color.array;
+			for (let t = 0; t < pos.length; t += 9) {
+				const v = [0, 3, 6].map(
+					(k) => new THREE.Vector3(pos[t + k], pos[t + k + 1], pos[t + k + 2]),
+				);
+				const c = new THREE.Color(col[t], col[t + 1], col[t + 2]);
+				const isEarth = c.r === 0 && c.g === 1 && c.b === 0;
+				const isRib = Math.abs(c.r - rib.r) < 1e-4;
+				if (!isEarth && !isRib) continue;
+				const n = new THREE.Vector3()
+					.subVectors(v[1], v[0])
+					.cross(new THREE.Vector3().subVectors(v[2], v[0]))
+					.normalize();
+				for (let i = 0; i <= 4; i++)
+					for (let j = 0; j <= 4 - i; j++) {
+						const p = v[0]
+							.clone()
+							.multiplyScalar(1 - (i + j) / 4)
+							.addScaledVector(v[1], i / 4)
+							.addScaledVector(v[2], j / 4);
+						const { u, over } = across(p.x, p.y, p.z);
+						// Over the road, between its pillars and its wall, the earth lies on the roof: none hangs into the opening.
+						if (isEarth && Math.abs(u) < FORMATION + GALLERY.out) {
+							earth++;
+							expect(over, `earth ${u.toFixed(1)} m across`).toBeGreaterThan(
+								roofTop - 0.2,
+							);
+						}
+						// A rib's top runs well up into the slab, never a hair over its underside.
+						if (isRib && Math.abs(n.y) > 0.99) {
+							ribs++;
+							expect(
+								Math.abs(over - GALLERY.clear),
+								`rib ${u.toFixed(1)} m across`,
+							).toBeGreaterThan(0.1);
+						}
+					}
+			}
+		}
+		expect(earth).toBeGreaterThan(100);
+		expect(ribs).toBeGreaterThan(100);
 	});
 
 	it('builds the tunnel and the granite into pieces along the road', () => {
