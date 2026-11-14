@@ -17,6 +17,19 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.36] - 2026-11-14
+
+### Added
+
+- Your own mountain routes get stone walls and snow poles on the pass, and guard rails where the land drops away. (#4593)
+
+### Fixed
+
+- Farm lanes no longer climb straight up mountains, streams no longer cut through hills, and the snow beside the pass road is closed. (#4597)
+- Rivers and streams now flow all the way into their lakes and under every bridge, their water ripples instead of looking like road markings, and no tree stands in them any more. (#4596)
+- A gallery's roof is now covered in the same grass or snow as the hillside around it, and the harbour on the Urnersee loop is in view as you cross the inlet's bridge. (#4595)
+- Snow on the high passes looks solid from any camera angle, instead of showing stones through it when you look around from above. (#4594)
+
 ## [2026.11.35] - 2026-11-14
 
 ### Added
@@ -4593,7 +4606,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.35...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.36...HEAD
+[2026.11.36]: https://github.com/natrontech/wattroom/compare/2026.11.35...2026.11.36
 [2026.11.35]: https://github.com/natrontech/wattroom/compare/2026.11.34...2026.11.35
 [2026.11.34]: https://github.com/natrontech/wattroom/compare/2026.11.33...2026.11.34
 [2026.11.33]: https://github.com/natrontech/wattroom/compare/2026.11.32...2026.11.33
