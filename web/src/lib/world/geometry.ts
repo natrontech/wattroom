@@ -372,10 +372,12 @@ export function road(
 	if (!rows.ring && shoulder > 0) {
 		const count = out.hidden.length;
 		const [capFirst, capLast] = opts.caps ?? [true, true];
-		if (capFirst && lo === 0 && !out.hidden[0])
-			endCap(out, cuts, cols, drops, 0, 1);
-		if (capLast && hi === end && !out.hidden[count - 1])
-			endCap(out, cuts, cols, drops, count - 1, count - 2);
+		if (lo === 0 && !out.hidden[0])
+			if (capFirst) endCap(out, cuts, cols, drops, 0, 1);
+			else endSkirt(out, cuts, cols, 0, false);
+		if (hi === end && !out.hidden[count - 1])
+			if (capLast) endCap(out, cuts, cols, drops, count - 1, count - 2);
+			else endSkirt(out, cuts, cols, count - 1, true);
 	}
 	const g = strip(out.pos, out.uv, cols, out.hidden, cuts);
 	g.setAttribute('bare', new THREE.Float32BufferAttribute(out.bare, 2));
@@ -461,6 +463,45 @@ function endCap(
 		g.uv.push(...r.slice(cols * 3));
 		g.bare.push(...row(g.bare, 2));
 		g.normal.push(...row(g.normal, 3));
+		g.hidden.push(false);
+	}
+}
+
+/** Metres a road's square end hangs down under its asphalt (endSkirt). */
+const SKIRT_M = 0.3;
+
+/**
+ * A road's square end, faced: its end row run straight down SKIRT_M, facing
+ * out of the road. A road running on from a roundabout's arm meets the arm's
+ * square end a centimetre lower, edge to edge, and through that slit the eye
+ * saw the ground under the two, as a line across the road from afar. Rows of
+ * their own after the road's, as endCap's are; `last` for the road's far end.
+ */
+function endSkirt(
+	g: {
+		pos: number[];
+		uv: number[];
+		bare: number[];
+		normal: number[];
+		hidden: boolean[];
+	},
+	cuts: number[],
+	cols: number,
+	at: number,
+	last: boolean,
+) {
+	const row = (a: number[], size: number) =>
+		a.slice(at * cols * size, (at + 1) * cols * size);
+	const top = row(g.pos, 3);
+	const low = top.map((v, i) => (i % 3 === 1 ? v - SKIRT_M : v));
+	const [uv, bare, normal] = [row(g.uv, 2), row(g.bare, 2), row(g.normal, 3)];
+	cuts.push(g.hidden.length - 1);
+	// Rows run left to right across, so a quad faces the way from one row to the next crossed with that: down at the far end faces on, at the start back.
+	for (const pos of last ? [top, low] : [low, top]) {
+		g.pos.push(...pos);
+		g.uv.push(...uv);
+		g.bare.push(...bare);
+		g.normal.push(...normal);
 		g.hidden.push(false);
 	}
 }
