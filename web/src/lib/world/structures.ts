@@ -1046,6 +1046,14 @@ export function galleries(
 		];
 		// Metres to the nearer mouth.
 		const mouthward = (d: number) => Math.min(d - from, to - d);
+		/** Where a kerb's faces reach down to at `u` across `f`: a hand into the ground, which falls away under the open side. */
+		const foot = (f: Frame, u: number) => {
+			const p = f.pt(u, 0);
+			return Math.min(-0.4, yOf(route, groundAt(p.x, p.z)) - p.y - 0.3);
+		};
+		/** A kerb's inner edge and its outer: the wall's face on the hill side. */
+		const kerb = (s: number) =>
+			[s * (ROAD_W / 2 + 0.1), s === back ? uWall : s * (E + 0.5)] as const;
 		const n = Math.max(1, Math.round((to - from) / 4));
 		let prev: Frame | null = null;
 		for (let i = 0; i <= n; i++) {
@@ -1073,8 +1081,7 @@ export function galleries(
 					band,
 				);
 				for (const s of [1, -1]) {
-					const inner = s * (ROAD_W / 2 + 0.1);
-					const outer = s === back ? uWall : s * (E + 0.5);
+					const [inner, outer] = kerb(s);
 					b.quad(
 						prev.pt(inner, 0.07),
 						f.pt(inner, 0.07),
@@ -1083,12 +1090,21 @@ export function galleries(
 						pillar,
 					);
 					b.quad(
-						prev.pt(inner, -0.4),
-						f.pt(inner, -0.4),
+						prev.pt(inner, foot(prev, inner)),
+						f.pt(inner, foot(f, inner)),
 						f.pt(inner, 0.07),
 						prev.pt(inner, 0.07),
 						pillar,
 					);
+					// The open side's kerb faced down into the ground: a plate at the road's height, it showed the grass under it from the valley.
+					if (s !== back)
+						b.quad(
+							prev.pt(outer, 0.07),
+							f.pt(outer, 0.07),
+							f.pt(outer, foot(f, outer)),
+							prev.pt(outer, foot(prev, outer)),
+							pillar,
+						);
 				}
 			}
 			prev = f;
@@ -1099,6 +1115,19 @@ export function galleries(
 			const b = out.at(key, d);
 			b.cap(roof(f), concrete);
 			b.cap(wall(f), concrete);
+			// Each kerb's end, down into the ground: open, the mouth showed the grass under them.
+			for (const s of [1, -1]) {
+				const [inner, outer] = kerb(s);
+				b.cap(
+					[
+						f.pt(inner, foot(f, inner)),
+						f.pt(inner, 0.07),
+						f.pt(outer, 0.07),
+						f.pt(outer, foot(f, outer)),
+					],
+					pillar,
+				);
+			}
 			// The earth's own section only, over the roof's and behind it: a fan over all of it lay on the roof's face, and hung down across the mouth.
 			const section = cover(f, 0);
 			const [, p1, p2] = section;
