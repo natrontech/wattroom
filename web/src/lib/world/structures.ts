@@ -939,7 +939,8 @@ const WALL_FOOT = -3;
  * hill on its back wall, on the open side a row of square pillars joined
  * by a beam arched between each two, a rib under the roof at each pillar,
  * and the roof dressed in the hill's earth, or its snow above the snowline,
- * so an avalanche runs over it.
+ * so an avalanche runs over it. That dressing goes to `land` where given,
+ * for the stage to draw as the land itself (geometry.ts asLand).
  */
 export function galleries(
 	out: Pieces,
@@ -951,6 +952,8 @@ export function galleries(
 	colors: WorksColors,
 	/** A side road's lift (road-surface.ts liftOf): its gallery stands on its own asphalt. */
 	lift?: number,
+	/** Where the earth and snow go: `out` where none. */
+	land: Pieces = out,
 ) {
 	const frame = framer(route, lift);
 	const concrete = tone(colors.concrete);
@@ -986,25 +989,43 @@ export function galleries(
 			f.pt(uHill, clear + rise - 0.6),
 			f.pt(uBack, clear),
 		];
-		/** Earth or snow on its top, thicker towards the hill, and banked from its back down onto the hill, so the gallery lies in the slope and an avalanche runs over it. */
+		/**
+		 * Earth or snow on its top, thicker towards the hill, and banked from
+		 * its back down onto the hill, so the gallery lies in the slope and an
+		 * avalanche runs over it: the roof's lip, the top at the hill, the bank
+		 * down to its foot, and the point under the top the mouth's face is
+		 * fanned from.
+		 */
 		const cover = (f: Frame) => {
 			const top = clear + thick + rise + 0.9;
 			const far = (u: number) => {
 				const p = f.pt(u, 0);
 				return yOf(route, groundAt(p.x, p.z)) - f.y;
 			};
-			// The bank falls 1:2.2 to the hill, no further out than GALLERY.ramp.
+			// The bank falls 1:2.2 to the hill, no further out than GALLERY.ramp; its foot wanders along it, so where it meets the hill is no ruled line.
 			const run = Math.min(
 				GALLERY.ramp,
 				Math.max(2, 2.2 * (top - far(uHill + back * 8))),
 			);
-			const foot = Math.min(top - 0.5, far(uHill + back * run) - 0.4);
+			const wander =
+				0.5 + 0.5 * Math.sin(f.d * 0.23 + 1.3) * Math.cos(f.d * 0.091);
+			// Longer than its fall at 1:2.2 asks, so as it eases out its top third is no steeper than that: past 30 degrees the land's shader draws rock (styles.ts).
+			const reach = Math.max(2, run * (1.2 + 0.45 * wander));
+			// Off the top at about 1:2.2, then easing out to run into the hill under the ground, never rising on the way.
+			let h = top;
+			const bank = [1 / 3, 2 / 3, 1].map((t) => {
+				const u = uHill + back * reach * t;
+				const ground = Math.min(top - 0.5, far(u) - 0.4);
+				const ease = t * (1.5 - 0.5 * t);
+				h = Math.min(h, top + (ground - top) * ease);
+				return f.pt(u, h);
+			});
 			return [
 				f.pt(uOpen + back * 0.4, clear + thick - 0.05),
 				f.pt(uOpen + back * 0.6, clear + thick + 0.3),
 				f.pt(uHill, top),
-				f.pt(uHill + back * run, foot),
-				f.pt(uHill, foot - 0.6),
+				...bank,
+				f.pt(uHill, h - 0.6),
 			];
 		};
 		// Its foot well into the ground: beside a cutting's ditch the ground at its face lies more than a metre under the road.
@@ -1023,7 +1044,7 @@ export function galleries(
 			const tint = dress(f.ele);
 			if (prev) {
 				b.skin(roof(prev), roof(f), concrete);
-				b.skin(cover(prev), cover(f), tint, false);
+				land.at(key, d).skin(cover(prev), cover(f), tint, false);
 				b.skin(wall(prev), wall(f), concrete);
 				// The band painted along the wall at hip height, and a kerb over each shoulder: no verge under a roof, and no snow.
 				b.quad(
@@ -1061,9 +1082,13 @@ export function galleries(
 			b.cap(roof(f), concrete);
 			b.cap(wall(f), concrete);
 			// The earth's own section only, over the roof's and behind it: a fan over all of it lay on the roof's face, and hung down across the mouth.
-			const [, p1, p2, p3, p4] = cover(f);
+			const section = cover(f);
+			const [, p1, p2] = section;
+			const p3 = section[section.length - 2];
+			const p4 = section[section.length - 1];
 			const tint = dress(f.ele);
-			b.cap(
+			const dressed = land.at(key, d);
+			dressed.cap(
 				[
 					// The roof's top there, rising 13 % into the hill.
 					f.pt(uOpen + back * 0.4, clear + thick + 0.13 * 0.4),
@@ -1073,14 +1098,15 @@ export function galleries(
 				],
 				tint,
 			);
-			b.cap([p2, p3, p4], tint);
+			// The bank's, fanned from under its top: it sags as it eases into the hill, so a fan from its top would stand over it.
+			dressed.cap([p4, ...section.slice(2, -1)], tint);
 			// And the end face closed down to the ground, each part sharing only edges with the faces beside it, so none lies on another: behind the wall, under the roof's back as it reaches into the hill; and under the bank, from its foot to the ground below.
 			const ground = (u: number) => {
 				const p = f.pt(u, 0);
 				return yOf(route, groundAt(p.x, p.z)) - f.y;
 			};
 			const behind = Math.min(WALL_FOOT, ground(uBack), ground(uHill)) - 0.5;
-			b.cap(
+			dressed.cap(
 				[
 					f.pt(uBack, clear),
 					f.pt(uHill, clear + rise - 0.6),
@@ -1095,7 +1121,7 @@ export function galleries(
 					yOf(route, groundAt(p4.x, p4.z)),
 					yOf(route, groundAt(p3.x, p3.z)),
 				) - 0.5;
-			b.cap(
+			dressed.cap(
 				[
 					p4,
 					p3,

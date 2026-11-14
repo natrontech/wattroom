@@ -77,7 +77,7 @@ const stretch = (
 
 /**
  * The east shore, hub to the head of the lake. Past the village's beach and
- * round the harbour's bay a few metres over the water, up and through the
+ * round Schifftritt's bay a few metres over the water, up and through the
  * Nase headland in a tunnel, under the cliffs through a gallery, across the
  * inlet's mouth on a bridge, and along the shore to the reeds at the head.
  */
@@ -85,7 +85,7 @@ const SHORE_DRAWN: Corner[] = [
 	{ x: 450, y: 590, ele: 1439, r: 120 },
 	{ x: 640, y: 830, ele: 1438, r: 120 },
 	{ x: 800, y: 1010, ele: 1437, r: 100 },
-	// Behind the harbour, on the bay's far side.
+	// Schifftritt, on the bay's far side.
 	{ x: 960, y: 1240, ele: 1438, r: 90 },
 	{ x: 900, y: 1450, ele: 1451, r: 90 },
 	// The Nase: its tunnel's leg straight.
@@ -321,7 +321,7 @@ const peak = (
 const lane = (...course: Spot[]): Lane => ({ kind: 'gravel', course });
 
 const LAND: Feature[] = [
-	// The lake, 1,434 m: a beach by the village, the harbour's bay, the Nase headland, cliffs, an inlet, the reeds of a delta at its head, and a headland and an island on the west.
+	// The lake, 1,434 m: a beach by the village, Schifftritt's bay, the Nase headland, cliffs, an inlet, the reeds of a delta at its head, and a headland and an island on the west.
 	{
 		kind: 'lake',
 		level: 1434,
@@ -334,7 +334,7 @@ const LAND: Feature[] = [
 			[140, 680],
 			[330, 720],
 			[470, 800],
-			// The harbour's bay.
+			// Schifftritt's bay.
 			[560, 900],
 			[670, 1020],
 			[790, 1110],
@@ -793,9 +793,9 @@ const MAP = {
 			'Isenkette',
 			'Urnried',
 		],
-		// The harbour on the east shore, and the Kettental's village.
+		// The hamlet on the east shore, its harbour where the road comes off the inlet's bridge onto the shore, ahead of a rider all the way over it (the bay's bank hid it from the road); and the Kettental's village.
 		hamlets: [
-			{ name: 'Schifftritt', at: [960, 1240], harbour: [860, 1250] },
+			{ name: 'Schifftritt', at: [960, 1240], harbour: [870, 3485] },
 			{ name: 'Nabenwil', at: [-7350, 600] },
 		],
 	},

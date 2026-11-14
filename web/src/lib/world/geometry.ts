@@ -78,18 +78,8 @@ const COVER_OF: Partial<Record<Biome, number>> = {
 	[Biome.Moor]: 3,
 };
 
-export function terrain(
-	route: Route,
-	mesh: TerrainMesh,
-	palette: Palette,
-): THREE.BufferGeometry {
-	const { pos, biome, shade, forest, blend, index } = mesh;
-	const n = pos.length / 3;
-	const p = new Float32Array(n * 3);
-	const colors = new Float32Array(n * 3);
-	const ao = new Float32Array(n);
-	// What the land shader dresses each vertex as (styles.ts): snow, rock, sparse grass, bog.
-	const cover = new Uint8Array(n * 4);
+/** Each biome's colour in a palette, the land's. */
+function landColors(palette: Palette) {
 	const cache = new Map<number, THREE.Color>();
 	for (const [k, v] of Object.entries(palette))
 		cache.set(Number(k), new THREE.Color(v));
@@ -106,6 +96,22 @@ export function terrain(
 	made(Biome.Moor, Biome.Meadow, Biome.Rock, 0.5);
 	made(Biome.Dry, Biome.Alpine, Biome.Snow, 0.3);
 	made(Biome.Frost, Biome.Snow, Biome.Snow, 0);
+	return { cache, meadow, wood };
+}
+
+export function terrain(
+	route: Route,
+	mesh: TerrainMesh,
+	palette: Palette,
+): THREE.BufferGeometry {
+	const { pos, biome, shade, forest, blend, index } = mesh;
+	const n = pos.length / 3;
+	const p = new Float32Array(n * 3);
+	const colors = new Float32Array(n * 3);
+	const ao = new Float32Array(n);
+	// What the land shader dresses each vertex as (styles.ts): snow, rock, sparse grass, bog.
+	const cover = new Uint8Array(n * 4);
+	const { cache, meadow, wood } = landColors(palette);
 	const mix = new THREE.Color();
 	const sum = new THREE.Color();
 	for (let i = 0; i < n; i++) {
@@ -150,6 +156,70 @@ export function terrain(
 	g.setAttribute('cover', new THREE.BufferAttribute(cover, 4, true));
 	g.setIndex(new THREE.BufferAttribute(index, 1));
 	g.computeBoundingSphere();
+	return g;
+}
+
+/** The ambient occlusion of open, even ground (terrain's `ao` at a shade of 1). */
+const AO_EVEN = (1 - 0.72) / 0.4;
+
+/**
+ * Something laid on the land, a gallery's earth (structures.ts), dressed as
+ * the land for its shader (styles.ts terrainMaterial): each vertex the colour
+ * and cover of the ground under it, lit as open ground, so it reads as the
+ * slope going on over the roof. Bare rock, a cutting's face, and no ground
+ * drawn give way to the nearest ground round it that is neither.
+ */
+export function asLand(
+	g: THREE.BufferGeometry,
+	biomeAt: (x: number, z: number) => Biome | null,
+	palette: Palette,
+): THREE.BufferGeometry {
+	const { cache, meadow, wood } = landColors(palette);
+	const pos = g.attributes.position.array;
+	const n = pos.length / 3;
+	const colors = new Float32Array(n * 3);
+	const cover = new Uint8Array(n * 4);
+	const ring = [0, 6, 12, 18].flatMap((r) =>
+		r === 0
+			? [[0, 0]]
+			: Array.from({ length: 8 }, (_, k) => [
+					r * Math.cos((k * Math.PI) / 4),
+					r * Math.sin((k * Math.PI) / 4),
+				]),
+	);
+	for (let i = 0; i < n; i++) {
+		const x = pos[i * 3];
+		const z = pos[i * 3 + 2];
+		let b: Biome = Biome.Meadow;
+		let rock = false;
+		for (const [dx, dz] of ring) {
+			const o = biomeAt(x + dx, z + dz);
+			if (o === null) continue;
+			if (o !== Biome.Rock) {
+				b = o;
+				rock = false;
+				break;
+			}
+			rock = true;
+		}
+		if (rock) b = Biome.Rock;
+		const c =
+			b === Biome.Forest
+				? wood
+				: b === Biome.Meadow
+					? meadow
+					: (cache.get(b) ?? meadow);
+		colors.set([c.r, c.g, c.b], i * 3);
+		const k = COVER_OF[b];
+		if (k !== undefined) cover[i * 4 + k] = 255;
+	}
+	g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+	g.setAttribute(
+		'ao',
+		new THREE.BufferAttribute(new Float32Array(n).fill(AO_EVEN), 1),
+	);
+	g.setAttribute('cover', new THREE.BufferAttribute(cover, 4, true));
+	g.deleteAttribute('normal');
 	return g;
 }
 
