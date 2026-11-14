@@ -858,7 +858,7 @@ const MAP = {
 		// Gravel lanes where farm tracks run: along the valleys' floors, round the alp's pasture and along the contour of a gentle slope, never straight up a valley's side (designed.test.ts: none steeper than LANE_GRADE). Wattalp's valleys are narrow and their sides steep: a lane run up one drove into the snow under the col.
 		// Each lane leads somewhere: an end that meets no road ends at the farm or the alp hut it serves (setpieces-stroke.ts planLane).
 		// The Kettental: east of its road, along the edge of the fields under the valley's head; up the stream's side valley west of the road, round the shoulder at its mouth; to the farm over the river from Nabenwil; out along the fields east of the road and over the river onto the west bank's; across its lower fields where it opens out south.
-		lane([-7420, 5260], [-7560, 4950], [-7600, 4450]),
+		lane([-7400, 5200], [-7560, 4950], [-7600, 4450]),
 		lane(
 			[-7480, 1000],
 			[-7600, 985],
