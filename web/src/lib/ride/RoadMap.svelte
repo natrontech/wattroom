@@ -10,10 +10,15 @@
 	 * coordinates: the shape a crew is sent (ADR-0063). A loop of one of
 	 * WattRoom's designed lands (Wattalp, the Valley's Rahmental) is the
 	 * exception: WattRoom's own land, no place of anyone's, so it is drawn on
-	 * the whole map it runs through (LandMap.svelte), its loop on top: every
-	 * loop of a land shows the same map.
+	 * the map it runs through (LandMap.svelte), its loop on top: zoomed to the
+	 * loop with the land round it, or the whole land, one tap on the map
+	 * turning it (map-zoom.svelte.ts).
 	 */
 	import Flag from '@lucide/svelte/icons/flag';
+	import ZoomIn from '@lucide/svelte/icons/zoom-in';
+	import ZoomOut from '@lucide/svelte/icons/zoom-out';
+	import { play } from '#lib/sound/cues.ts';
+	import { mapZoom } from '#lib/ride/map-zoom.svelte.ts';
 	import { untrack } from 'svelte';
 	import type { Road } from '#lib/road/road.ts';
 	import type { Route } from '#lib/road/route.ts';
@@ -41,16 +46,19 @@
 		line: Route;
 		reverse: boolean;
 		Map: typeof import('#lib/world/LandMap.svelte').default;
+		loopBox: typeof import('#lib/world/land-map.ts').loopBox;
 	} | null>(null);
 	$effect(() => {
 		const road = view.road;
 		if (untrack(() => placed?.road) === road) return;
 		let gone = false;
-		void import('#lib/world/land-map.ts').then(async ({ onLandMap }) => {
-			const on = onLandMap(road);
-			const Map = on && (await import('#lib/world/LandMap.svelte')).default;
-			if (!gone) placed = on && Map ? { road, ...on, Map } : null;
-		});
+		void import('#lib/world/land-map.ts').then(
+			async ({ onLandMap, loopBox }) => {
+				const on = onLandMap(road);
+				const Map = on && (await import('#lib/world/LandMap.svelte')).default;
+				if (!gone) placed = on && Map ? { road, ...on, Map, loopBox } : null;
+			},
+		);
 		return () => {
 			gone = true;
 		};
@@ -58,6 +66,28 @@
 	const land = $derived(placed?.road === view.road ? placed : null);
 	/** Metres along the road as ridden, as metres along the map's line. */
 	const onLine = (m: number) => (land?.reverse ? land.line.length - m : m);
+	/** The loop with the land round it, to the screen's shape: none where that draws the land less than 1.25 times as large, as a loop round the land's edge (Kette, the Valley) does. */
+	const loopView = $derived.by(() => {
+		if (!land || w <= 0 || h <= 0) return undefined;
+		const b = land.map.data.bounds;
+		const box = land.loopBox(land.line, b, w / h);
+		const whole = Math.min(w / (b.east - b.west), h / (b.north - b.south));
+		return Math.min(w / box.w, h / box.h) >= 1.25 * whole ? box : undefined;
+	});
+	/** The map's own rectangle inside this box, as drawn (centred, its shape kept): the chip sits in its corner. */
+	const margins = $derived.by(() => {
+		if (!land || !loopView) return { x: 0, y: 0 };
+		const b = land.map.data.bounds;
+		const [bw, bh] = mapZoom.loop
+			? [loopView.w, loopView.h]
+			: [b.east - b.west, b.north - b.south];
+		const px = Math.min(w / bw, h / bh);
+		return { x: (w - bw * px) / 2, y: (h - bh * px) / 2 };
+	});
+	function zoom() {
+		mapZoom.toggle();
+		play('block', mapZoom.loop ? {} : { semitones: -5 });
+	}
 
 	const PIECES = 160;
 	const PAD = 28;
@@ -113,15 +143,41 @@
 	bind:clientHeight={h}
 >
 	{#if land}
-		<land.Map
-			map={land.map}
-			line={land.line}
-			m={onLine(view.m)}
-			reverse={land.reverse}
-			mates={mates.map((mate) => ({ ...mate, m: onLine(mate.m) }))}
-			you="ink"
-			{toGo}
-		/>
+		{#snippet drawn(box?: import('#lib/world/land-map.ts').MapBox)}
+			<land.Map
+				map={land.map}
+				line={land.line}
+				m={onLine(view.m)}
+				reverse={land.reverse}
+				mates={mates.map((mate) => ({ ...mate, m: onLine(mate.m) }))}
+				you="ink"
+				{toGo}
+				view={box}
+			/>
+		{/snippet}
+		{#if loopView}
+			<!-- The whole map is the target: one tap turns it, a sound and the
+			     map gliding there say so, and the corner says what a tap does. -->
+			<button
+				type="button"
+				data-testid="map-zoom"
+				class="relative block h-full w-full cursor-pointer"
+				aria-label={mapZoom.loop ? 'Show the whole map' : 'Show your loop'}
+				onclick={zoom}
+			>
+				{@render drawn(mapZoom.loop ? loopView : undefined)}
+				<span
+					style:right="{margins.x + 12}px"
+					style:bottom="{margins.y + 12}px"
+					class="border-frame bg-surface/90 text-ink pointer-events-none absolute flex items-center gap-1.5 rounded border px-[0.5em] py-[0.15em] text-[max(16px,2.4vh)] leading-snug font-bold whitespace-nowrap"
+					>{#if mapZoom.loop}<ZoomOut aria-hidden="true" class="size-[1em]" />
+						Whole map{:else}<ZoomIn aria-hidden="true" class="size-[1em]" />
+						Your loop{/if}</span
+				>
+			</button>
+		{:else}
+			{@render drawn()}
+		{/if}
 	{:else if line && dot}
 		<svg
 			viewBox="0 0 {w} {h}"
