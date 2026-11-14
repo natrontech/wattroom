@@ -2,21 +2,23 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { HOME_ROADS, homeRoute } from '#lib/ride/home-roads.ts';
-import { MAP_BOUNDS, MAP_NAME } from './designs';
-import { MAP_MPP, mapData, renderLand, tokensOf } from './map-render';
+import { LANDS } from './designs';
+import { mapData, renderLand, tokensOf } from './map-render';
 import { routeOfRoad } from './road-route';
 import { generate } from './world';
 
 /**
- * The map as one picture (map-render.ts): wattalp-map.png, the land, and
- * wattalp-map.json, what MapOverview.svelte draws live over it. A change to
- * designs.ts or to the land moves both; rewrite them with
+ * Each land's map as one picture (map-render.ts): `<land>-map.png`, the
+ * land, and `<land>-map.json`, what LandMap.svelte draws live over it. A
+ * change to designs.ts or to the land moves both; rewrite them with
  * `UPDATE_MAP=1 nice -n 15 pnpm exec vitest run src/lib/world/map-render.golden.test.ts`
- * and commit both (.claude/skills/render-map). Without it this only checks
- * the two still describe today's MAP_BOUNDS.
+ * (`-t <name>` for one land) and commit both (.claude/skills/render-map).
+ * Without it this only checks the two still describe the land's bounds.
  */
-const png = new URL('./wattalp-map.png', import.meta.url);
-const json = new URL('./wattalp-map.json', import.meta.url);
+const filesOf = (id: string) => ({
+	png: new URL(`./${id}-map.png`, import.meta.url),
+	json: new URL(`./${id}-map.json`, import.meta.url),
+});
 
 function chunk(type: string, data: Uint8Array) {
 	const out = Buffer.alloc(12 + data.length);
@@ -146,38 +148,45 @@ function encodePng(rgb: Uint8Array, w: number, h: number): Buffer {
 	]);
 }
 
-describe(`the map of ${MAP_NAME}`, () => {
-	it.runIf(process.env.UPDATE_MAP === '1')(
-		'is drawn again from the land',
-		async () => {
-			const home = HOME_ROADS.find((r) => r.id === 'berne')!;
-			const route = routeOfRoad((await homeRoute(home)).road);
-			const world = generate(route);
-			const css = readFileSync(
-				new URL('../../app.css', import.meta.url),
-				'utf8',
-			);
-			const land = renderLand(world, tokensOf(css));
-			writeFileSync(png, encodePng(land.rgb, land.w, land.h));
-			writeFileSync(
-				json,
-				`${JSON.stringify(mapData(world, route), null, '\t')}\n`,
-			);
-		},
-		600_000,
-	);
+describe.each(LANDS.map((land) => [land.name, land] as const))(
+	'the map of %s',
+	(_, land) => {
+		const { png, json } = filesOf(land.id);
+		it.runIf(process.env.UPDATE_MAP === '1')(
+			'is drawn again from the land',
+			async () => {
+				const home = HOME_ROADS.find((r) => r.id === land.drawnFrom)!;
+				const route = routeOfRoad((await homeRoute(home)).road);
+				const world = generate(route);
+				const css = readFileSync(
+					new URL('../../app.css', import.meta.url),
+					'utf8',
+				);
+				const pic = renderLand(world, tokensOf(css), land);
+				writeFileSync(png, encodePng(pic.rgb, pic.w, pic.h));
+				writeFileSync(
+					json,
+					`${JSON.stringify(mapData(world, route, land), null, '\t')}\n`,
+				);
+			},
+			600_000,
+		);
 
-	it('is a picture of today’s map: its rectangle, its name, its size', () => {
-		const data = JSON.parse(readFileSync(json, 'utf8'));
-		expect(data.name).toBe(MAP_NAME);
-		expect(data.bounds).toEqual(MAP_BOUNDS);
-		expect(data.image.mpp).toBe(MAP_MPP);
-		const head = readFileSync(png).subarray(16, 24);
-		expect([head.readUInt32BE(0), head.readUInt32BE(4)]).toEqual([
-			data.image.w,
-			data.image.h,
-		]);
-		expect(data.image.w * MAP_MPP).toBe(MAP_BOUNDS.east - MAP_BOUNDS.west);
-		expect(data.image.h * MAP_MPP).toBe(MAP_BOUNDS.north - MAP_BOUNDS.south);
-	});
-});
+		it('is a picture of today’s land: its rectangle, its name, its size', () => {
+			const data = JSON.parse(readFileSync(json, 'utf8'));
+			const { west, east, south, north } = land.bounds;
+			expect(data.name).toBe(land.name);
+			expect(data.bounds).toEqual(land.bounds);
+			expect(data.loops).toEqual(land.loops);
+			expect(data.image.mpp).toBe(land.mpp);
+			expect(data.scale ?? 1).toBe(land.scale);
+			const head = readFileSync(png).subarray(16, 24);
+			expect([head.readUInt32BE(0), head.readUInt32BE(4)]).toEqual([
+				data.image.w,
+				data.image.h,
+			]);
+			expect(data.image.w * land.mpp).toBe(east - west);
+			expect(data.image.h * land.mpp).toBe(north - south);
+		});
+	},
+);

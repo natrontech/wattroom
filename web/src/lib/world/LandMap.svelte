@@ -1,20 +1,20 @@
 <script lang="ts">
 	/**
-	 * The map of Wattalp, WattRoom's designed land (designs.ts), as a game
-	 * draws its island (Zwift's Watopia): its own picture, drawn once
-	 * (map-render.ts, .claude/skills/render-map), the land in flat areas of
-	 * the 3D world's colours; over it every road a thin dark line, the
-	 * roundabouts small rings; and live, the loop you ride as a white line on
-	 * top, bright ahead of you and faint behind, its start and finish, the
-	 * places it rides through by name, and where you are. Every loop on the map
-	 * shows the whole map. North is up.
+	 * The map of one of WattRoom's designed lands (designs.ts LANDS: Wattalp,
+	 * the Valley's Rahmental), as a game draws its island (Zwift's Watopia):
+	 * its own picture, drawn once (map-render.ts, .claude/skills/render-map),
+	 * the land in flat areas of the 3D world's colours; over it every road a
+	 * thin dark line, the roundabouts small rings; and live, the loop you ride
+	 * as a white line on top, bright ahead of you and faint behind, its start
+	 * and finish, the places it rides through by name, and where you are.
+	 * Every loop on a land shows the whole land. North is up.
 	 */
 	import { at } from '#lib/road/along.ts';
 	import type { Route } from '#lib/road/route.ts';
-	import mapPicture from './wattalp-map.png';
-	import { WATTALP as MAP } from './wattalp';
+	import type { LandMapOf } from './land-map';
 
 	let {
+		map,
 		line,
 		m,
 		reverse = false,
@@ -22,6 +22,8 @@
 		you = 'watt',
 		toGo,
 	}: {
+		/** The land's map (land-map.ts). */
+		map: LandMapOf;
 		/** The loop ridden, in the map's frame: a route this map's picture shows. */
 		line: Route;
 		/** Where you are: metres along `line`. */
@@ -36,6 +38,11 @@
 		toGo?: number;
 	} = $props();
 	const uid = $props.id();
+	const MAP = $derived(map.data);
+	/** Every mark drawn in the map's metres, this many times Wattalp's: a smaller land, drawn as large, reads alike. */
+	const s = $derived(MAP.scale ?? 1);
+	/** The scale bar's kilometres: two on Wattalp. */
+	const bar = $derived(2 * s);
 
 	const path = (r: Route, from: number, to: number) => {
 		const out: string[] = [];
@@ -76,19 +83,19 @@
 			pts.push([p.x, p.z]);
 		}
 		return MAP.labels.filter((l) =>
-			pts.some(([x, z]) => Math.hypot(x - l.x, z - l.z) < 250),
+			pts.some(([x, z]) => Math.hypot(x - l.x, z - l.z) < 250 * s),
 		);
 	});
 
 	// The map's picture: its rectangle in the world's frame (x east, z south).
-	const mx = MAP.bounds.west;
-	const mz = -MAP.bounds.north;
-	const mw = MAP.bounds.east - MAP.bounds.west;
-	const mh = MAP.bounds.north - MAP.bounds.south;
-	const T = MAP.type;
+	const mx = $derived(MAP.bounds.west);
+	const mz = $derived(-MAP.bounds.north);
+	const mw = $derived(MAP.bounds.east - MAP.bounds.west);
+	const mh = $derived(MAP.bounds.north - MAP.bounds.south);
+	const T = $derived(MAP.type);
 	/** A road's strokes: drawn in screen pixels, whatever the map's size. */
 	const PX = { 'vector-effect': 'non-scaling-stroke' } as const;
-	// ...and those pixels as many as the map is tall: set for a map about 950 px tall, thinner on a smaller one.
+	// ...and those pixels as many as the map is tall: set for a map about 950 px tall, thinner on a smaller one. Wattalp's height is the map's: a land drawn at its scale reads as large.
 	let cw = $state(0);
 	let ch = $state(0);
 	const k = $derived(
@@ -111,12 +118,12 @@
 				<rect x={mx} y={mz} width={mw} height={mh} />
 			</clipPath>
 			<filter id="{uid}-glow" x="-100%" y="-100%" width="300%" height="300%">
-				<feGaussianBlur stdDeviation="70" />
+				<feGaussianBlur stdDeviation={70 * s} />
 			</filter>
 		</defs>
 		<g clip-path="url(#{uid}-frame)">
 			<image
-				href={mapPicture}
+				href={map.picture}
 				x={mx}
 				y={mz}
 				width={mw}
@@ -208,7 +215,7 @@
 				<circle
 					cx={r.x}
 					cy={r.z}
-					r="45"
+					r={45 * s}
 					fill="var(--world-px-biome-meadow)"
 					stroke="var(--world-px-road-asphalt)"
 					stroke-width={2 * k}
@@ -229,19 +236,20 @@
 				{#each named as l (l.kind + l.name)}
 					{#if l.kind === 'pass'}
 						<path
-							d="M{l.x - 70},{l.z + 50}L{l.x},{l.z - 70}L{l.x + 70},{l.z + 50}Z"
+							d="M{l.x - 70 * s},{l.z + 50 * s}L{l.x},{l.z - 70 * s}L{l.x +
+								70 * s},{l.z + 50 * s}Z"
 							fill="var(--world-px-road-line)"
 							stroke="var(--world-px-ridge)"
-							stroke-width="20"
+							stroke-width={20 * s}
 						/>
 					{:else}
 						<circle
 							cx={l.x}
 							cy={l.z}
-							r="45"
+							r={45 * s}
 							fill="var(--world-px-road-line)"
 							stroke="var(--world-px-ridge)"
-							stroke-width="20"
+							stroke-width={20 * s}
 						/>
 					{/if}
 					<text
@@ -256,8 +264,9 @@
 				{/each}
 			</g>
 			<!-- Start and finish: a chequered flag on its pole, beside the
-			     roundabout rather than over it, and how far it is still. -->
-			<g transform="translate({start.x} {start.z})">
+			     roundabout rather than over it, and how far it is still: drawn at
+			     Wattalp's size and scaled, so its type is Wattalp's too. -->
+			<g transform="translate({start.x} {start.z}) scale({s})">
 				<path
 					d="M0,0V-420"
 					stroke="var(--world-px-ridge)"
@@ -290,12 +299,12 @@
 						x="280"
 						y="-280"
 						class="font-display"
-						font-size={T.pass * 1.15}
+						font-size={(T.pass / s) * 1.15}
 						font-weight="700"
 						fill="var(--world-px-road-line)"
 						stroke="var(--world-px-ridge)"
 						stroke-opacity="0.8"
-						stroke-width={T.pass * 0.25}
+						stroke-width={(T.pass / s) * 0.25}
 						paint-order="stroke"
 						stroke-linejoin="round">{toGo.toFixed(1)} km to go</text
 					>
@@ -308,7 +317,7 @@
 						data-testid="map-mate"
 						cx={mate.x}
 						cy={mate.z}
-						r="80"
+						r={80 * s}
 						fill="var(--color-ink)"
 						stroke="var(--color-surface)"
 						stroke-width={2.5 * k}
@@ -316,8 +325,8 @@
 					/>
 					<text
 						data-testid="map-mate-label"
-						x={mate.x + 130}
-						y={mate.z + 65}
+						x={mate.x + 130 * s}
+						y={mate.z + 65 * s}
 						font-size={T.village}
 						font-weight="600"
 						fill="var(--color-ink)"
@@ -333,7 +342,7 @@
 				<circle
 					cx={here.x}
 					cy={here.z}
-					r="180"
+					r={180 * s}
 					fill="var(--color-watt)"
 					opacity="0.7"
 					filter="url(#{uid}-glow)"
@@ -342,7 +351,7 @@
 					data-testid="map-dot"
 					cx={here.x}
 					cy={here.z}
-					r="110"
+					r={110 * s}
 					fill="var(--color-watt)"
 					stroke="var(--world-px-road-line)"
 					stroke-width={2.5 * k}
@@ -352,7 +361,7 @@
 				<circle
 					cx={here.x}
 					cy={here.z}
-					r="170"
+					r={170 * s}
 					fill="none"
 					stroke="var(--color-surface)"
 					stroke-width={6 * k}
@@ -361,7 +370,7 @@
 				<circle
 					cx={here.x}
 					cy={here.z}
-					r="170"
+					r={170 * s}
 					fill="none"
 					stroke="var(--color-ink)"
 					stroke-width={3 * k}
@@ -371,7 +380,7 @@
 					data-testid="map-dot"
 					cx={here.x}
 					cy={here.z}
-					r="85"
+					r={85 * s}
 					fill="var(--color-ink)"
 					stroke="var(--color-surface)"
 					stroke-width={2 * k}
@@ -389,14 +398,14 @@
 				stroke-linejoin="round"
 			>
 				<text
-					x={mx + 250}
-					y={mz + 640}
-					font-size="480"
+					x={mx + 250 * s}
+					y={mz + 640 * s}
+					font-size={480 * s}
 					font-weight="800"
-					letter-spacing="20"
-					stroke-width="70">{MAP.name.toUpperCase()}</text
+					letter-spacing={20 * s}
+					stroke-width={70 * s}>{MAP.name.toUpperCase()}</text
 				>
-				<g transform="translate({mx + mw - 380} {mz + 480})">
+				<g transform="translate({mx + mw - 380 * s} {mz + 480 * s}) scale({s})">
 					<path d="M0,-230L110,90L0,40L-110,90Z" stroke-width="40" />
 					<text
 						y="280"
@@ -406,7 +415,8 @@
 						stroke-width="45">N</text
 					>
 				</g>
-				<g transform="translate({mx + 300} {mz + mh - 300})">
+				<!-- The scale bar's metres are the map's: drawn at its scale, it is 2 · scale km long. -->
+				<g transform="translate({mx + 300 * s} {mz + mh - 300 * s}) scale({s})">
 					<path d="M0,0h2000" stroke-width="80" stroke-linecap="butt" />
 					<path
 						d="M0,0h2000"
@@ -416,14 +426,15 @@
 						stroke-dasharray="500 500"
 						stroke-linecap="butt"
 					/>
-					{#each [0, 1, 2] as km (km)}
+					{#each [0, 1, 2] as tick (tick)}
 						<text
-							x={km * 1000}
+							x={tick * 1000}
 							y="-110"
 							text-anchor="middle"
 							font-size="150"
 							font-weight="700"
-							stroke-width="40">{km === 2 ? '2 km' : km}</text
+							stroke-width="40"
+							>{tick === 2 ? `${bar} km` : (tick * bar) / 2}</text
 						>
 					{/each}
 				</g>

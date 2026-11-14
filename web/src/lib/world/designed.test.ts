@@ -692,13 +692,17 @@ describe('the map’s land', () => {
 		BUILD_MS,
 	);
 
-	it(
-		'lays gravel lanes on the land: narrow, with no stop or sign, never beside a road',
-		async () => {
-			const route = routeOfRoad(await roadOf('urnsee'));
+	// Wattalp's lanes, and the Valley's on a land of its own: its lanes start on its own loop, which no other loop shares.
+	it.each([
+		['urnsee', 15],
+		['valley', 8],
+	] as const)(
+		'%s: lays gravel lanes on the land: narrow, with no stop or sign, never beside a road',
+		async (id, least) => {
+			const route = routeOfRoad(await roadOf(id));
 			const world = generate(route);
 			const lanes = world.sides.filter((s) => s.route.gravel);
-			expect(lanes.length).toBeGreaterThan(15);
+			expect(lanes.length).toBeGreaterThan(least);
 			const roads = [
 				route,
 				...world.sides.filter((s) => !s.route.gravel).map((s) => s.route),
