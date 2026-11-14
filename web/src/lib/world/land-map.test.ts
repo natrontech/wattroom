@@ -135,3 +135,27 @@ describe('the lands’ maps', () => {
 		120_000,
 	);
 });
+
+// The Routes page draws a road on its land's map where onLandMap places it, its outline otherwise.
+describe('the Routes page’s land map', () => {
+	it('is every designed loop’s, and not the Pass loop’s nor a rider’s own road’s', async () => {
+		const drawn: string[] = [];
+		for (const home of HOME_ROADS)
+			if (onLandMap((await homeRoute(home)).road)) drawn.push(home.name);
+		expect(drawn.sort()).toEqual(
+			[
+				'Valley loop',
+				'Urnsee-Rundfahrt',
+				'Tour de l’Aaren',
+				'Flèche du Lac',
+				'Col de Berne',
+				'Kettental-Runde',
+			].sort(),
+		);
+		// A rider's road exactly as long as Urnsee, its own heights.
+		const urnsee = (await homeRoute(HOME_ROADS.find((r) => r.id === 'urnsee')!))
+			.road;
+		const own = { ...urnsee, heights: urnsee.heights.map((h) => h + 3) };
+		expect(onLandMap(own)).toBeUndefined();
+	}, 120_000);
+});

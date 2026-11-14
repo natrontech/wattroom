@@ -9,6 +9,7 @@
 	import { withBack } from '#lib/back-link.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	import RouteProfile from '#lib/components/RouteProfile.svelte';
+	import RouteLandMap from '#lib/components/RouteLandMap.svelte';
 	import RouteRow from '#lib/components/RouteRow.svelte';
 	import RouteShape from '#lib/components/RouteShape.svelte';
 	import RouteStatRow from '#lib/components/RouteStatRow.svelte';
@@ -317,17 +318,25 @@
 						</h2>
 						<RouteStatRow parts={statRow(selected, loop)} />
 					</div>
-					{#if shape || shapeNote}
-						<RouteShape
-							x={shape?.x}
-							z={shape?.z}
-							climbs={selected.climbs}
-							length={road?.length}
-							note={shapeNote ?? undefined}
-							mine={!homeRoad(selected.id)}
-						/>
+					{#snippet outline()}
+						{#if shape || shapeNote}
+							<RouteShape
+								x={shape?.x}
+								z={shape?.z}
+								climbs={selected.climbs}
+								length={road?.length}
+								note={shapeNote ?? undefined}
+								mine={!homeRoad(selected.id)}
+							/>
+						{:else}
+							<Skeleton class="h-[220px] sm:h-[280px]" />
+						{/if}
+					{/snippet}
+					<!-- WattRoom's designed loops on the land they run through; a rider's own road keeps its outline. -->
+					{#if road && homeRoad(selected.id)}
+						<RouteLandMap {road}>{@render outline()}</RouteLandMap>
 					{:else}
-						<Skeleton class="h-[220px] sm:h-[280px]" />
+						{@render outline()}
 					{/if}
 					{#if road}
 						<RouteProfile {road} climbs={selected.climbs} />

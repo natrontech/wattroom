@@ -42,7 +42,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		routeId: '7a77b0ad-0002-4000-8000-000000004248',
 		name: 'Valley loop',
 		story:
-			'Rolling farmland and villages, cows by the road, two bridges over the river and two short steep ramps.',
+			'Rolling farmland and villages, cows by the road, a pond, two bridges over the river and two short steep ramps.',
 		shape: () => designed('valley'),
 	},
 	// The map (world/designs.ts): one land, and five loops through it from its village, by the time they take.
@@ -51,7 +51,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		routeId: '7a77b0ad-0005-4000-8000-000000004248',
 		name: 'Urnsee-Rundfahrt',
 		story:
-			'Half an hour round a mountain lake: under the cliffs of the east shore through a gallery, a bridge over an inlet, and a terrace high over the west.',
+			'Half an hour round a mountain lake: past a harbour, a tunnel through a headland, a gallery under the cliffs, a bridge over an inlet, and a terrace high over the west.',
 		shape: () => designed('urnsee'),
 	},
 	{
@@ -59,7 +59,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		routeId: '7a77b0ad-0004-4000-8000-000000004248',
 		name: 'Tour de l’Aaren',
 		story:
-			'Forty minutes round the river’s gorge: over a spur, two high bridges, and the moor on the plateau.',
+			'Forty minutes round the river’s gorge: over a spur, two high bridges, a tunnel through its rock, and the moor on the plateau.',
 		shape: () => designed('aare'),
 	},
 	{
@@ -75,7 +75,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		routeId: '7a77b0ad-0003-4000-8000-000000004248',
 		name: 'Col de Berne',
 		story:
-			'Ninety minutes: twenty-one hairpins up into the snow to a notch between two peaks, down the north side past a tarn, and home along the lake.',
+			'Ninety minutes: twenty-one hairpins and an avalanche gallery up into the snow to a notch between two peaks, down the north side past a tarn, and home along the lake.',
 		shape: () => designed('berne'),
 	},
 	{
@@ -83,7 +83,7 @@ export const HOME_ROADS: readonly HomeRoad[] = [
 		routeId: '7a77b0ad-0007-4000-8000-000000004248',
 		name: 'Kettental-Runde',
 		story:
-			'Two hours: the lake shore and its tunnel, a Z of hairpins up to the alp and its lake, the ridge over Speichenegg, down into the Kettental’s fields and home over the gorge.',
+			'Two hours: the lake shore and its tunnel, a Z of hairpins up to the alp and its lake, the ridge over Speichenegg, down into the Kettental’s fields and village, and home over the gorge.',
 		shape: () => designed('kette'),
 	},
 ];

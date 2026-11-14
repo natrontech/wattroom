@@ -27,6 +27,7 @@
 		you = 'watt',
 		toGo,
 		view,
+		ticks = [],
 	}: {
 		/** The land's map (land-map.ts). */
 		map: LandMapOf;
@@ -38,12 +39,14 @@
 		reverse?: boolean;
 		/** The riders around you: metres along `line`, and names. */
 		mates?: { m: number; label: string }[];
-		/** Your dot: watt where nothing else marks you, ink where the Skyline beside it does (the ride's G2). */
-		you?: 'watt' | 'ink';
+		/** Your dot: watt where nothing else marks you, ink where the Skyline beside it does (the ride's G2); none where nobody rides (the Routes page). */
+		you?: 'watt' | 'ink' | 'none';
 		/** Kilometres to the finish, written by its flag. */
 		toGo?: number;
 		/** The part of the land shown (land-map.ts loopBox): the whole land where not given. */
 		view?: MapBox;
+		/** Kilometre markers: each its kilometre and its metres along `line`, drawn as large on screen at any zoom. */
+		ticks?: { km: number; m: number }[];
 	} = $props();
 	const uid = $props.id();
 	const MAP = $derived(map.data);
@@ -153,6 +156,9 @@
 	});
 	/** The bar drawn in its group's units (a mark's metre). */
 	const barLength = $derived(bar / u);
+	/** A screen pixel in the view's metres: the km markers' unit. */
+	const pxm = $derived(cw > 0 && ch > 0 ? 1 / Math.min(cw / v.w, ch / v.h) : u);
+	const marks = $derived(ticks.map((t) => ({ km: t.km, ...at(line, t.m) })));
 	const tick = (metres: number, last: boolean) =>
 		bar >= 1000
 			? `${metres / 1000}${last ? ' km' : ''}`
@@ -164,7 +170,9 @@
 		viewBox="{v.x} {v.z} {v.w} {v.h}"
 		class="h-full w-full"
 		role="img"
-		aria-label="the map of {MAP.name}, and where you are on it"
+		aria-label="the map of {MAP.name}{you === 'none'
+			? ', and the loop on it'
+			: ', and where you are on it'}"
 		data-testid="map-overview"
 	>
 		<defs>
@@ -364,6 +372,29 @@
 					>
 				{/if}
 			</g>
+			<!-- The kilometres along the loop, as the road's outline marks them. -->
+			<g class="font-display" font-weight="700">
+				{#each marks as t (t.km)}
+					<circle
+						data-testid="map-km"
+						cx={t.x}
+						cy={t.z}
+						r={9 * pxm}
+						fill="var(--world-px-road-line)"
+						stroke="var(--world-px-ridge)"
+						stroke-width={1.5 * k}
+						{...PX}
+					/>
+					<text
+						x={t.x}
+						y={t.z}
+						text-anchor="middle"
+						dominant-baseline="central"
+						font-size={9 * pxm}
+						fill="var(--world-px-ridge)">{t.km}</text
+					>
+				{/each}
+			</g>
 			<!-- The riders around you: ink, smaller than you, never watt. -->
 			<g class="font-display">
 				{#each around as mate, i (i)}
@@ -411,7 +442,7 @@
 					stroke-width={2.5 * k}
 					{...PX}
 				/>
-			{:else}
+			{:else if you === 'ink'}
 				<circle
 					cx={here.x}
 					cy={here.z}
