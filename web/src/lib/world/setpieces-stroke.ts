@@ -11,7 +11,7 @@ import type { Class } from './placement/types';
 import { RHYTHM, type Passing, type Size } from './placement/stream';
 import type { KitKind } from './props/kit';
 import { rhythmOf } from './props/rhythm';
-import { deg, hashOf, turnBy, type Turn } from './props/roads';
+import { deg, hashOf, turnBy, walker, type Turn } from './props/roads';
 import { RANK, tileKey, tileOf, type Candidate } from './props/tiles';
 import type {
 	Arch,
@@ -144,6 +144,116 @@ export type Plan = {
 	/** Whether stroke k may stand something reaching `reach` metres at (x, z): clear of every other road (setpieces.ts offOthers). */
 	free: (x: number, z: number, k: number, reach?: number) => boolean;
 };
+
+/** Metres from a gravel lane's end in the open within which the farm it leads to stands (designed.test.ts). */
+export const LANE_FARM_M = 30;
+/** Metres from another road within which a lane's end is a mouth on it, not an end in the open. */
+const LANE_MOUTH_M = 40;
+
+/**
+ * A gravel lane's set pieces (designs.ts Lane): nothing along it, and at each
+ * end that meets no road the place it leads to, so no lane stops in empty
+ * land. Across its end a farmhouse with its barn beside it on the meadow, an
+ * alp hut on the alp or in the forest; tried straight on from the end, then
+ * to either side of it, wherever the ground and the placer's gates take it.
+ */
+export function planLane(line: Line, k: number, plan: Plan) {
+	const { c, key, groups } = plan;
+	const { ground, biomeAt, placer } = c;
+	const origin = c.origin ?? [0, 0];
+	const stroke = hashOf(line.key);
+	const u = (slot: number, d: number) => unit(key(stroke, slot, d));
+	const w = walker(line);
+	const others = ground.lines.filter((_, j) => j !== k);
+	/** Whether (x, z) lies within LANE_MOUTH_M of another road: the lane meets it there. */
+	const onRoad = (x: number, z: number) =>
+		others.some((o) => {
+			for (let i = 0; i < o.x.length; i++)
+				if (
+					Math.abs(o.x[i] - x) < LANE_MOUTH_M &&
+					Math.hypot(o.x[i] - x, o.z[i] - z) < LANE_MOUTH_M
+				)
+					return true;
+			return false;
+		});
+	for (const end of [0, 1] as const) {
+		const s = end ? w.length : 0;
+		const p = w.at(s);
+		if (onRoad(p.x, p.z)) continue;
+		// Out of the lane at this end: on along it at its last metre, back along it at its first.
+		const out = end ? 1 : -1;
+		const [fx, fz] = [-p.lz * out, p.lx * out];
+		const [lx, lz] = [-fz, fx];
+		const home: Turn = [-fz, -fx];
+		const g = group();
+		const id = tileKey(...tileOf(p.x, p.z, origin));
+		groups.set(id, [...(groups.get(id) ?? []), g]);
+		const slot = 5e6 + end;
+		g.step(() => {
+			const b = biomeAt(p.x, p.z);
+			if (b === null || NO_FOUNTAIN.has(b)) return;
+			// A farm where meadow lies round the end, past the lane's own verge; else a hut.
+			const farm = [
+				[30, 0],
+				[15, 30],
+				[15, -30],
+			].some(
+				([a, l]) =>
+					biomeAt(p.x + fx * a + lx * l, p.z + fz * a + lz * l) ===
+					Biome.Meadow,
+			);
+			const stand = (
+				kind: KitKind & PieceKind,
+				spots: readonly (readonly [number, number])[],
+				turn: Turn,
+				rank: number,
+			) => {
+				for (const [ahead, left] of spots) {
+					const x = p.x + fx * ahead + lx * left;
+					const z = p.z + fz * ahead + lz * left;
+					if (!ground.clearOf(x, z, 12) || biomeAt(x, z) === null) continue;
+					const placed = placer.candidate(kind, 'building', x, z, turn);
+					if (placed === null) continue;
+					g.out.push({
+						p: placed,
+						rank,
+						is: { piece: { kind, x, y: placed.base, z, turn }, line: k },
+					});
+					return [x, z] as const;
+				}
+				return null;
+			};
+			const side = u(slot, 1) < 0.5 ? -1 : 1;
+			const at = stand(
+				farm ? 'house' : 'hut',
+				[
+					[18, 0],
+					[14, 12 * side],
+					[14, -12 * side],
+					[4, 18 * side],
+					[4, -18 * side],
+					[24, 8 * side],
+					[24, -8 * side],
+				],
+				turnBy(home, deg(Math.round((u(slot, 2) - 0.5) * 14))),
+				RANK.piece + u(slot, 3),
+			);
+			if (!at || !farm) return;
+			// Its barn beside it, on the far side of the yard from the lane.
+			stand(
+				'barn',
+				[
+					[22, -20 * side],
+					[30, 4 * side],
+					[6, -22 * side],
+					[34, -14 * side],
+				],
+				turnBy(home, deg(side > 0 ? 90 : -90)),
+				RANK.piece + u(slot, 4) * 0.5,
+			);
+		});
+	}
+}
 
 /** Plans stroke `k`'s set pieces into `plan`. */
 export function planStroke(line: Line, k: number, plan: Plan) {

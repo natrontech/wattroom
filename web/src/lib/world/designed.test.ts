@@ -28,6 +28,7 @@ import {
 	stopped,
 	stops,
 } from './scenery';
+import { LANE_FARM_M } from './setpieces-stroke';
 import { sharedAt } from './shared-road';
 import { FORMATION, ROAD_W } from './terrain/road-profile';
 import { BUILD_MS } from './world.test-helper';
@@ -791,7 +792,7 @@ describe('the map’s land', () => {
 		['urnsee', 5, LANE_GRADE],
 		['valley', 8, Infinity],
 	] as const)(
-		'%s: lays gravel lanes on the land: narrow, with no stop or sign, never beside a road, never straight up a mountain',
+		'%s: lays gravel lanes on the land: narrow, with no stop or sign, never beside a road, never straight up a mountain, each to a road or a farm',
 		async (id, least, steepest) => {
 			const route = routeOfRoad(await roadOf(id));
 			const world = generate(route);
@@ -801,9 +802,23 @@ describe('the map’s land', () => {
 				route,
 				...world.sides.filter((s) => !s.route.gravel).map((s) => s.route),
 			];
+			const buildings = world.pieces.filter((p) =>
+				['house', 'barn', 'hut'].includes(p.kind),
+			);
 			for (const lane of lanes) {
 				const r = lane.route;
 				expect(ribbonOf(r).width).toBe(GRAVEL_W);
+				// It leads somewhere: an end that meets no road ends at the farm or the hut it serves.
+				lane.mouths.forEach((m, end) => {
+					if (m) return;
+					const i = end ? r.x.length - 1 : 0;
+					expect(
+						Math.min(
+							...buildings.map((b) => Math.hypot(b.x - r.x[i], b.z - r.z[i])),
+						),
+						`${id}: the lane's end at ${Math.round(r.x[i])}, ${Math.round(-r.z[i])}`,
+					).toBeLessThan(LANE_FARM_M);
+				});
 				expect(stopped(lane, world.sides)).toEqual([null, null]);
 				const [from, to] = [
 					lane.mouths[0] ? 60 : 0,
