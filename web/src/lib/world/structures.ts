@@ -933,6 +933,8 @@ function retaining(
 const INTO_SLAB = 0.4;
 /** Metres under the road a gallery's back wall reaches down to. */
 const WALL_FOOT = -3;
+/** How far past its roof's back a gallery's bank drops off towards a mouth: off the slab's face, so the two never lie on each other. */
+const HILL_STEP = 0.3;
 
 /**
  * A road's avalanche galleries: a heavy concrete roof sloping up into the
@@ -994,13 +996,15 @@ export function galleries(
 		 * its back down onto the hill, so the gallery lies in the slope and an
 		 * avalanche runs over it: the roof's lip, the top at the hill, the bank
 		 * down to its foot, and the point under the top the mouth's face is
-		 * fanned from.
+		 * fanned from. `e` metres from the nearer mouth: towards a mouth the
+		 * bank falls into the hill at 1:2.2, so at the mouth it lies on the
+		 * ground and only the roof's end and the portal stand there.
 		 */
-		const cover = (f: Frame) => {
+		const cover = (f: Frame, e: number) => {
 			const top = clear + thick + rise + 0.9;
 			const far = (u: number) => {
 				const p = f.pt(u, 0);
-				return yOf(route, groundAt(p.x, p.z)) - f.y;
+				return yOf(route, groundAt(p.x, p.z)) - p.y;
 			};
 			// The bank falls 1:2.2 to the hill, no further out than GALLERY.ramp; its foot wanders along it, so where it meets the hill is no ruled line.
 			const run = Math.min(
@@ -1013,17 +1017,22 @@ export function galleries(
 			const reach = Math.max(2, run * (1.2 + 0.45 * wander));
 			// Off the top at about 1:2.2, then easing out to run into the hill under the ground, never rising on the way.
 			let h = top;
+			// Its end towards a mouth: the bank under a slope rising 1:2.2 from the ground at the mouth, so it eases into the hill there as it does at its foot, never ending in a face.
+			const end = (u: number) => far(u) - 0.4 + e / 2.2;
 			const bank = [1 / 3, 2 / 3, 1].map((t) => {
 				const u = uHill + back * reach * t;
 				const ground = Math.min(top - 0.5, far(u) - 0.4);
 				const ease = t * (1.5 - 0.5 * t);
-				h = Math.min(h, top + (ground - top) * ease);
+				h = Math.min(h, top + (ground - top) * ease, end(u));
 				return f.pt(u, h);
 			});
+			// Where the bank falls short of the top, it drops off the roof's back first: that face looks into the hill, away from the road.
+			const off = uHill + back * HILL_STEP;
 			return [
 				f.pt(uOpen + back * 0.4, clear + thick - 0.05),
 				f.pt(uOpen + back * 0.6, clear + thick + 0.3),
 				f.pt(uHill, top),
+				f.pt(off, Math.min(top, end(off))),
 				...bank,
 				f.pt(uHill, h - 0.6),
 			];
@@ -1035,6 +1044,8 @@ export function galleries(
 			f.pt(uBack, clear),
 			f.pt(uBack, WALL_FOOT),
 		];
+		// Metres to the nearer mouth.
+		const mouthward = (d: number) => Math.min(d - from, to - d);
 		const n = Math.max(1, Math.round((to - from) / 4));
 		let prev: Frame | null = null;
 		for (let i = 0; i <= n; i++) {
@@ -1044,7 +1055,14 @@ export function galleries(
 			const tint = dress(f.ele);
 			if (prev) {
 				b.skin(roof(prev), roof(f), concrete);
-				land.at(key, d).skin(cover(prev), cover(f), tint, false);
+				land
+					.at(key, d)
+					.skin(
+						cover(prev, mouthward(prev.d)),
+						cover(f, mouthward(d)),
+						tint,
+						false,
+					);
 				b.skin(wall(prev), wall(f), concrete);
 				// The band painted along the wall at hip height, and a kerb over each shoulder: no verge under a roof, and no snow.
 				b.quad(
@@ -1082,7 +1100,7 @@ export function galleries(
 			b.cap(roof(f), concrete);
 			b.cap(wall(f), concrete);
 			// The earth's own section only, over the roof's and behind it: a fan over all of it lay on the roof's face, and hung down across the mouth.
-			const section = cover(f);
+			const section = cover(f, 0);
 			const [, p1, p2] = section;
 			const p3 = section[section.length - 2];
 			const p4 = section[section.length - 1];
@@ -1106,14 +1124,15 @@ export function galleries(
 				return yOf(route, groundAt(p.x, p.z)) - f.y;
 			};
 			const behind = Math.min(WALL_FOOT, ground(uBack), ground(uHill)) - 0.5;
-			dressed.cap(
+			// The portal's: concrete, the wall's end run up under the roof's back, as the bank falls away from it.
+			b.cap(
 				[
 					f.pt(uBack, clear),
 					f.pt(uHill, clear + rise - 0.6),
 					f.pt(uHill, behind),
 					f.pt(uBack, behind),
 				],
-				tint,
+				concrete,
 			);
 			const below =
 				Math.min(

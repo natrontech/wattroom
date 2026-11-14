@@ -154,6 +154,29 @@ export function sideRoads(
 		}
 	};
 	keepAll(route, 0);
+	/**
+	 * Metres along (sx, sz) from (x, z) to the end of a road kept whole that
+	 * the kept point `hit` lies at the end of, where (x, z) lies on that
+	 * road's line run on past its end: a road running on from it end to end.
+	 * Null for any other.
+	 */
+	const endOn = (
+		hit: { owner: number; m: number },
+		x: number,
+		z: number,
+		sx: number,
+		sz: number,
+	): number | null => {
+		const w = hit.owner >= 1 ? whole[hit.owner - 1] : undefined;
+		if (!w || w.loop) return null;
+		const len = (w.x.length - 1) * w.step;
+		const tip = hit.m < len / 2 ? 0 : len;
+		if (Math.abs(hit.m - tip) > 1) return null;
+		const e = at(w, tip);
+		const along = sx * (e.x - x) + sz * (e.z - z);
+		const off = Math.abs(sx * (e.z - z) - sz * (e.x - x));
+		return along > 0 && off < 1 ? along : null;
+	};
 	const out: SideRoad[] = [];
 	for (const w of whole) {
 		out.push({
@@ -226,10 +249,14 @@ export function sideRoads(
 							(sx * (hit.x - p.x) + sz * (hit.z - p.z)) / d,
 						);
 						const skew = Math.sqrt(Math.max(0, 1 - square * square));
-						const want = Math.min(
-							OVER_MAX_M,
-							((ROAD_W / 2) * skew) / Math.max(square, 0.2),
-						);
+						// Run on from a roundabout's arm, end to end: drawn on to the arm's square end, where the arm's asphalt and paint stop, not short of it by END_M.
+						const onFrom = endOn(hit, p.x, p.z, sx, sz);
+						const want =
+							onFrom ??
+							Math.min(
+								OVER_MAX_M,
+								((ROAD_W / 2) * skew) / Math.max(square, 0.2),
+							);
 						const over = Math.max(0, Math.min(want, dir > 0 ? end - at0 : at0));
 						return [
 							at0 + dir * over,
