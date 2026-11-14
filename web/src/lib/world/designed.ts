@@ -850,10 +850,10 @@ export function designedFor(road: Road): Designed | undefined {
 	if (!d) return undefined;
 	// And its heights are the design's: a rider's own road as long to the centimetre is still their own.
 	const own = build(d).line.road.heights;
-	const mid = own.length >> 1;
+	// The first, a quarter and the middle: a loop turned round starts where it ends, and with an odd count its middle is its middle either way.
+	const at = [0, own.length >> 2, own.length >> 1];
 	return own.length === road.heights.length &&
-		own[0] === road.heights[0] &&
-		own[mid] === road.heights[mid]
+		at.every((i) => own[i] === road.heights[i])
 		? d
 		: undefined;
 }
