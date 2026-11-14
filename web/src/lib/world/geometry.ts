@@ -7,6 +7,7 @@ import { type Route } from '#lib/road/route.ts';
 import { lightsUniforms, POOL, type Lights } from './lights';
 import type { Palette, Style } from './styles';
 import type { TerrainMesh } from './terrain-mesh';
+import { BLEND } from './terrain-grid';
 import type { World } from './world';
 import { meetingAt } from './crossings';
 import { sceneOf } from './designed';
@@ -82,7 +83,7 @@ export function terrain(
 	mesh: TerrainMesh,
 	palette: Palette,
 ): THREE.BufferGeometry {
-	const { pos, biome, shade, forest, index } = mesh;
+	const { pos, biome, shade, forest, blend, index } = mesh;
 	const n = pos.length / 3;
 	const p = new Float32Array(n * 3);
 	const colors = new Float32Array(n * 3);
@@ -106,6 +107,7 @@ export function terrain(
 	made(Biome.Dry, Biome.Alpine, Biome.Snow, 0.3);
 	made(Biome.Frost, Biome.Snow, Biome.Snow, 0);
 	const mix = new THREE.Color();
+	const sum = new THREE.Color();
 	for (let i = 0; i < n; i++) {
 		p[i * 3] = pos[i * 3];
 		p[i * 3 + 1] = yOf(route, pos[i * 3 + 1]);
@@ -115,11 +117,30 @@ export function terrain(
 			b === Biome.Meadow || b === Biome.Forest
 				? mix.copy(meadow).lerp(wood, forest[i]) // meadow ↔ forest, blended at the edge
 				: (cache.get(b) ?? meadow);
+		ao[i] = Math.min(1, Math.max(0, (shade[i] - 0.72) / 0.4)); // hollows dark, crests light
+		const k = COVER_OF[b as Biome];
+		if (blend && blend[i * BLEND] !== 255) {
+			// A far vertex: the mean of its own and the points round it, colour and covers alike, so far fields and patches blend, never a square of one.
+			const shares = [0, 0, 0, 0];
+			if (k !== undefined) shares[k]++;
+			sum.copy(c);
+			for (let n = 0; n < BLEND; n++) {
+				const o = blend[i * BLEND + n] as Biome;
+				sum.add(cache.get(o) ?? (o === Biome.Forest ? wood : meadow));
+				const ko = COVER_OF[o];
+				if (ko !== undefined) shares[ko]++;
+			}
+			sum.multiplyScalar(1 / (BLEND + 1));
+			colors[i * 3] = sum.r;
+			colors[i * 3 + 1] = sum.g;
+			colors[i * 3 + 2] = sum.b;
+			for (let q = 0; q < 4; q++)
+				cover[i * 4 + q] = Math.round((255 * shares[q]) / (BLEND + 1));
+			continue;
+		}
 		colors[i * 3] = c.r;
 		colors[i * 3 + 1] = c.g;
 		colors[i * 3 + 2] = c.b;
-		ao[i] = Math.min(1, Math.max(0, (shade[i] - 0.72) / 0.4)); // hollows dark, crests light
-		const k = COVER_OF[b as Biome];
 		if (k !== undefined) cover[i * 4 + k] = 255;
 	}
 	const g = new THREE.BufferGeometry();

@@ -12,6 +12,7 @@ import { CHUNK_M, COARSE_M, FINE_M } from './place/lattice';
 import type { Ground } from './terrain/ground';
 import type { Line } from './terrain/lines';
 import {
+	BLEND,
 	chunkVertices,
 	onGrid,
 	type ChunkVertices,
@@ -25,6 +26,8 @@ export type TerrainMesh = {
 	biome: Uint8Array;
 	shade: Float32Array;
 	forest: Float32Array;
+	/** BLEND biomes a vertex round a far chunk's vertices (Grid.blend); 255 where the vertex is its own. */
+	blend: Uint8Array;
 	index: Uint32Array;
 };
 
@@ -222,6 +225,7 @@ export function meshOf(
 	const biome = new Uint8Array(verts);
 	const shade = new Float32Array(verts);
 	const forest = new Float32Array(verts);
+	const blend = new Uint8Array(verts * BLEND).fill(255);
 	const index = new Uint32Array(tris * 3);
 	let v = 0;
 	let t = 0;
@@ -237,6 +241,7 @@ export function meshOf(
 		biome.set(b.biome, v);
 		shade.set(b.shade, v);
 		forest.set(b.forest, v);
+		if (b.blend) blend.set(b.blend, v * BLEND);
 		for (let j = 0; j < row - 1; j++)
 			for (let i = 0; i < row - 1; i++) {
 				// Written in place: an array a quad was garbage on every chunk streamed in.
@@ -250,7 +255,7 @@ export function meshOf(
 			}
 		v += row * row;
 	}
-	return { pos, biome, shade, forest, index };
+	return { pos, biome, shade, forest, blend, index };
 }
 
 export function createTerrain(
