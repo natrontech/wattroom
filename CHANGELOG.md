@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.37] - 2026-11-14
+
+### Added
+
+- Wattalp has many more gravel lanes, each leading to a farm or an alp hut. Meadows and snowfields look smooth from above. Galleries sit in the hillside with no gaps at their ends. Streams flow downhill and under their bridges. The harbour sits by the water. Roads join roundabout arms without gaps. (#4601)
+
 ## [2026.11.36] - 2026-11-14
 
 ### Added
@@ -4606,7 +4612,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.36...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.37...HEAD
+[2026.11.37]: https://github.com/natrontech/wattroom/compare/2026.11.36...2026.11.37
 [2026.11.36]: https://github.com/natrontech/wattroom/compare/2026.11.35...2026.11.36
 [2026.11.35]: https://github.com/natrontech/wattroom/compare/2026.11.34...2026.11.35
 [2026.11.34]: https://github.com/natrontech/wattroom/compare/2026.11.33...2026.11.34
