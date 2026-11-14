@@ -40,6 +40,9 @@ import { BUILD_MS } from './world.test-helper';
  * lies where the story says it does.
  */
 
+/** The steepest a Wattalp gravel lane climbs over 200 m, in percent: a farm track's, not a ski run's. */
+const LANE_GRADE = 15;
+
 const roadOf = async (id: string): Promise<Road> =>
 	(await homeRoute(HOME_ROADS.find((r) => r.id === id)!)).road;
 
@@ -783,12 +786,13 @@ describe('the map’s land', () => {
 	);
 
 	// Wattalp's lanes, and the Valley's on a land of its own: its lanes start on its own loop, which no other loop shares.
+	// Wattalp's lanes climb no steeper than a farm track over any 200 m clear of a mouth, where a lane comes off its road's own bank: one ran straight up the face under the col into the snow. The Valley's rolling hills are left as drawn.
 	it.each([
-		['urnsee', 15],
-		['valley', 8],
+		['urnsee', 5, LANE_GRADE],
+		['valley', 8, Infinity],
 	] as const)(
-		'%s: lays gravel lanes on the land: narrow, with no stop or sign, never beside a road',
-		async (id, least) => {
+		'%s: lays gravel lanes on the land: narrow, with no stop or sign, never beside a road, never straight up a mountain',
+		async (id, least, steepest) => {
 			const route = routeOfRoad(await roadOf(id));
 			const world = generate(route);
 			const lanes = world.sides.filter((s) => s.route.gravel);
@@ -801,6 +805,17 @@ describe('the map’s land', () => {
 				const r = lane.route;
 				expect(ribbonOf(r).width).toBe(GRAVEL_W);
 				expect(stopped(lane, world.sides)).toEqual([null, null]);
+				const [from, to] = [
+					lane.mouths[0] ? 60 : 0,
+					r.length - (lane.mouths[1] ? 60 : 0),
+				];
+				for (let m = from; m + 200 <= to; m += 20) {
+					const a = at(r, m);
+					expect(
+						(Math.abs(at(r, m + 200).ele - a.ele) / 200) * 100,
+						`grade ${Math.round(a.x)}, ${Math.round(-a.z)}`,
+					).toBeLessThanOrEqual(steepest);
+				}
 				for (let m = 0; m <= r.length; m += 20) {
 					const p = at(r, m);
 					// On its land, off its bridges: the field or the hillside 15 m either side lies about as high, no cutting or bank of its own.

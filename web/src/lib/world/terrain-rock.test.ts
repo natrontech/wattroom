@@ -35,9 +35,29 @@ describe('Diorama 3D’s snow is closed on gentle ground', () => {
 			expect(snowRockCut(up(deg))).toBeGreaterThanOrEqual(1);
 	});
 
-	it('still shows rock on a slope and along a crest', () => {
-		expect(snowRockCut(up(30))).toBeLessThan(0.75);
+	it('lets no rock through a road’s cut or fill in the snow: closed up to 35°', () => {
+		// The earthworks' 1:1.5 is 34°: their faces showed the stones through, in patches and specks.
+		for (const deg of [20, 30, 34, 35])
+			expect(snowRockCut(up(deg))).toBeGreaterThanOrEqual(1);
+	});
+
+	it('still shows rock on a crag and along a crest', () => {
+		expect(snowRockCut(up(45))).toBeLessThan(0.75);
+		expect(snowRockCut(up(60))).toBeLessThan(0);
 		expect(snowRockCut(up(5), 1)).toBeLessThan(snowRockCut(up(5)) - 0.4);
+	});
+
+	it('tints a road’s cut and fill (up to 25°) at most half, a mountain’s wall whole', () => {
+		const [a, b] = SNOW_TINT_LEAN.map(Number);
+		const tint = (deg: number) => {
+			const t = Math.min(
+				1,
+				Math.max(0, (Math.sin((deg * Math.PI) / 180) - a) / (b - a)),
+			);
+			return t * t * (3 - 2 * t);
+		};
+		expect(tint(25)).toBeLessThan(0.5);
+		expect(tint(45)).toBe(1);
 	});
 
 	it('tints no face that lies near flat', () => {
