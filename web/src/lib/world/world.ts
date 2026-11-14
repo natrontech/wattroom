@@ -574,19 +574,18 @@ export function generate(
 			return true;
 		if (roofs.length === 0) return false;
 		const hit = nearest(x, z);
-		if (!hit || hit.d > GALLERY_EDGE + GALLERY_WALL + reach + GALLERY_CLEAR)
-			return false;
+		if (!hit || hit.d > GALLERY_VIEW_M + reach) return false;
 		const d = (hit.i + hit.t) * route.step;
 		return roofs.some(
 			({ a, b, back }) =>
 				d >= a - 4 - reach &&
 				d <= b + 4 + reach &&
-				// Behind the wall a thing keeps its own reach off it; on the open side off the pillars, so nothing pokes in under the roof.
+				// Behind the wall a thing keeps its own reach off it; on the open side nothing stands in the view out between the pillars.
 				hit.d <
-					GALLERY_EDGE +
-						(hit.side === back ? GALLERY_WALL : 0) +
-						reach +
-						GALLERY_CLEAR,
+					(hit.side === back
+						? GALLERY_EDGE + GALLERY_WALL + GALLERY_CLEAR
+						: GALLERY_VIEW_M) +
+						reach,
 		);
 	};
 	let whole: { mesh: TerrainMesh; rim: number[] } | null = null;
@@ -729,6 +728,8 @@ const GALLERY_EDGE = FORMATION + GALLERY.out;
 /** How far past that its back wall, its roof and the earth banked behind it reach into the hill (structures.ts galleries), and what a thing keeps clear of them or the pillars past its own reach. */
 const GALLERY_WALL = GALLERY_BACK + GALLERY.ramp;
 const GALLERY_CLEAR = 1;
+/** On a gallery's open side nothing grows or stands this near the road: what a rider sees between its pillars is the lake or the valley, not a wood. */
+const GALLERY_VIEW_M = 130;
 /** Metres of each road, either side of a junction, whose paint reads the other road's line. */
 const JUNCTION_M = 30;
 /** Metres back from its mouth a point on a side road's own side of the road it meets lies. */
