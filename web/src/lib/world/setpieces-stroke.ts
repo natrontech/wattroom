@@ -331,10 +331,14 @@ export function planStroke(line: Line, k: number, plan: Plan) {
 		const g = filed(s);
 		item(g, kind, s, 60, (self) => {
 			const p = w.at(s);
-			const b = biomeAt(p.x + p.lx * off * side, p.z + p.lz * off * side);
-			// High ground where nothing grows to stand a hay bale or a fence on takes a cairn instead.
+			const x = p.x + p.lx * off * side;
+			const z = p.z + p.lz * off * side;
+			const b = biomeAt(x, z);
+			// High ground where nothing grows to stand a hay bale or a fence on takes a cairn instead; a river's gravel bar in the valley, nothing.
 			if (!fits[kind](b))
-				return b !== null && BARE.has(b)
+				return b !== null &&
+					BARE.has(b) &&
+					ground.scene?.coverAt(x, z) !== 'gravel'
 					? put(g, 'cairn', 'kit', s, side, off, 9.2, i, self)
 					: null;
 			return put(g, kind, 'kit', s, side, off, 9.2, i, self);
