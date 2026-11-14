@@ -31,8 +31,17 @@ const MERGE_DEEP_M = 1;
 /** A river's flow, metres a second; a stream's from its fall. */
 const RIVER_MPS = 1.1;
 const STREAM_MPS = [1.6, 9] as const;
-/** Metres of a ripple on running water, slow water's and white water's: short, so none reads as a painted line. */
-const STREAK_M = [2.6, 1.6] as const;
+/**
+ * The speed, metres a second, the shader moves every ripple's pattern by:
+ * each vertex's drift (Out.flow's fourth) is its distance down the water in
+ * metres of water this fast, so a ripple rides its own water's speed. Read
+ * in plain metres with its own speed each vertex's pattern slid apart from
+ * its neighbour's a little more every second, and a few minutes into a ride
+ * the ripples ran upstream where the water sped up.
+ */
+export const DRIFT_MPS = 1.6;
+/** Metres of a ripple on running water as fast as DRIFT_MPS: short, so none reads as a painted line. Faster water draws it longer. */
+const STREAK_M = 2.2;
 /** A stream's water at its middle, metres: its foam line hugs its banks. */
 const STREAM_MID_M = 1.1;
 
@@ -273,6 +282,7 @@ function still(
 			run ? run.along : 0,
 			run ? run.d * run.side : 0,
 			run ? RIVER_MPS : 0,
+			run ? (run.along * DRIFT_MPS) / RIVER_MPS : 0,
 		);
 		out.foam.push(0);
 		return vertex[c];
@@ -403,23 +413,31 @@ function running(route: Route, w: Water, out: Out, shore?: ShorePoint[]) {
 	const n = run.levels.length;
 	const last = w.outline.length - 1;
 	let along = 0;
+	let drift = 0;
+	let was = 0;
 	const first = out.pos.length / 3;
 	for (let i = 0; i < n; i++) {
 		const l = w.outline[i];
 		const r = w.outline[last - i];
 		const mx = (l[0] + r[0]) / 2;
 		const mz = (l[1] + r[1]) / 2;
-		if (i > 0) {
-			const pl = w.outline[i - 1];
-			const pr = w.outline[last - i + 1];
-			along += Math.hypot(mx - (pl[0] + pr[0]) / 2, mz - (pl[1] + pr[1]) / 2);
-		}
+		const step =
+			i > 0
+				? Math.hypot(
+						mx - (w.outline[i - 1][0] + w.outline[last - i + 1][0]) / 2,
+						mz - (w.outline[i - 1][1] + w.outline[last - i + 1][1]) / 2,
+					)
+				: 0;
+		along += step;
 		const half = Math.hypot(l[0] - r[0], l[1] - r[1]) / 2;
 		const a = Math.max(0, i - 1);
 		const b = Math.min(n - 1, i + 1);
 		const span = Math.max(1, b - a) * 10;
 		const fall = Math.max(0, (run.levels[a] - run.levels[b]) / span);
 		const mps = Math.min(STREAM_MPS[1], STREAM_MPS[0] + 8 * fall);
+		// The time the water takes down this step, in metres of DRIFT_MPS water.
+		if (i > 0) drift += (step * DRIFT_MPS * 2) / (was + mps);
+		was = mps;
 		const y = yOf(route, run.levels[i]);
 		if (shore)
 			for (const [side, p] of [
@@ -442,7 +460,7 @@ function running(route: Route, w: Water, out: Out, shore?: ShorePoint[]) {
 		] as const) {
 			out.pos.push(x, y, z);
 			out.depth.push(d);
-			out.flow.push(along, u, mps);
+			out.flow.push(along, u, mps, drift);
 			out.foam.push(run.foam[i]);
 		}
 	}
@@ -458,8 +476,9 @@ function running(route: Route, w: Water, out: Out, shore?: ShorePoint[]) {
 
 /**
  * The scene's water as one geometry: position, `depth` (metres over the drawn
- * bed), `flow` (metres along its course, metres across it, metres a second;
- * 0 for standing water) and `foam` (its white water's share).
+ * bed), `flow` (metres along its course, metres across it, metres a second
+ * and its drift, DRIFT_MPS; 0 for standing water) and `foam` (its white
+ * water's share).
  */
 export function waterSheets(
 	route: Route,
@@ -476,7 +495,7 @@ export function waterSheets(
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(out.pos, 3));
 	g.setAttribute('depth', new THREE.Float32BufferAttribute(out.depth, 1));
-	g.setAttribute('flow', new THREE.Float32BufferAttribute(out.flow, 3));
+	g.setAttribute('flow', new THREE.Float32BufferAttribute(out.flow, 4));
 	g.setAttribute('foam', new THREE.Float32BufferAttribute(out.foam, 1));
 	g.setIndex(out.index);
 	g.computeBoundingSphere();
@@ -589,9 +608,9 @@ export function waterMaterial(
 		},
 		vertexShader: /* glsl */ `
 			attribute float depth;
-			attribute vec3 flow;
+			attribute vec4 flow;
 			attribute float foam;
-			varying vec3 vPos; varying float vDepth; varying vec3 vFlow; varying float vFoam;
+			varying vec3 vPos; varying float vDepth; varying vec4 vFlow; varying float vFoam;
 			void main() {
 				vDepth = depth; vFlow = flow; vFoam = foam;
 				vec4 world = modelMatrix * vec4(position, 1.0);
@@ -601,7 +620,7 @@ export function waterMaterial(
 		fragmentShader: /* glsl */ `
 			uniform vec3 uSun, uFrom, uKey, uShade, uSkyTop, uHorizon, uSunward, uDeep, uMid, uShallow, uFoam;
 			uniform float uFogK, uSkyFill, uDusk, uDiorama, uTime;
-			varying vec3 vPos; varying float vDepth; varying vec3 vFlow; varying float vFoam;
+			varying vec3 vPos; varying float vDepth; varying vec4 vFlow; varying float vFoam;
 			float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 			float vnoise(vec2 p) {
 				vec2 i = floor(p), f = fract(p);
@@ -629,10 +648,11 @@ export function waterMaterial(
 				if (speed > 0.0) {
 					// Running water: short ripples drifting down its course, never paint in lanes. Each wavers across it, sits off its row by its own amount and tapers to its ends; white where it falls.
 					float white = smoothstep(0.3, 0.7, vFoam);
-					float s = vFlow.x - uTime * speed;
+					// Its drift less the time at one speed for all: a ripple rides its water down at that water's speed, never back up it however long the ride.
+					float s = vFlow.w - uTime * ${DRIFT_MPS.toFixed(2)};
 					float across = vFlow.y + 0.45 * sin(s * 0.7 + vFlow.y * 1.9) + 0.25 * sin(s * 1.9 - vFlow.y);
 					float row = floor(across / 1.3);
-					float len = mix(${STREAK_M[0].toFixed(2)}, ${STREAK_M[1].toFixed(2)}, white);
+					float len = ${STREAK_M.toFixed(2)};
 					float q = s / len + h21(vec2(row, 7.0)) * 9.0;
 					float k = h21(vec2(row, floor(q)));
 					float f = fract(q) / mix(0.55, 0.7, white);
