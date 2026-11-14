@@ -314,4 +314,40 @@ describe('Col de Berne', () => {
 		// The road's works stay a modest share of the frame's 400k triangles, whole.
 		expect(out.triangles).toBeLessThan(80_000);
 	});
+
+	it('draws the gallery on the east shore’s road, another loop’s, roofed as the ridden road’s, and nothing grows under it', () => {
+		const colors = {
+			stone: '#888',
+			concrete: '#aaa',
+			steel: '#999',
+			dark: '#333',
+			lamp: '#fff',
+			band: '#ff0',
+			earth: '#0f0',
+			snow: '#fff',
+		};
+		const roofed = world.sides.flatMap((s, j) =>
+			s.galleries.map((g) => ({ s, j, g })),
+		);
+		expect(roofed).toHaveLength(1);
+		const [{ s, j, g }] = roofed;
+		expect(g[1] - g[0]).toBeGreaterThan(250);
+		const out = new Pieces();
+		galleries(
+			out,
+			`side${j}`,
+			s.route,
+			world.groundAt,
+			s.galleries,
+			undefined,
+			colors,
+		);
+		const pieces = [...out.geometries().keys()];
+		expect(pieces.length).toBeGreaterThan(1);
+		expect(pieces.every((k) => k.startsWith(`side${j}:`))).toBe(true);
+		// A few hundred metres of roof: a small share beside the ridden road's granite.
+		expect(out.triangles).toBeLessThan(10_000);
+		const mid = at(s.route, (g[0] + g[1]) / 2);
+		expect(world.roofedAt(mid.x, mid.z)).toBe(true);
+	});
 });

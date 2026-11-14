@@ -942,8 +942,10 @@ export function galleries(
 	spans: readonly (readonly [number, number])[],
 	snowline: number | undefined,
 	colors: WorksColors,
+	/** A side road's lift (road-surface.ts liftOf): its gallery stands on its own asphalt. */
+	lift?: number,
 ) {
-	const frame = framer(route);
+	const frame = framer(route, lift);
 	const concrete = tone(colors.concrete);
 	const pillar = shade(concrete, 0.7);
 	const under = shade(concrete, -0.9);

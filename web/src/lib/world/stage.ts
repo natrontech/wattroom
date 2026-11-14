@@ -393,6 +393,17 @@ export function buildStage(
 				s.route.gravel ? GRAVEL_W / 2 + GRAVEL_EDGE : undefined,
 			);
 			tunnels(works, `side${j}`, s.route, lift, s.tunnels, colors);
+			// Its galleries, so a stretch another loop rides under a roof shows it from this road; its parapets and guard stones are the ridden road's only, thousands of blocks no other road shows.
+			galleries(
+				works,
+				`side${j}`,
+				s.route,
+				world.groundAt,
+				s.galleries,
+				snowline,
+				colors,
+				lift,
+			);
 		});
 		galleries(
 			works,

@@ -95,10 +95,11 @@ export type World = {
 	waterAt: (x: number, z: number) => number | null;
 	/** Where the road is carried over the ground, in metres along it: its bridges. */
 	bridges: [from: number, to: number][];
-	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges and tunnels: drawn, never ridden. */
+	/** The map's other roads where they leave this one (side-roads.ts), and each one's bridges, tunnels and galleries: drawn, never ridden. */
 	sides: (SideRoad & {
 		bridges: [from: number, to: number][];
 		tunnels: [from: number, to: number][];
+		galleries: [from: number, to: number][];
 	})[];
 	/** The road ridden as its ribbon is drawn: with the roads that join it (Route.meets), and hidden where it runs on a roundabout's ring. */
 	ridden: Route;
@@ -253,6 +254,8 @@ export function generate(
 		...side,
 		bridges: spansOf(sideRows[j], roads[j + 1], sideTunnels[j]),
 		tunnels: sideTunnels[j],
+		// A gallery on another loop's road is drawn as the ridden road's is: seen from this one, its roof stands where that loop's rider passes under it.
+		galleries: spansAlong(sideRows[j], layout?.galleries ?? []),
 	}));
 	// At each mouth the two roads' paint reads the other's line (crossings.ts): the side road joins, the road met is joined.
 	const meets: NonNullable<Route['meets']> = [];
@@ -503,22 +506,32 @@ export function generate(
 		return [[span[0], span[1]] as [number, number]];
 	});
 	// Each gallery's back wall stands against the mountain, on the side the ground stands higher (scenery.ts roadworks): +1 left of travel, as a hit's side.
-	const roofs = galleries.map(([a, b]) => {
-		const i = Math.min(
-			route.x.length - 2,
-			Math.round((a + b) / 2 / route.step),
-		);
-		const sx = route.x[i + 1] - route.x[i];
-		const sz = route.z[i + 1] - route.z[i];
-		const len = Math.hypot(sx, sz) || 1;
-		const out = FORMATION + 60;
-		const over = (side: number) =>
-			ground.heightAt(
-				route.x[i] + (sz / len) * out * side,
-				route.z[i] - (sx / len) * out * side,
-			);
-		return { a, b, back: over(1) >= over(-1) ? 1 : -1 };
-	});
+	const roofsOf = (r: Route, spans: readonly [number, number][]) =>
+		spans.map(([a, b]) => {
+			const i = Math.min(r.x.length - 2, Math.round((a + b) / 2 / r.step));
+			const sx = r.x[i + 1] - r.x[i];
+			const sz = r.z[i + 1] - r.z[i];
+			const len = Math.hypot(sx, sz) || 1;
+			const out = FORMATION + 60;
+			const over = (side: number) =>
+				ground.heightAt(
+					r.x[i] + (sz / len) * out * side,
+					r.z[i] - (sx / len) * out * side,
+				);
+			return { a, b, back: over(1) >= over(-1) ? 1 : -1 };
+		});
+	const roofs = roofsOf(route, galleries);
+	// And the galleries on the map's other roads, each road found on its own: nothing grows under their roofs either.
+	const roofed = [
+		{ step: route.step, nearest, roofs },
+		...sides
+			.filter((s) => s.galleries.length > 0)
+			.map((s) => ({
+				step: s.route.step,
+				nearest: roadIndex(s.route).nearest,
+				roofs: roofsOf(s.route, s.galleries),
+			})),
+	].filter((r) => r.roofs.length > 0);
 	// Each tunnel's line, from PORTAL.clear before one portal to as far past the other: what nothing stands near, and what a camera keeps under.
 	const bores = [
 		...tunnels.map((t) => ({ t, r: rows })),
@@ -572,21 +585,22 @@ export function generate(
 		// Nothing in a tunnel, over its portal or before it.
 		if (bores.length > 0 && boreAt(x, z, PORTAL.half + reach + 0.5))
 			return true;
-		if (roofs.length === 0) return false;
-		const hit = nearest(x, z);
-		if (!hit || hit.d > GALLERY_VIEW_M + reach) return false;
-		const d = (hit.i + hit.t) * route.step;
-		return roofs.some(
-			({ a, b, back }) =>
-				d >= a - 4 - reach &&
-				d <= b + 4 + reach &&
-				// Behind the wall a thing keeps its own reach off it; on the open side nothing stands in the view out between the pillars.
-				hit.d <
-					(hit.side === back
-						? GALLERY_EDGE + GALLERY_WALL + GALLERY_CLEAR
-						: GALLERY_VIEW_M) +
-						reach,
-		);
+		return roofed.some(({ step, nearest, roofs }) => {
+			const hit = nearest(x, z);
+			if (!hit || hit.d > GALLERY_VIEW_M + reach) return false;
+			const d = (hit.i + hit.t) * step;
+			return roofs.some(
+				({ a, b, back }) =>
+					d >= a - 4 - reach &&
+					d <= b + 4 + reach &&
+					// Behind the wall a thing keeps its own reach off it; on the open side nothing stands in the view out between the pillars.
+					hit.d <
+						(hit.side === back
+							? GALLERY_EDGE + GALLERY_WALL + GALLERY_CLEAR
+							: GALLERY_VIEW_M) +
+							reach,
+			);
+		});
 	};
 	let whole: { mesh: TerrainMesh; rim: number[] } | null = null;
 	const diorama = () =>
