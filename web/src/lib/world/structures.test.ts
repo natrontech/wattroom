@@ -218,7 +218,7 @@ describe('Col de Berne', () => {
 		}
 	});
 
-	it('closes each gallery’s mouths from the wall into the hill and under its bank, down to the ground', () => {
+	it('closes each gallery’s mouths from the wall to the roof’s back, down to the ground, and ends its bank on the ground there, no face standing past it', () => {
 		const colors = {
 			stone: '#888',
 			concrete: '#aaa',
@@ -291,8 +291,8 @@ describe('Col de Berne', () => {
 							);
 						});
 					const gaps: string[] = [];
-					// From the wall's face into the hill, past the roof's back and under the bank, the ground to the roof's underside.
-					for (let k = E + 0.1; k <= E + GALLERY_BACK + 1.5; k += 0.3) {
+					// From the wall's face to the roof's back, the ground to the roof's underside.
+					for (let k = E + 0.1; k < E + GALLERY_BACK; k += 0.3) {
 						const u = back * k;
 						const p = f.pt(u, 0);
 						const ground = yOf(r, world.groundAt(p.x, p.z));
@@ -305,6 +305,19 @@ describe('Col de Berne', () => {
 								gaps.push(`${k.toFixed(1)} m in, ${(y - f.y).toFixed(1)} m up`);
 					}
 					expect(gaps, `the mouth at ${d.toFixed(0)} m`).toEqual([]);
+					// Past the roof's back the bank has come down to the ground: no face of it stands in the mouth's plane, where a steep face is drawn as grey rock.
+					const standing = flat
+						.flat()
+						.filter(([u, y]) => back * u > E + GALLERY_BACK + 0.5)
+						.map(([u, y]) => {
+							const p = f.pt(u, 0);
+							return y - yOf(r, world.groundAt(p.x, p.z));
+						})
+						.filter((over) => over > 0.3);
+					expect(
+						standing,
+						`the bank at the mouth at ${d.toFixed(0)} m`,
+					).toEqual([]);
 				}
 			}
 		}
