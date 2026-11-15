@@ -18,7 +18,7 @@
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { formatClock, formatKm } from '#lib/format.ts';
 	import { createProfileStore } from '#lib/profile.svelte.ts';
-	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+	import { freeRideLabel, notSavedLine } from '#lib/ride/free-ride.svelte.ts';
 	import FreeRiding from '#lib/ride/FreeRiding.svelte';
 	import FreeRideTv from '#lib/ride/FreeRideTv.svelte';
 	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
@@ -208,21 +208,13 @@
 				<Banner tone="error">
 					<p>
 						It did not save — {outcome.failure.message}
-						{#if !free.crashSafe}
-							This browser kept no copy of it: download it before you leave this
-							page, and upload the .fit wherever you keep rides.
-						{:else if outcome.failure.final}
-							It is kept on this device: Rides lists it, and the .fit downloads
-							from here.
-						{:else}
-							It is kept on this device, and Rides offers it again.
-						{/if}
+						{notSavedLine(outcome.failure, outcome.kept)}
 					</p>
 					{#if exportError}<p class="mt-1">{exportError}</p>{/if}
 					<div class="mt-3 flex flex-wrap gap-3">
 						{#if !outcome.failure.final}
 							<button
-								onclick={() => void free.retrySave()}
+								onclick={() => void free.retry()}
 								disabled={free.saving}
 								class="btn btn-primary"
 								>{free.saving ? 'Saving…' : 'Try again'}</button
@@ -254,7 +246,6 @@
 		lthr={profile.current.lthr}
 		ftp={profile.current.ftp}
 		stale={ride.stale}
-		noCrashCopy={!free.crashSafe}
 		gear={gearsEnabled() ? solo.gear : undefined}
 		shift={solo.shift}
 		cassette={!profile.current.singleSpeed}

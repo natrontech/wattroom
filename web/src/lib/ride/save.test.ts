@@ -22,6 +22,8 @@ describe('uploadRide', () => {
 		expect(api).toHaveBeenCalledWith('/api/rides', {
 			method: 'POST',
 			json: ride,
+			// A save a proxy holds open ends as a failure (#4600).
+			signal: expect.any(AbortSignal),
 		});
 	});
 
@@ -162,6 +164,7 @@ describe('a save refused over its road', () => {
 		expect(api).toHaveBeenLastCalledWith('/api/rides', {
 			method: 'POST',
 			json: { ...ride, routeId: undefined, drive: undefined },
+			signal: expect.any(AbortSignal),
 		});
 	});
 
@@ -224,6 +227,7 @@ describe("a save refused over its road's samples (#4600)", () => {
 				drive: undefined,
 				samples: [second],
 			},
+			signal: expect.any(AbortSignal),
 		});
 	});
 

@@ -1,10 +1,13 @@
+// @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import {
 	bufferedRide,
 	discardRide,
+	refuseRide,
 	discardRidesOf,
+	KEEP_UNSAVED_MS,
 	openRideBuffer,
 	stale,
 	unfinishedRides,
@@ -22,6 +25,21 @@ const sample = (seq: number): BufferedSample => ({
 /** Two riders sharing one browser (#2805). */
 const ANA = 'rider-ana';
 const BEN = 'rider-ben';
+/** A localStorage that is full: every write refused. Undone by afterEach. */
+function refuseStorage() {
+	vi.stubGlobal('localStorage', {
+		length: 0,
+		key: () => null,
+		getItem: () => null,
+		removeItem: () => {},
+		setItem: () => {
+			throw new DOMException('full', 'QuotaExceededError');
+		},
+	});
+}
+
+/** A minute ago: a ride's id is its order after this (KEEP_UNSAVED_MS reads the age). */
+const T0 = Date.now() - 60_000;
 /** What Ana is offered back — the rider most of these tests are about. */
 const offered = () => unfinishedRides(ANA);
 
@@ -44,7 +62,7 @@ async function fill(
 		rideId,
 		// null: a ride buffered before rides were stamped.
 		ownerId: opts.owner === null ? undefined : (opts.owner ?? ANA),
-		startedAt: Number(rideId) || 1,
+		startedAt: T0 + (Number(rideId) || 1),
 		workoutName: 'Openers',
 		...(opts.saveable ? { workoutJson: '{"name":"Openers","steps":[]}' } : {}),
 	});
@@ -61,6 +79,7 @@ const held = new Set<string>();
 beforeEach(() => {
 	// A fresh database per test; fake-indexeddb is process-global.
 	indexedDB = new IDBFactory();
+	localStorage.clear();
 	held.clear();
 	vi.stubGlobal('navigator', {
 		locks: {
@@ -117,21 +136,48 @@ describe('ride buffer', () => {
 		expect(await offered()).toHaveLength(0);
 	});
 
-	it('keeps only the most recent rides', async () => {
-		for (let i = 1; i <= 7; i++) await fill(String(i), 61);
+	it('keeps only the most recent finished rides', async () => {
+		for (let i = 1; i <= 7; i++) await fill(String(i), 61, { end: true });
 		// Opening one more triggers the prune: the five newest stay, the one
-		// just opened is a fragment at that moment and rides along, and the
-		// two oldest go.
+		// just opened among them, and the three oldest go.
+		await fill('8', 61);
+		expect(await stored()).toEqual(['4', '5', '6', '7', '8']);
+	});
+
+	it('keeps every unsaved ride however many came after, for a month (#4600)', async () => {
+		for (let i = 1; i <= 7; i++) await fill(String(i), 61);
 		await fill('8', 61);
 		const ids = (await offered()).map((r) => r.rideId).sort();
-		expect(ids).toEqual(['3', '4', '5', '6', '7', '8']);
+		expect(ids).toEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
+	});
+
+	it('lets an unsaved ride go once it is older than a month (#4600)', () => {
+		const now = 100 * KEEP_UNSAVED_MS;
+		const ride = (id: string, age: number, endedAt?: number) => ({
+			rideId: id,
+			startedAt: now - age,
+			workoutName: 'Openers',
+			samples: 61,
+			endedAt,
+		});
+		expect(
+			stale(
+				[
+					ride('month-old', KEEP_UNSAVED_MS + 1),
+					ride('29-days', KEEP_UNSAVED_MS - 86_400_000),
+					// A saved one is under the count, not the month.
+					ride('old-saved', KEEP_UNSAVED_MS + 1, now),
+				],
+				now,
+			),
+		).toEqual(['month-old']);
 	});
 
 	it('drops a fragment past the newest five, unfinished or not', () => {
 		// A spectator joining a session opens a buffer nothing is ever written to.
 		const join = (id: number) => ({
 			rideId: String(id),
-			startedAt: id,
+			startedAt: T0 + id,
 			workoutName: 'session x',
 			samples: 0,
 		});
@@ -184,7 +230,7 @@ describe('a store that will not open', () => {
 		openRideBuffer({
 			rideId: '900',
 			ownerId: ANA,
-			startedAt: 900,
+			startedAt: T0 + 900,
 			workoutName: 'Openers',
 		});
 
@@ -192,23 +238,65 @@ describe('a store that will not open', () => {
 		expect((await openable()).crashSafe).toBe(true);
 	});
 
-	it('says so when there is no indexedDB at all', async () => {
+	it('keeps the ride in localStorage when there is no indexedDB (#4600)', async () => {
 		const had = indexedDB;
-		// @ts-expect-error — a browser with site data switched off.
+		// @ts-expect-error — a browser whose IndexedDB is gone.
 		indexedDB = undefined;
+		try {
+			const buffer = await openable();
+			expect(buffer.crashSafe).toBe(true);
+			for (let seq = 1; seq <= 90; seq++) buffer.append(sample(seq));
+			// A reconnect still gets what the socket missed.
+			expect((await buffer.since(88)).map((s) => s.seq)).toEqual([89, 90]);
+			buffer.release();
+			const [ride] = await offered();
+			expect(ride.samples).toHaveLength(90);
+			buffer.end();
+			expect(await offered()).toEqual([]);
+		} finally {
+			indexedDB = had;
+		}
+	});
+
+	it('says so when neither store will keep it', async () => {
+		const had = indexedDB;
+		// @ts-expect-error — site data switched off: no store at all.
+		indexedDB = undefined;
+		refuseStorage();
 		try {
 			const buffer = await openable();
 			expect(buffer.crashSafe).toBe(false);
 			// Still a working-looking object: the ride goes on.
 			buffer.append(sample(1));
 			buffer.end();
-			expect(await buffer.since(0)).toEqual([]);
 		} finally {
 			indexedDB = had;
 		}
 	});
 
-	it('says so when the open fails', async () => {
+	it('gives up on an open that never answers (#4600)', async () => {
+		vi.useFakeTimers();
+		const real = indexedDB.open.bind(indexedDB);
+		// A stuck backing store: the request never fires either way.
+		indexedDB.open = () => ({}) as IDBOpenDBRequest;
+		try {
+			const opening = openable();
+			await vi.advanceTimersByTimeAsync(5000);
+			const buffer = await opening;
+			vi.useRealTimers();
+			indexedDB.open = real;
+			// Not stuck, and kept all the same: in localStorage.
+			for (let seq = 1; seq <= 90; seq++) buffer.append(sample(seq));
+			expect(buffer.crashSafe).toBe(true);
+			buffer.release();
+			expect((await offered())[0].samples).toHaveLength(90);
+		} finally {
+			indexedDB.open = real;
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps the ride in localStorage when the open fails', async () => {
 		const real = indexedDB.open.bind(indexedDB);
 		indexedDB.open = () => {
 			const request = real('wattroom-rides', 1);
@@ -216,24 +304,125 @@ describe('a store that will not open', () => {
 			return request;
 		};
 		try {
-			expect((await openable()).crashSafe).toBe(false);
+			const buffer = await openable();
+			expect(buffer.crashSafe).toBe(true);
+			for (let seq = 1; seq <= 90; seq++) buffer.append(sample(seq));
+			buffer.release();
 		} finally {
 			indexedDB.open = real;
 		}
+		expect((await offered())[0].samples).toHaveLength(90);
 	});
 
 	// Firefox's private window throws here rather than firing onerror.
 	// Unguarded that rejected the promise: the channel's `.then` had no
 	// catch and the solo page refused to start the ride at all.
-	it('says so when the open throws, rather than failing the ride', async () => {
+	it('keeps the ride when the open throws, rather than failing the ride', async () => {
 		const real = indexedDB.open.bind(indexedDB);
 		indexedDB.open = () => {
 			throw new DOMException('denied', 'InvalidStateError');
 		};
 		try {
-			await expect(openable()).resolves.toMatchObject({ crashSafe: false });
+			await expect(openable()).resolves.toMatchObject({ crashSafe: true });
 		} finally {
 			indexedDB.open = real;
+		}
+	});
+});
+
+// #4600: a 3 h ride ended with nothing on the device. A store can stop
+// mid-ride, and what a failed save leaves must be the whole ride.
+describe('a store that stops keeping the ride', () => {
+	const ride = () =>
+		openRideBuffer({
+			rideId: '700',
+			ownerId: ANA,
+			startedAt: T0 + 700,
+			workoutName: 'Free ride',
+			workoutJson: '{"name":"Free ride","unscored":true,"steps":[]}',
+		});
+
+	it('says so, and keeps the ride in localStorage from then', async () => {
+		const buffer = await ride();
+		for (let seq = 1; seq <= 40; seq++) buffer.append(sample(seq));
+		await vi.waitFor(async () =>
+			expect(await buffer.since(0)).toHaveLength(40),
+		);
+		// The disk fills: every put from now is refused.
+		const put = vi
+			.spyOn(IDBObjectStore.prototype, 'put')
+			.mockImplementation(() => {
+				throw new DOMException('full', 'QuotaExceededError');
+			});
+		try {
+			for (let seq = 41; seq <= 90; seq++) buffer.append(sample(seq));
+			await vi.waitFor(() =>
+				expect(
+					localStorage.getItem('wattroom.ride-rescue.v1.700'),
+				).not.toBeNull(),
+			);
+			expect(buffer.crashSafe).toBe(true);
+			buffer.release();
+		} finally {
+			put.mockRestore();
+		}
+		const [offer] = await offered();
+		expect(offer.samples).toHaveLength(90);
+		expect(offer.workoutJson).toContain('Free ride');
+	});
+
+	it('keeps every second a failed save hands it, whatever the appends wrote', async () => {
+		const buffer = await ride();
+		for (let seq = 1; seq <= 10; seq++) buffer.append(sample(seq));
+		const all = Array.from({ length: 90 }, (_, i) => sample(i + 1));
+		expect(await buffer.keep(all)).toBe(true);
+		buffer.release();
+		expect((await offered())[0].samples).toHaveLength(90);
+	});
+
+	it('keeps it in localStorage when IndexedDB refuses the whole ride', async () => {
+		const buffer = await ride();
+		const put = vi
+			.spyOn(IDBObjectStore.prototype, 'put')
+			.mockImplementation(() => {
+				throw new DOMException('full', 'QuotaExceededError');
+			});
+		try {
+			const all = Array.from({ length: 90 }, (_, i) => sample(i + 1));
+			expect(await buffer.keep(all)).toBe(true);
+		} finally {
+			put.mockRestore();
+		}
+		buffer.release();
+		expect((await offered())[0].samples).toHaveLength(90);
+		await discardRide('700');
+		expect(await offered()).toEqual([]);
+	});
+
+	it('remembers a refusal for good, in either store (#4600)', async () => {
+		const buffer = await ride();
+		for (let seq = 1; seq <= 90; seq++) buffer.append(sample(seq));
+		buffer.release();
+		await vi.waitFor(async () =>
+			expect((await offered())[0]?.samples).toHaveLength(90),
+		);
+		await refuseRide('700', 'Overlaps a ride.');
+		expect((await offered())[0].refused).toBe('Overlaps a ride.');
+	});
+
+	it('answers false when nothing will take it', async () => {
+		const buffer = await ride();
+		const put = vi
+			.spyOn(IDBObjectStore.prototype, 'put')
+			.mockImplementation(() => {
+				throw new DOMException('full', 'QuotaExceededError');
+			});
+		refuseStorage();
+		try {
+			expect(await buffer.keep([sample(1)])).toBe(false);
+			expect(buffer.crashSafe).toBe(false);
+		} finally {
+			put.mockRestore();
 		}
 	});
 });

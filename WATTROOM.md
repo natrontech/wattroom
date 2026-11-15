@@ -96,7 +96,7 @@ It is not a training plan generator, not an open world, and not a content treadm
 - Live metrics exist only inside a session while it runs. AV is never recorded. Rides are private by default.
 - Heart rate is live in the session, never in a shared artifact. A shared ride carries numbers, never the rider's note.
 - Channel events ride the tick and are never persisted.
-- Nobody loses a ride: samples stream to the server and buffer in IndexedDB, and a ride the server loses comes back from the browser as a file.
+- Nobody loses a ride: samples stream to the server and buffer in IndexedDB, or localStorage when IndexedDB fails, and the rider hears when neither keeps it. A ride the account has not confirmed stays on the device for 30 days and is sent again on its own until it lands. A ride the server loses comes back from the browser as a file.
 - Rides export as .fit, upload to Strava, and reach Garmin by manual FIT import. Strava data never enters an LLM context.
 - A rider's own uploads travel with their export. The calendar feed is addressed to the rider.
 - Coaches read through personal tokens and a hand-rolled MCP endpoint. A token the rider marks for planning also saves workouts to their shelf and plans sessions in their crews, through MCP only and the app's own handlers; the HTTP bearer path stays read-only.

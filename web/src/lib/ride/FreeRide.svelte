@@ -19,7 +19,7 @@
 	import { createRideFlags } from '#lib/ride/flags.svelte.ts';
 	import FreeRiding from '#lib/ride/FreeRiding.svelte';
 	import FreeRideTv from '#lib/ride/FreeRideTv.svelte';
-	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+	import { freeRideLabel, notSavedLine } from '#lib/ride/free-ride.svelte.ts';
 	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
 	import { createGhostSplit } from '#lib/ride/ghost-split.svelte.ts';
 	import RoadPick from '#lib/ride/RoadPick.svelte';
@@ -270,10 +270,18 @@
 				> — and on Strava, if you connected it.
 			</p>
 		{:else if free.outcome && 'failure' in free.outcome}
-			<p class="text-danger text-sm" role="alert">
-				It did not save — {free.outcome.failure.message} It is kept on this device,
-				and <a href="/home" class="underline">Home</a> offers it again.
-			</p>
+			{@const { failure, kept } = free.outcome}
+			<div class="flex flex-wrap items-center gap-3" role="alert">
+				<p class="text-danger text-sm">
+					It did not save — {failure.message}
+					{notSavedLine(failure, kept)}
+				</p>
+				{#if !failure.final}
+					<button onclick={() => void free.retry()} class="btn btn-secondary"
+						>Try again</button
+					>
+				{/if}
+			</div>
 		{:else if free.outcome && 'short' in free.outcome}
 			<p class="text-muted text-sm" role="status">
 				Under a minute — nothing to save.

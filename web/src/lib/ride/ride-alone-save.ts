@@ -2,6 +2,7 @@ import { account } from '#lib/account.svelte.ts';
 import { createHistoryStore, summarise } from '#lib/history.svelte.ts';
 import type { RideBatzen } from '#lib/ride/batzen.ts';
 import type { RideBuffer } from '#lib/ride/buffer.ts';
+import { outbox } from '#lib/ride/outbox.svelte.ts';
 import { recordingUpload, toastSaved, uploadRide } from '#lib/ride/save.ts';
 import { toasts } from '#lib/toast.svelte.ts';
 import type { createRideSession } from '#lib/workout/session.svelte.ts';
@@ -76,8 +77,12 @@ export function saveRideAlone(
 			// A refusal the server will repeat (under a minute) is not a ride to
 			// recover: offering it back would refuse it again on every reload.
 			if (failure.final) ended?.end();
-			// Not saved and no longer recorded: a ride to offer back (#2617).
-			else ended?.release();
+			else {
+				// Not saved and no longer recorded: a ride to offer back (#2617),
+				// and to send again on its own once the server answers (#4600).
+				ended?.release();
+				outbox.kick();
+			}
 			// The local summary is the second copy, not the only one: one of it,
 			// however many tries failed.
 			history.remove(id);

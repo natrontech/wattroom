@@ -233,9 +233,25 @@ export const theRide = {
 	get signalLost() {
 		return root?.signal.lost ?? false;
 	},
+	/**
+	 * Leaving the page now would end a ride, or lose one (#4600): riding,
+	 * saving, or a ride whose save failed that this device could not keep.
+	 * The window asks before it unloads.
+	 */
+	get atRisk() {
+		const free = road?.free;
+		return (
+			theRide.live ||
+			outcome.saving ||
+			!!free?.saving ||
+			(!!free?.outcome && 'failure' in free.outcome && !free.outcome.kept)
+		);
+	},
 	/** The ride riding now is not kept by this browser: a road ride's own (#4600). */
 	get noCrashSafety() {
-		return road ? !!road.solo.trainer && !road.free.crashSafe : noCrashSafety;
+		return road
+			? !!road.solo.trainer && road.free.crashSafe === false
+			: noCrashSafety;
 	},
 	get saving() {
 		return outcome.saving;

@@ -1,5 +1,6 @@
 import { account } from '#lib/account.svelte.ts';
 import { unfinishedRides } from '#lib/ride/buffer.ts';
+import { outbox } from '#lib/ride/outbox.svelte.ts';
 import type { RecoveredRide } from '#lib/ride/recovered.ts';
 
 /**
@@ -15,6 +16,8 @@ export function recoverableRides() {
 	let rides = $state<RecoveredRide[]>([]);
 	$effect(() => {
 		const owner = account.me?.id;
+		// A ride the outbox sent is off the device: read again (#4600).
+		void outbox.sent;
 		rides = [];
 		if (!owner) return;
 		let current = true;

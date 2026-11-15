@@ -34,4 +34,23 @@ describe('loadApi bounds a route read', () => {
 			error: expect.objectContaining({ error: 'network' }),
 		});
 	});
+
+	it('says a read that ran out of time did, not that the server is gone', async () => {
+		const hung = (_: RequestInfo | URL, init?: RequestInit) =>
+			new Promise<Response>((_, reject) =>
+				init?.signal?.addEventListener('abort', () =>
+					reject(init.signal?.reason),
+				),
+			);
+		const res = await loadApi(hung, '/api/x', {
+			signal: AbortSignal.timeout(1),
+		});
+		expect(res).toEqual({
+			ok: false,
+			error: {
+				error: 'network',
+				message: 'The server did not answer in time.',
+			},
+		});
+	});
 });

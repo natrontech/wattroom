@@ -21,6 +21,11 @@ const NETWORK: ApiError = {
 	error: 'network',
 	message: 'The server is not reachable.',
 };
+/** A request given a deadline that passed it (AbortSignal.timeout). */
+const TIMED_OUT: ApiError = {
+	error: 'network',
+	message: 'The server did not answer in time.',
+};
 
 /**
  * What every caller here may pass. A **string** body is deliberately not one
@@ -91,8 +96,9 @@ async function request<T>(
 		)
 			return { ok: false, error: NOT_DATA };
 		return { ok: true, data: (data ?? null) as T };
-	} catch {
-		return { ok: false, error: NETWORK };
+	} catch (cause) {
+		const late = cause instanceof DOMException && cause.name === 'TimeoutError';
+		return { ok: false, error: late ? TIMED_OUT : NETWORK };
 	}
 }
 

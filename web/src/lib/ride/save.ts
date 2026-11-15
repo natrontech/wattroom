@@ -89,10 +89,9 @@ export function recordingUpload(
  * ways in: the ride that just ended, and the retry of one that did not make it
  * the first time (#794).
  *
- * ponytail: no automatic retry behind this yet. The endpoint IS idempotent —
- * the server keys a ride on (rider, startedAt) under a row lock and hands the
- * existing id back — so a background retry for the "kept on this device" case
- * is safe to add when a rider asks for one.
+ * The endpoint is idempotent — the server keys a ride on (rider, startedAt)
+ * under a row lock and hands the existing id back — which is what lets the
+ * outbox retry a ride kept on this device in the background (#4600).
  */
 export interface SaveFailure {
 	/** The server's own sentence (errors.md). */
@@ -133,10 +132,20 @@ function offTheRoad(ride: RideUpload): RideUpload {
 	};
 }
 
+/**
+ * How long a save may take before it is a failure (#4600). A request a proxy
+ * holds open left the closing card on "Saving your ride…" for good, with the
+ * ride not yet offered back. Generous: three hours of seconds is ~1 MB, and a
+ * rider's upload can be slow. A save that did land answers the retry with the
+ * same ride, as the server keys a ride on its start.
+ */
+export const UPLOAD_TIMEOUT_MS = 120_000;
+
 const post = (ride: RideUpload) =>
 	api<{ id?: string; xp?: number; batzen?: RideBatzen }>('/api/rides', {
 		method: 'POST',
 		json: ride,
+		signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
 	});
 
 /** Null on success — or the saved ride, so the summary can link to it (#1331). */

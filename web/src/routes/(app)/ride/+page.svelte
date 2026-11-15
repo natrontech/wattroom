@@ -201,9 +201,12 @@
 			if (!res.ok) throw new Error(`No fixture named ${replayName}.`);
 			const fixture = await res.json();
 			const replaying = new SimulatedTrainer({ replay: fixture.samples });
-			// A free ride on a road takes the trainer as the card's Start does.
-			if (game || (kind === 'free' && road)) start(replaying);
-			else await begin(replaying);
+			// A free ride on a road takes the trainer as the card's Start does,
+			// connected, as a paired one is: it rides no session that connects it.
+			if (game || (kind === 'free' && road)) {
+				await replaying.connect();
+				start(replaying);
+			} else await begin(replaying);
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
 		}

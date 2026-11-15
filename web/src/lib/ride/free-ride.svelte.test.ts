@@ -10,28 +10,41 @@ vi.mock('#lib/ride/save.ts', () => ({
 		return { saved: { id: 'r1' } };
 	}),
 }));
+const kicks = vi.hoisted(() => ({ n: 0 }));
+vi.mock('#lib/ride/outbox.svelte.ts', () => ({
+	outbox: { kick: () => void kicks.n++ },
+}));
 // A production rider (#3333): no dev build and no dev sign-in door, which
 // is where gears used to stop.
 vi.mock('#lib/ble/can-simulate.ts', () => ({ canSimulate: () => false }));
 const ended: string[] = [];
+/** What the device store does: whether it keeps, and what it was handed. */
+const store = {
+	keeps: true,
+	opens: true as boolean,
+	appended: 0,
+	kept: [] as unknown[][],
+};
 vi.mock('#lib/ride/buffer.ts', () => ({
-	openRideBuffer: vi.fn(async () => ({
-		crashSafe: true,
-		append() {},
-		end: () => void ended.push('end'),
-		release: () => void ended.push('release'),
-		since: async () => [],
-	})),
-}));
-
-// The device's ride list, in memory: the tests run with no localStorage.
-const kept = vi.hoisted(() => [] as { id: string; seconds: number }[]);
-vi.mock('#lib/history.svelte.ts', async (actual) => ({
-	...(await actual<typeof import('#lib/history.svelte.ts')>()),
-	createHistoryStore: () => ({
-		add: (r: { id: string; seconds: number }) => void kept.push(r),
-		remove: (id: string) =>
-			void kept.splice(0, kept.length, ...kept.filter((r) => r.id !== id)),
+	openRideBuffer: vi.fn(async () => {
+		// A store that never answers until End ride asks again (#4600).
+		if (!store.opens) {
+			store.opens = true;
+			return new Promise(() => {});
+		}
+		return {
+			get crashSafe() {
+				return store.keeps;
+			},
+			append: () => void store.appended++,
+			keep: async (samples: unknown[]) => {
+				store.kept.push(samples);
+				return store.keeps;
+			},
+			end: () => void ended.push('end'),
+			release: () => void ended.push('release'),
+			since: async () => [],
+		};
 	}),
 }));
 
@@ -41,7 +54,6 @@ import type { RideableRoute } from './roads';
 import { nudged, openingWatts, ownRoad } from './free-ride-controls';
 import { createFreeRide, FREE_RIDE_JSON } from './free-ride.svelte';
 import { roadEndOffered } from './road-end';
-import { openRideBuffer } from '#lib/ride/buffer.ts';
 
 describe('the free ride’s control (docs/SPEC.md)', () => {
 	it('opens watts at 55 % of FTP on the 10 W grid', () => {
@@ -84,6 +96,7 @@ describe('recording a free ride', () => {
 		uploads.length = 0;
 		ended.length = 0;
 		offline = false;
+		Object.assign(store, { keeps: true, opens: true, appended: 0, kept: [] });
 	});
 	const pedal = { watts: 150, cadence: 90, hr: 120 };
 
@@ -198,39 +211,84 @@ describe('recording a free ride', () => {
 		expect(ended).toEqual(['release']);
 	});
 
-	// #4600: a failed save is a line on Rides, under the buffer's id, and the
-	// card's Try again saves it once, taking the line away.
-	it('keeps a failed save on this device, and saves it on a retry', async () => {
-		kept.length = 0;
-		offline = true;
-		const free = createFreeRide({ ftp: () => 200 });
-		free.arm();
-		for (let i = 0; i < 60; i++) free.second(pedal);
-		expect(await free.end()).toMatchObject({ failure: { final: false } });
-		expect(kept).toMatchObject([{ seconds: 60, avgWatts: 150 }]);
-		expect(free.unsavedStartedAt).not.toBeNull();
-		offline = false;
-		expect(await free.retrySave()).toEqual({ saved: { id: 'r1' } });
-		expect(uploads).toHaveLength(2);
-		expect(kept).toEqual([]);
-		expect(await free.retrySave()).toBeNull();
-	});
+	// #4600: a 3 h ride whose save failed left nothing on the device, and the
+	// card said it was kept.
+	describe('a save that fails', () => {
+		async function ridden(minutes = 1) {
+			const free = createFreeRide({ ftp: () => 200 });
+			free.arm();
+			free.second(pedal);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			for (let i = 1; i < minutes * 60; i++) free.second(pedal);
+			return free;
+		}
 
-	// #4600: a buffer that would not open is said, not swallowed.
-	it('says when this browser keeps no copy of the ride', async () => {
-		vi.mocked(openRideBuffer).mockResolvedValueOnce({
-			crashSafe: false,
-			append() {},
-			end() {},
-			release() {},
-			since: async () => [],
-			retitle() {},
+		it('writes every second to the device and says it is kept', async () => {
+			offline = true;
+			const free = await ridden();
+			const outcome = await free.end();
+			expect(outcome).toEqual({
+				failure: { message: 'You are offline.', final: false },
+				kept: true,
+			});
+			expect(store.kept[0]).toHaveLength(60);
+			expect(store.kept[0][59]).toMatchObject({ seq: 60, heartRate: 120 });
+			expect(free.unsavedId).not.toBeNull();
+			// The card's .fit reads when it started.
+			expect(free.unsavedStartedAt).toMatch(/^\d{4}-\d\d-\d\dT/);
 		});
-		const free = createFreeRide({ ftp: () => 200 });
-		free.arm();
-		expect(free.crashSafe).toBe(true);
-		free.second(pedal);
-		await vi.waitFor(() => expect(free.crashSafe).toBe(false));
+
+		it('says it is not kept when the device would not take it', async () => {
+			offline = true;
+			store.keeps = false;
+			const free = await ridden();
+			expect(free.crashSafe).toBe(false);
+			expect(await free.end()).toMatchObject({ kept: false });
+		});
+
+		it('keeps the ride whose store never answered while riding', async () => {
+			offline = true;
+			store.opens = false;
+			const free = await ridden();
+			expect(free.crashSafe).toBeNull();
+			expect(await free.end()).toMatchObject({ kept: true });
+			expect(store.kept[0]).toHaveLength(60);
+			expect(ended).toEqual(['release']);
+		});
+
+		it('saves on Try again, the same ride, and ends its buffer', async () => {
+			offline = true;
+			const free = await ridden();
+			await free.end();
+			offline = false;
+			await free.retry();
+			expect(uploads).toHaveLength(2);
+			expect(uploads[1]).toBe(uploads[0]);
+			expect(free.outcome).toEqual({ saved: { id: 'r1' } });
+			expect(ended).toEqual(['release', 'end']);
+			expect(free.unsavedId).toBeNull();
+		});
+
+		it('asks the outbox to try again, and takes its word', async () => {
+			offline = true;
+			kicks.n = 0;
+			const free = await ridden();
+			await free.end();
+			expect(kicks.n).toBe(1);
+			expect(free.claim('another ride', { id: 'r8' })).toBe(false);
+			expect(free.claim(free.unsavedId!, { id: 'r9' })).toBe(true);
+			expect(free.outcome).toEqual({ saved: { id: 'r9' } });
+			// The outbox took it off the device itself.
+			expect(ended).toEqual(['release']);
+		});
+
+		it('leaves the outbox alone when nothing was kept to send', async () => {
+			offline = true;
+			store.keeps = false;
+			kicks.n = 0;
+			await (await ridden()).end();
+			expect(kicks.n).toBe(0);
+		});
 	});
 
 	it('lets a ride under a minute go instead of saving it', async () => {

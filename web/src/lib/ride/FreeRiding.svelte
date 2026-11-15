@@ -79,7 +79,6 @@
 		ftp,
 		stale = false,
 		idle = false,
-		noCrashCopy = false,
 		gear,
 		shift,
 		shiftOff = null,
@@ -112,8 +111,6 @@
 		stale?: boolean;
 		/** Nothing paired that could measure (#2941). */
 		idle?: boolean;
-		/** This browser keeps no copy of the ride (#4600): said, never silent. */
-		noCrashCopy?: boolean;
 		/** The gear, where gears are on (ADR-0084); Easier and Harder need `shift`. */
 		gear?: { label: string; clamp: Clamp };
 		shift?: Pick<RideShift, 'press' | 'release' | 'drop'>;
@@ -240,6 +237,9 @@
 	];
 	const pair = createPairAgain((next) => onrepair?.(next));
 	const fault = $derived(stale && !idle ? trainerLine('silent') : null);
+	// Nothing on this device would survive a crash now (#4600): said, as the
+	// rider can still end and save, and a crash would leave nothing to recover.
+	const noCopy = $derived(free.recording && free.crashSafe === false);
 	// Once per device, to a rider who kept "Don't make me shift" (#3333).
 	const hint = untrack(() => gearsNews(!cassette));
 
@@ -285,6 +285,16 @@
 </script>
 
 {#snippet faultLine()}
+	{#if !fault && noCopy}
+		<div
+			data-status-line
+			role="status"
+			class="flex min-w-0 flex-1 items-center gap-4"
+		>
+			<span class="bg-z5 size-2.5 shrink-0 rounded-full"></span>
+			<p class="min-w-0 truncate {WORDS}">{statusLine('no-crash-copy').text}</p>
+		</div>
+	{/if}
 	{#if fault}
 		<!-- Ride-critical status is slot 1's first line (G3), never a toast. -->
 		<div
@@ -302,13 +312,6 @@
 					>{pair.busy ? 'Pairing…' : fault.action}</button
 				>
 			{/if}
-		</div>
-	{:else if noCrashCopy}
-		<div data-status-line class="flex min-w-0 flex-1 items-center gap-4">
-			<span class="bg-z5 size-2.5 shrink-0 rounded-full"></span>
-			<p class="min-w-0 truncate {WORDS}">
-				{statusLine('no-crash-copy').text}
-			</p>
 		</div>
 	{/if}
 {/snippet}

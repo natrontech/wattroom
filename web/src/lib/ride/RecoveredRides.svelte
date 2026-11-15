@@ -6,7 +6,7 @@
 	// (AGENTS.md — the rider is on a bike).
 	import { apiBlob } from '#lib/api.ts';
 	import { downloadBlob } from '#lib/download.ts';
-	import { discardRide } from '#lib/ride/buffer.ts';
+	import { discardRide, refuseRide } from '#lib/ride/buffer.ts';
 	import {
 		canSave,
 		confirmDiscard,
@@ -82,6 +82,8 @@
 			// A refusal the server will repeat: its Save goes, and the ride
 			// stays to download, until the rider discards it.
 			refused = [...refused, ride.rideId];
+			// And across reloads: the outbox never sends it again.
+			await refuseRide(ride.rideId, outcome.failure.message);
 			onError(
 				`${outcome.failure.message} The ride is still here: download its .fit to keep it.`,
 			);

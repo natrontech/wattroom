@@ -8,10 +8,11 @@
  *
  * Appends are fire-and-forget: a storage problem must never disturb a ride,
  * so every operation swallows failure and the buffer degrades to "no crash
- * safety" rather than to "no ride". Silently, except at the open: that one is
- * known before the first pedal stroke and is the rider's to hear, so it is
- * reported as `crashSafe` and shown as persistent status (#1466 finding 4,
- * ADR-0052 rule 3).
+ * safety" rather than to "no ride". Never silently (#4600): an open that
+ * fails or hangs, and a write the store did not commit, turn `crashSafe`
+ * false, which the riding screen shows as persistent status (#1466 finding 4,
+ * ADR-0052 rule 3). From then on the buffer keeps the ride in localStorage as
+ * well, a second store for the rare browser whose IndexedDB stopped working.
  */
 import { MinRideSamples } from '#lib/protocol.ts';
 export interface BufferedSample {
@@ -63,12 +64,39 @@ export interface RideMeta {
 	 * saves against it, and offers to carry on along it.
 	 */
 	routeId?: string;
+	/**
+	 * How the trainer rode that route (#3516), known once the ride ended: a
+	 * ride saved later claims its time on the road as one saved at once would.
+	 */
+	drive?: 'sim' | 'gears' | 'ergByRoad';
+	/**
+	 * The server's words when it refused the ride for good (#4600): sending it
+	 * again would be refused again, so nothing sends it on its own; the card
+	 * still offers it to download.
+	 */
+	refused?: string;
 	/** Set when the ride is SAVED, not when the recording stops (#794). */
 	endedAt?: number;
 }
 
 const DB_NAME = 'wattroom-rides';
 const KEEP_RIDES = 5;
+/**
+ * How long a ride the account never got stays on the device (#4600): long
+ * enough for a rider back from a week away, short enough that a ride nobody
+ * comes back for does not sit on the disk for good.
+ */
+export const KEEP_UNSAVED_MS = 30 * 24 * 60 * 60 * 1000;
+/**
+ * How long an open may take before the store counts as not there (#4600). A
+ * Chromium whose IndexedDB backing store is stuck answers neither success nor
+ * error, and a buffer that waited for it recorded nothing for a whole ride.
+ */
+const OPEN_TIMEOUT_MS = 5000;
+/** The second store's key for one ride (#4600). */
+const RESCUE = 'wattroom.ride-rescue.v1.';
+/** How often, in samples, a ride the first store lost is copied to the second. */
+const RESCUE_EVERY = 30;
 
 /** Every sample of one ride — the store's key is [rideId, seq]. */
 function samplesOf(rideId: string): IDBKeyRange {
@@ -78,6 +106,17 @@ function samplesOf(rideId: string): IDBKeyRange {
 function open(): Promise<IDBDatabase | null> {
 	return new Promise((resolve) => {
 		if (typeof indexedDB === 'undefined') return resolve(null);
+		let late = false;
+		const timer = setTimeout(() => {
+			late = true;
+			resolve(null);
+		}, OPEN_TIMEOUT_MS);
+		const settle = (db: IDBDatabase | null) => {
+			clearTimeout(timer);
+			// Answered after we gave up: nothing uses it, so let it go.
+			if (late) db?.close();
+			else resolve(db);
+		};
 		// `indexedDB.open` THROWS in a Firefox private window rather than
 		// firing onerror, and an unguarded throw here rejected the promise:
 		// the channel's `.then` had no catch, and the solo page turned a missing
@@ -90,15 +129,20 @@ function open(): Promise<IDBDatabase | null> {
 				db.createObjectStore('samples', { keyPath: ['rideId', 'seq'] });
 				db.createObjectStore('rides', { keyPath: 'rideId' });
 			};
-			request.onsuccess = () => resolve(request.result);
-			request.onerror = () => resolve(null);
+			request.onsuccess = () => settle(request.result);
+			request.onerror = () => settle(null);
 		} catch {
-			resolve(null);
+			settle(null);
 		}
 	});
 }
 
-/** One transaction, promisified; resolves null on any failure. */
+/**
+ * One transaction, promisified; resolves null on any failure. It answers when
+ * the transaction commits, not when its request succeeds: a full disk aborts
+ * the commit after the put said yes (#4600), and a sample that never reached
+ * the disk is not a kept one.
+ */
 function tx<T>(
 	db: IDBDatabase,
 	mode: IDBTransactionMode,
@@ -108,25 +152,80 @@ function tx<T>(
 		try {
 			const t = db.transaction(['samples', 'rides'], mode);
 			const request = run(t.objectStore('samples'), t.objectStore('rides'));
-			request.onsuccess = () => resolve(request.result);
-			request.onerror = () => resolve(null);
+			t.oncomplete = () => resolve(request.result);
+			t.onabort = () => resolve(null);
+			t.onerror = () => resolve(null);
 		} catch {
 			resolve(null);
 		}
 	});
 }
 
+/** A whole ride in the second store, as unfinishedRides reads it back. */
+interface Rescued {
+	meta: RideMeta;
+	samples: BufferedSample[];
+}
+
+function rescue(meta: RideMeta, samples: BufferedSample[]): boolean {
+	try {
+		localStorage.setItem(
+			RESCUE + meta.rideId,
+			JSON.stringify({ meta, samples }),
+		);
+		return true;
+	} catch {
+		// No localStorage, or full: there is nowhere left to keep it.
+		return false;
+	}
+}
+
+function rescued(): Rescued[] {
+	const out: Rescued[] = [];
+	try {
+		for (let i = 0; i < localStorage.length; i++) {
+			const key = localStorage.key(i);
+			if (!key?.startsWith(RESCUE)) continue;
+			try {
+				const ride = JSON.parse(localStorage.getItem(key) ?? '') as Rescued;
+				if (ride?.meta?.rideId && Array.isArray(ride.samples)) out.push(ride);
+			} catch {
+				// A half-written copy is no ride to offer.
+			}
+		}
+	} catch {
+		// No localStorage.
+	}
+	return out;
+}
+
+function unrescue(rideId: string): void {
+	try {
+		localStorage.removeItem(RESCUE + rideId);
+	} catch {
+		// Nothing to remove it from.
+	}
+}
+
 export interface RideBuffer {
 	/**
-	 * Whether the buffer is actually storing anything (#1466 finding 4).
-	 * False means the store would not open — a private window, a browser
-	 * with site data blocked, a full disk — and every method below is a
-	 * no-op, so the ride runs with no crash safety at all. Known before the
-	 * first pedal stroke, which is why it is told rather than swallowed:
-	 * the degrading is right for a mid-ride append and wrong for the open.
+	 * Whether the ride is actually being kept on this device (#1466 finding
+	 * 4). False means neither store took it — IndexedDB would not open, hung,
+	 * or stopped committing (a private window, site data blocked, a full disk,
+	 * #4600), and localStorage refused the copy too — so a crash now loses
+	 * the ride. Read it again as the ride goes: a store can fail mid-ride.
 	 */
 	readonly crashSafe: boolean;
 	append(sample: BufferedSample): void;
+	/**
+	 * Writes the whole ride as it ended, in one go (#4600): what a failed save
+	 * leaves to recover must be every second the rider saw, whatever the
+	 * appends managed. True once one of the two stores has it all.
+	 */
+	keep(
+		samples: BufferedSample[],
+		ended?: Pick<RideMeta, 'drive' | 'refused'>,
+	): Promise<boolean>;
 	/**
 	 * Marks the ride finished — it stops being a crash to recover from. Call
 	 * it when the ride is SAFE, which means the server has it: recording
@@ -184,39 +283,83 @@ async function recording(): Promise<Set<string>> {
 export async function openRideBuffer(
 	meta: RideMeta & { ownerId: string | undefined },
 ): Promise<RideBuffer> {
-	const db = await open();
-	if (db) {
-		await tx(db, 'readwrite', (_, rides) => rides.put(meta));
-		await prune(db);
-	}
-	const release = db ? hold(RECORDING + meta.rideId) : () => {};
+	let db = await open();
+	// The meta row is the ride: unwritten, nothing would ever offer it back.
+	if (db && (await tx(db, 'readwrite', (_, rides) => rides.put(meta))) === null)
+		db = null;
+	if (db) await prune(db);
+	const release = hold(RECORDING + meta.rideId);
 	let kept = meta;
+	// The ride as appended, for the second store once the first one fails
+	// (#4600). A few hundred kB for three hours.
+	const appended: BufferedSample[] = [];
+	let stored = db !== null;
+	let rescuedOk = false;
+	const toRescue = () => {
+		rescuedOk = rescue(kept, appended);
+		return rescuedOk;
+	};
+	const lost = () => {
+		if (!stored) return;
+		stored = false;
+		toRescue();
+	};
+	if (!stored) toRescue();
 	return {
-		crashSafe: db !== null,
+		get crashSafe() {
+			return stored || rescuedOk;
+		},
 		append(sample) {
-			if (!db) return;
-			void tx(db, 'readwrite', (samples) =>
+			appended.push(sample);
+			if (!stored) {
+				if (appended.length % RESCUE_EVERY === 0) toRescue();
+				return;
+			}
+			void tx(db!, 'readwrite', (samples) =>
 				samples.put({ ...sample, rideId: meta.rideId }),
-			);
+			).then((done) => done === null && lost());
+		},
+		async keep(samples, ended) {
+			kept = { ...kept, ...ended };
+			// The rows past what the appends wrote, and theirs again: a put
+			// over a row is the same row.
+			if (stored) {
+				const done = await tx(db!, 'readwrite', (store, rides) => {
+					for (const sample of samples)
+						store.put({ ...sample, rideId: meta.rideId });
+					return rides.put(kept);
+				});
+				if (done !== null) return true;
+				stored = false;
+			}
+			appended.splice(0, appended.length, ...samples);
+			return toRescue();
 		},
 		end() {
-			if (!db) return;
+			unrescue(meta.rideId);
+			if (!db) return release();
 			// Let go once the mark is written, or another tab could find the
 			// ride neither held nor ended in between and offer it back.
 			void tx(db, 'readwrite', (_, rides) =>
 				rides.put({ ...kept, endedAt: Date.now() }),
 			).then(release);
 		},
-		release,
+		release() {
+			// What the second store has is the ride up to now, not to the
+			// last checkpoint.
+			if (!stored) toRescue();
+			release();
+		},
 		retitle(workout) {
 			kept = { ...kept, ...workout };
-			if (db) void tx(db, 'readwrite', (_, rides) => rides.put(kept));
+			if (stored) void tx(db!, 'readwrite', (_, rides) => rides.put(kept));
+			else toRescue();
 		},
 		async since(seq) {
-			if (!db) return [];
+			if (!stored) return appended.filter((s) => s.seq > seq);
 			// The rows past `seq` and no others (#2839): reading the whole
 			// ride to filter it made every reconnect cost the ride's length.
-			const rows = await tx(db, 'readonly', (samples) =>
+			const rows = await tx(db!, 'readonly', (samples) =>
 				samples.getAll(
 					IDBKeyRange.bound([meta.rideId, seq], [meta.rideId, Infinity], true),
 				),
@@ -245,18 +388,31 @@ export async function unfinishedRides(
 	ownerId: string,
 ): Promise<Array<RideMeta & { samples: BufferedSample[] }>> {
 	const db = await open();
-	if (!db) return [];
-	const rides = await allRides(db);
 	const held = await recording();
-	const out: Array<RideMeta & { samples: BufferedSample[] }> = [];
-	for (const ride of rides) {
-		if (ride.ownerId && ride.ownerId !== ownerId) continue;
+	const mine = (ride: RideMeta) =>
+		!(ride.ownerId && ride.ownerId !== ownerId) &&
 		// Still being recorded, here or in another tab: not a crash (#2617).
-		if (ride.endedAt || held.has(RECORDING + ride.rideId)) continue;
-		const samples = await readSamples(db, ride.rideId);
-		if (samples.length >= MinRideSamples) out.push({ ...ride, samples });
+		!held.has(RECORDING + ride.rideId);
+	const found = new Map<string, RideMeta & { samples: BufferedSample[] }>();
+	const ended = new Set<string>();
+	for (const ride of db ? await allRides(db) : []) {
+		if (ride.endedAt) ended.add(ride.rideId);
+		if (ride.endedAt || !mine(ride)) continue;
+		const samples = await readSamples(db!, ride.rideId);
+		found.set(ride.rideId, { ...ride, samples });
 	}
-	return out;
+	// The second store's copy (#4600), where the first has none or less of it.
+	for (const { meta, samples } of rescued()) {
+		if (ended.has(meta.rideId)) unrescue(meta.rideId);
+		else if (Date.now() - meta.startedAt > KEEP_UNSAVED_MS)
+			unrescue(meta.rideId);
+		else if (
+			mine(meta) &&
+			samples.length > (found.get(meta.rideId)?.samples.length ?? -1)
+		)
+			found.set(meta.rideId, { ...meta, samples });
+	}
+	return [...found.values()].filter((r) => r.samples.length >= MinRideSamples);
 }
 
 /**
@@ -269,12 +425,16 @@ export async function bufferedRide(
 	ownerId: string,
 ): Promise<(RideMeta & { samples: BufferedSample[] }) | null> {
 	const db = await open();
-	if (!db) return null;
-	const ride = (await tx(db, 'readonly', (_, rides) => rides.get(rideId))) as
-		RideMeta | null | undefined;
+	const stored = db
+		? ((await tx(db, 'readonly', (_, rides) => rides.get(rideId))) as
+				RideMeta | null | undefined)
+		: null;
+	let ride = stored && { ...stored, samples: await readSamples(db!, rideId) };
+	const copy = rescued().find((r) => r.meta.rideId === rideId);
+	if (copy && copy.samples.length > (ride?.samples.length ?? -1))
+		ride = { ...copy.meta, samples: copy.samples };
 	if (!ride || (ride.ownerId && ride.ownerId !== ownerId)) return null;
-	const samples = await readSamples(db, rideId);
-	return samples.length >= MinRideSamples ? { ...ride, samples } : null;
+	return ride.samples.length >= MinRideSamples ? ride : null;
 }
 
 function allRides(db: IDBDatabase): Promise<RideMeta[]> {
@@ -289,13 +449,33 @@ function allRides(db: IDBDatabase): Promise<RideMeta[]> {
  * full purge that leaves five of them on the laptop is not one.
  */
 export async function discardRidesOf(ownerId: string): Promise<void> {
+	for (const { meta } of rescued())
+		if (meta.ownerId === ownerId) unrescue(meta.rideId);
 	const db = await open();
 	if (!db) return;
 	for (const ride of await allRides(db))
 		if (ride.ownerId === ownerId) await discard(db, ride.rideId);
 }
 
+/** The server refused the ride for good (#4600): nothing sends it again. */
+export async function refuseRide(
+	rideId: string,
+	message: string,
+): Promise<void> {
+	const copy = rescued().find((r) => r.meta.rideId === rideId);
+	if (copy) rescue({ ...copy.meta, refused: message }, copy.samples);
+	const db = await open();
+	if (!db) return;
+	const ride = (await tx(db, 'readonly', (_, rides) => rides.get(rideId))) as
+		RideMeta | null | undefined;
+	if (ride)
+		await tx(db, 'readwrite', (_, rides) =>
+			rides.put({ ...ride, refused: message }),
+		);
+}
+
 export async function discardRide(rideId: string): Promise<void> {
+	unrescue(rideId);
 	const db = await open();
 	if (db) await discard(db, rideId);
 }
@@ -309,20 +489,24 @@ function discard(db: IDBDatabase, rideId: string): Promise<unknown> {
 
 /**
  * Which rides a prune discards — the cap is the quota story. The newest
- * KEEP_RIDES stay. Past them a finished ride or a fragment goes, and a ride
- * the server never confirmed stays until there are KEEP_RIDES of those too:
- * every session joined opens a buffer, and five of them used to walk a failed
- * solo save off the end (#794, audit 2026-09-09).
+ * KEEP_RIDES stay. Past them a finished ride or a fragment goes. A ride the
+ * server never confirmed is the rider's until the account has it: it stays,
+ * however many rides came after, for KEEP_UNSAVED_MS (#4600) — every session
+ * joined opens a buffer, and a count once walked a failed solo save off the
+ * end (#794, audit 2026-09-09).
  */
-export function stale(rides: Array<RideMeta & { samples: number }>): string[] {
-	let unsaved = 0;
+export function stale(
+	rides: Array<RideMeta & { samples: number }>,
+	now = Date.now(),
+): string[] {
 	const out: string[] = [];
 	[...rides]
 		.sort((a, b) => b.startedAt - a.startedAt)
 		.forEach((ride, i) => {
 			const recoverable = !ride.endedAt && ride.samples >= MinRideSamples;
-			if (recoverable) unsaved++;
-			if (i >= KEEP_RIDES && (!recoverable || unsaved > KEEP_RIDES))
+			if (
+				recoverable ? now - ride.startedAt > KEEP_UNSAVED_MS : i >= KEEP_RIDES
+			)
 				out.push(ride.rideId);
 		});
 	return out;
