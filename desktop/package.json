@@ -37,6 +37,7 @@
       "window-state.js",
       "notifications.js",
       "hud.js",
+      "leave.js",
       "deep-link.js",
       "updater.js",
       "bluetooth.js",

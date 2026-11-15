@@ -623,40 +623,50 @@ test('the navigation guard refuses another origin', async () => {
 // Leaving mid-ride (#4600): the app refuses the unload, and the shell asks
 // the rider instead of refusing a quit or a reload in silence. The native
 // dialog is not Playwright-drivable, so its answer is stubbed in main.
-test('a page that refuses to unload asks the rider: Stay keeps it, Leave lets it go', async () => {
+async function refusingPage(choice) {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
-	const answer = (choice) =>
-		app.evaluate(({ dialog }, pick) => {
-			globalThis.__asked = globalThis.__asked ?? [];
-			dialog.showMessageBoxSync = (_win, opts) => {
-				globalThis.__asked.push(opts.message);
-				return pick;
-			};
-		}, choice);
+	await app.evaluate(({ dialog }, pick) => {
+		globalThis.__asked = [];
+		dialog.showMessageBoxSync = (_win, opts) => {
+			globalThis.__asked.push(opts.message);
+			return pick;
+		};
+	}, choice);
 	// Chromium honours a refusal only from a page the rider has touched.
 	await win.locator('body').click();
 	await win.evaluate(() => {
 		window.__marker = 'still here';
-		addEventListener('beforeunload', (e) => e.preventDefault());
+		addEventListener('beforeunload', (e) => {
+			e.preventDefault();
+			e.returnValue = '';
+		});
+		setTimeout(() => location.reload());
 	});
+	return { app, win };
+}
 
-	await answer(0); // Stay
-	await win.evaluate(() => setTimeout(() => location.reload()));
-	await new Promise((r) => setTimeout(r, 1500));
-	expect(await win.evaluate(() => window.__marker)).toBe('still here');
-
-	await answer(1); // Leave
-	await win.evaluate(() => setTimeout(() => location.reload()));
+test('a page that refuses to unload asks the rider, and Stay keeps it', async () => {
+	const { app, win } = await refusingPage(0);
 	await expect
-		.poll(() => win.evaluate(() => window.__marker ?? null).catch(() => 'gone'))
-		.not.toBe('still here');
+		.poll(() => app.evaluate(() => globalThis.__asked))
+		.toEqual(['Leave your ride?']);
+	await new Promise((r) => setTimeout(r, 1000));
+	expect(await win.evaluate(() => window.__marker)).toBe('still here');
+	await app.close();
+});
+
+test('a page that refuses to unload asks the rider, and Leave lets it go', async () => {
+	const { app, win } = await refusingPage(1);
+	await expect
+		.poll(() =>
+			win.evaluate(() => window.__marker ?? 'reloaded').catch(() => 'loading'),
+		)
+		.toBe('reloaded');
 	expect(await app.evaluate(() => globalThis.__asked)).toEqual([
 		'Leave your ride?',
-		'Leave your ride?',
 	]);
-
 	await app.close();
 });
 
