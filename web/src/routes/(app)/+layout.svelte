@@ -58,8 +58,8 @@
 		onShellVisibility,
 		setShellBadge,
 		setShellPlace,
+		mayRefuseLeaving,
 		shellTitleBar,
-		shellVersion,
 	} from '#lib/desktop.ts';
 	import { sidebarUnread } from '#lib/nav/sidebar-unread.ts';
 	import { hangUpOnHide } from '#lib/channel/hang-up-on-hide.ts';
@@ -373,9 +373,9 @@
 	}}
 	onbeforeunload={(e) => {
 		// A reload, a closed tab or a full-page link would end the ride or lose
-		// it (#4600): the browser asks first. Not in the desktop shell, where a
-		// refused unload is a Quit that silently does nothing.
-		if (!theRide.atRisk || shellVersion()) return;
+		// it (#4600): the browser asks first, and so does a shell that knows to.
+		// An older shell would refuse its own Quit in silence.
+		if (!theRide.atRisk || !mayRefuseLeaving()) return;
 		e.preventDefault();
 		// Safari asks only when this is set.
 		e.returnValue = '';

@@ -96,6 +96,7 @@ const INSTALL_QUIT_MS = 900;
 // registering within a second), short enough that the rider is still watching.
 const INSTALL_FORCE_EXIT_MS = 5000;
 let installing = false;
+let forceExit = null;
 
 function restartIntoUpdate() {
 	if (!autoUpdater || !updateReady || installing) return;
@@ -109,8 +110,20 @@ function restartIntoUpdate() {
 		// If either of those took, this timer died with the process. Reaching
 		// it means the quit was refused — and a refused quit IS the abort, so
 		// exit() rather than sit here being the thing ShipIt waits for.
-		setTimeout(() => app.exit(0), INSTALL_FORCE_EXIT_MS);
+		forceExit = setTimeout(() => app.exit(0), INSTALL_FORCE_EXIT_MS);
 	}, INSTALL_QUIT_MS);
+}
+
+/**
+ * The rider kept the window over the restart, mid-ride (#4600): the quit was
+ * refused on purpose, not stuck, so no exit is forced. The update installs on
+ * the next quit, and the sidebar's Restart can ask again.
+ */
+function standDown() {
+	if (!installing) return;
+	clearTimeout(forceExit);
+	forceExit = null;
+	installing = false;
 }
 
 /** @param deps.ipc main.js's sender-checked ipcMain */
@@ -124,4 +137,4 @@ function install({ ipc }) {
 	ipc.on('wattroom:install-update', () => restartIntoUpdate());
 }
 
-module.exports = { install, watch };
+module.exports = { install, standDown, watch };

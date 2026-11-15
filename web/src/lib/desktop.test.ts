@@ -7,6 +7,7 @@ import {
 	installerOS,
 	isNewer,
 	launchAtLogin,
+	mayRefuseLeaving,
 	setTrayIcon,
 	trayIcon,
 	onShellNavigate,
@@ -329,5 +330,28 @@ describe('the tray’s voice channel and its way back (#1313)', () => {
 		handler(42);
 		handler('/r/tuesday');
 		expect(went).toEqual(['/r/tuesday']);
+	});
+});
+
+// #4600: a page that refuses its unload is a Quit that does nothing in a
+// shell that does not ask the rider.
+describe('leaving mid-ride', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('may be refused in a browser, which asks', () => {
+		expect(mayRefuseLeaving()).toBe(true);
+	});
+
+	it('may be refused in a shell that asks the rider itself', () => {
+		vi.stubGlobal('wattroom', {
+			version: '2026.11.2',
+			asksBeforeLeaving: true,
+		});
+		expect(mayRefuseLeaving()).toBe(true);
+	});
+
+	it('never in an older shell, whose Quit would stop in silence', () => {
+		vi.stubGlobal('wattroom', { version: '2026.11.1' });
+		expect(mayRefuseLeaving()).toBe(false);
 	});
 });

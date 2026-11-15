@@ -327,6 +327,7 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	}));
 	expect(bridge.present).toBe(true);
 	expect(bridge.keys).toEqual([
+		'asksBeforeLeaving',
 		'hud',
 		'installUpdate',
 		'keepAwake',
@@ -615,6 +616,46 @@ test('the navigation guard refuses another origin', async () => {
 	// leave every external link in the app dead.
 	const opened = await app.evaluate(() => globalThis.__opened);
 	expect(opened).toEqual(['https://example.com/']);
+
+	await app.close();
+});
+
+// Leaving mid-ride (#4600): the app refuses the unload, and the shell asks
+// the rider instead of refusing a quit or a reload in silence. The native
+// dialog is not Playwright-drivable, so its answer is stubbed in main.
+test('a page that refuses to unload asks the rider: Stay keeps it, Leave lets it go', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	const answer = (choice) =>
+		app.evaluate(({ dialog }, pick) => {
+			globalThis.__asked = globalThis.__asked ?? [];
+			dialog.showMessageBoxSync = (_win, opts) => {
+				globalThis.__asked.push(opts.message);
+				return pick;
+			};
+		}, choice);
+	// Chromium honours a refusal only from a page the rider has touched.
+	await win.locator('body').click();
+	await win.evaluate(() => {
+		window.__marker = 'still here';
+		addEventListener('beforeunload', (e) => e.preventDefault());
+	});
+
+	await answer(0); // Stay
+	await win.evaluate(() => setTimeout(() => location.reload()));
+	await new Promise((r) => setTimeout(r, 1500));
+	expect(await win.evaluate(() => window.__marker)).toBe('still here');
+
+	await answer(1); // Leave
+	await win.evaluate(() => setTimeout(() => location.reload()));
+	await expect
+		.poll(() => win.evaluate(() => window.__marker ?? null).catch(() => 'gone'))
+		.not.toBe('still here');
+	expect(await app.evaluate(() => globalThis.__asked)).toEqual([
+		'Leave your ride?',
+		'Leave your ride?',
+	]);
 
 	await app.close();
 });

@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('wattroom', {
 			.then((update) => update && cb(update));
 	},
 	installUpdate: () => ipcRenderer.send('wattroom:install-update'),
+	// Leaving mid-ride (#4600): this shell asks the rider when the page
+	// refuses to unload (leave.js), so the app may refuse. An older shell
+	// would refuse its own quit in silence, so the app guards only here.
+	asksBeforeLeaving: true,
 	// Whether the updater has given up for now (#1940): three failed checks
 	// in a row, and the app offers the download instead.
 	updateFailed: () => ipcRenderer.invoke('wattroom:update-failed'),
