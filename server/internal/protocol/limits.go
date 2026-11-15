@@ -222,7 +222,9 @@ const (
 	// MaxRoadStepM, which a descent at 54 km/h already needs after one late
 	// reading; held to a second's 30 m, the whole ride was refused.
 	MaxRoadCatchUpSeconds = 2
-	MaxRoadStepM          = MaxRoadSpeedMps * MaxRoadCatchUpSeconds
+	// The furthest one sample moves along a road: a second's MaxRoadSpeedMps
+	// for each second a late reading catches up.
+	MaxRoadStepM = MaxRoadSpeedMps * MaxRoadCatchUpSeconds
 
 	// Everest together (docs/spec/roads.md "Road stats", #3193): the most one
 	// rider climbs in a second, MaxRoadSpeedMps up the stored grade's +20 %

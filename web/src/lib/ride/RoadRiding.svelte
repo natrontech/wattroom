@@ -11,6 +11,7 @@
 	import RidePictures from '#lib/ride/RidePictures.svelte';
 	import { apiBlob } from '#lib/api.ts';
 	import { shareFile } from '#lib/share.ts';
+	import { fitRows } from '#lib/ride/recovered.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	import { canSimulate } from '#lib/ble/can-simulate.ts';
 	import { FtmsTrainer } from '#lib/ble/ftms.ts';
@@ -86,12 +87,12 @@
 				method: 'POST',
 				json: {
 					startedAt,
-					samples: free.ridden.map((sample, second) => ({
-						second,
-						watts: sample.watts,
-						cadence: sample.cadence,
-						heartRate: sample.hr,
-					})),
+					samples: fitRows(
+						free.ridden.map(({ hr, ...second }) => ({
+							...second,
+							heartRate: hr,
+						})),
+					),
 				},
 			});
 			if (!res.ok) throw new Error(res.error.message);

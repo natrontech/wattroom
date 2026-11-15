@@ -9,20 +9,57 @@
  * nothing checking them.
  */
 import { confirm } from '#lib/confirm.svelte.ts';
+import { MaxRoadStepM, MaxRouteMeters } from '#lib/protocol.ts';
 import type { BufferedSample, RideMeta } from './buffer';
 
 export type RecoveredRide = RideMeta & { samples: BufferedSample[] };
+
+/** One second of a ride, as a .fit row is made of it. */
+export interface FitSecond {
+	/** The wall second; absent, the row's index is. */
+	second?: number;
+	watts: number;
+	cadence: number;
+	heartRate: number;
+	/** On a road: metres along it, and the height there. */
+	m?: number;
+	alt?: number;
+}
+
+/**
+ * POST /api/rides/export's rows: an explicit second each, and on a road the
+ * distance ridden and the height, so a .fit kept by hand has the km and the
+ * climbing a saved ride has. The encoder takes `m` as distance from the
+ * first row and only forward, so it gets the metres ridden, never the place
+ * on the road: a lap ridden back counts down there, and a new lap starts
+ * again from its start. A step further than one sample goes is that new
+ * lap, as the ride's recap reads it (road-recap.ts), and adds nothing.
+ */
+export function fitRows(samples: readonly FitSecond[]) {
+	const road = samples.some((s) => (s.m ?? 0) > 0);
+	let ridden = 0;
+	let alt = samples.find((s) => s.alt !== undefined)?.alt ?? 0;
+	return samples.map((sample, index) => {
+		if (road && index > 0) {
+			const step = Math.abs((sample.m ?? 0) - (samples[index - 1].m ?? 0));
+			if (step <= MaxRoadStepM) ridden += step;
+		}
+		alt = sample.alt ?? alt;
+		return {
+			second: sample.second ?? index,
+			watts: sample.watts,
+			cadence: sample.cadence,
+			heartRate: sample.heartRate,
+			...(road && { m: Math.min(ridden, MaxRouteMeters), alt }),
+		};
+	});
+}
 
 /** POST /api/rides/export — the .fit encoder wants an explicit second per row. */
 export function exportPayload(ride: RecoveredRide) {
 	return {
 		startedAt: new Date(ride.startedAt).toISOString(),
-		samples: ride.samples.map((sample, index) => ({
-			second: index,
-			watts: sample.watts,
-			cadence: sample.cadence,
-			heartRate: sample.heartRate,
-		})),
+		samples: fitRows(ride.samples),
 	};
 }
 

@@ -3,6 +3,7 @@ import {
 	canSave,
 	exportFilename,
 	exportPayload,
+	fitRows,
 	uploadPayload,
 	type RecoveredRide,
 	resumeAt,
@@ -34,6 +35,42 @@ describe('exportPayload', () => {
 
 	it('sends the start as an ISO string, not an epoch', () => {
 		expect(exportPayload(ride()).startedAt).toBe('2026-03-14T09:30:00.000Z');
+	});
+});
+
+// The .fit kept by hand carries the km and the climbing (#4600): the export
+// takes metres from the first row, forward only, so a lap ridden back and a
+// new lap from the start still count on.
+describe('fitRows on a road', () => {
+	const at = (m: number, alt?: number) => ({
+		watts: 200,
+		cadence: 90,
+		heartRate: 140,
+		m,
+		alt,
+	});
+
+	it('counts the metres ridden, back the way you came and round again', () => {
+		const rows = fitRows([
+			at(1000, 500),
+			at(1040, 498),
+			at(1080, 496),
+			// Turned at the end: back down the road.
+			at(1050, 497),
+			// A new lap from the start: a jump, not a ride.
+			at(0, 500),
+			at(25),
+		]);
+		expect(rows.map((r) => r.m)).toEqual([0, 40, 80, 110, 110, 135]);
+		// A second with no height keeps the last one, never sea level.
+		expect(rows.map((r) => r.alt)).toEqual([500, 498, 496, 497, 500, 500]);
+		expect(rows.map((r) => r.second)).toEqual([0, 1, 2, 3, 4, 5]);
+	});
+
+	it('keeps a ride off any road to its four fields, on its own seconds', () => {
+		expect(
+			fitRows([{ second: 7, watts: 1, cadence: 2, heartRate: 3 }]),
+		).toEqual([{ second: 7, watts: 1, cadence: 2, heartRate: 3 }]);
 	});
 });
 

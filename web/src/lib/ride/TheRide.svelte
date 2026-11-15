@@ -10,6 +10,7 @@
 	import { onDestroy, type Snippet } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { apiBlob } from '#lib/api.ts';
+	import { fitRows } from '#lib/ride/recovered.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	import { createProfileStore } from '#lib/profile.svelte.ts';
@@ -145,16 +146,11 @@
 				method: 'POST',
 				json: {
 					startedAt: session.startedAt.toISOString(),
-					// The four fields a .fit row is made of, named rather than the
-					// whole recording: the encoder's decoder disallows unknown
-					// fields, so anything else the recording grows (the bias added
-					// for #1530 was the first) refuses the export outright.
-					samples: session.recording.map((sample) => ({
-						second: sample.second,
-						watts: sample.watts,
-						cadence: sample.cadence,
-						heartRate: sample.heartRate,
-					})),
+					// The fields a .fit row is made of, named rather than the whole
+					// recording: the encoder's decoder disallows unknown fields, so
+					// anything else the recording grows (the bias added for #1530
+					// was the first) refuses the export outright.
+					samples: fitRows(session.recording),
 				},
 			});
 			if (!res.ok) throw new Error(res.error.message);
