@@ -55,6 +55,8 @@ export function createWorkoutAlone(deps: {
 	session: () => Session | null;
 	/** A game alone's watts over the free ride's drive (#4539). */
 	ask?: () => number;
+	/** Whether the buffer still keeps the ride, after every second (#4600). */
+	kept?: (safe: boolean) => void;
 }): Session {
 	const { profile, flags } = deps;
 	return createRideSession({
@@ -74,9 +76,9 @@ export function createWorkoutAlone(deps: {
 		}),
 		onPlan: (planned) => replan(deps.buffer(), planned),
 		onRecord: (sample) => {
-			deps
-				.buffer()
-				?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
+			const buffer = deps.buffer();
+			buffer?.append({ ...sample, seq: sample.second + 1, at: Date.now() });
+			if (buffer) deps.kept?.(buffer.crashSafe);
 			const session = deps.session();
 			flags.recorder.tick({
 				watts: sample.watts,

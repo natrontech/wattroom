@@ -17,7 +17,13 @@ export function createSaveOutcome() {
 	let id = $state<string | null>(null);
 	let xp = $state<number | undefined>(undefined);
 	let batzen = $state<RideBatzen | undefined>(undefined);
+	// False while a failed ride's only copy is the summary (#4600).
+	let kept = $state(true);
 	return {
+		/** This device holds the unsaved ride, checked; true when nothing is unsaved. */
+		get kept() {
+			return kept;
+		},
 		get saving() {
 			return saving;
 		},
@@ -45,6 +51,7 @@ export function createSaveOutcome() {
 			id = null;
 			xp = undefined;
 			batzen = undefined;
+			kept = true;
 		},
 		/** Where one save's answers land: here while `current` holds. */
 		answers(current: () => boolean, seen: () => boolean): SaveAnswers {
@@ -58,6 +65,9 @@ export function createSaveOutcome() {
 				status: (text, again) => {
 					status = text;
 					retry = again;
+				},
+				kept: (on) => {
+					if (current()) kept = on;
 				},
 				saved: (savedId, savedXp, savedBatzen) => {
 					id = savedId;
