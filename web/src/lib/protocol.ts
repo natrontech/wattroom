@@ -808,8 +808,8 @@ export const MaxRoadAltM = 9000;
  */
 export const MaxRoadCatchUpSeconds = 2;
 /**
- * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
- * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ * The furthest one sample moves along a road: a second's MaxRoadSpeedMps
+ * for each second a late reading catches up.
  */
 export const MaxRoadStepM = MaxRoadSpeedMps * MaxRoadCatchUpSeconds;
 /**
