@@ -233,8 +233,9 @@ export const theRide = {
 	get signalLost() {
 		return root?.signal.lost ?? false;
 	},
+	/** The ride riding now is not kept by this browser: a road ride's own (#4600). */
 	get noCrashSafety() {
-		return noCrashSafety;
+		return road ? !!road.solo.trainer && !road.free.crashSafe : noCrashSafety;
 	},
 	get saving() {
 		return outcome.saving;

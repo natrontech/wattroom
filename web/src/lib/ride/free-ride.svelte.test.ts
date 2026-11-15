@@ -24,12 +24,24 @@ vi.mock('#lib/ride/buffer.ts', () => ({
 	})),
 }));
 
+// The device's ride list, in memory: the tests run with no localStorage.
+const kept = vi.hoisted(() => [] as { id: string; seconds: number }[]);
+vi.mock('#lib/history.svelte.ts', async (actual) => ({
+	...(await actual<typeof import('#lib/history.svelte.ts')>()),
+	createHistoryStore: () => ({
+		add: (r: { id: string; seconds: number }) => void kept.push(r),
+		remove: (id: string) =>
+			void kept.splice(0, kept.length, ...kept.filter((r) => r.id !== id)),
+	}),
+}));
+
 import { MaxRoadSpeedMps } from '#lib/protocol.ts';
 import { ergByRoad } from './ride-grade';
 import type { RideableRoute } from './roads';
 import { nudged, openingWatts, ownRoad } from './free-ride-controls';
 import { createFreeRide, FREE_RIDE_JSON } from './free-ride.svelte';
 import { roadEndOffered } from './road-end';
+import { openRideBuffer } from '#lib/ride/buffer.ts';
 
 describe('the free ride’s control (docs/SPEC.md)', () => {
 	it('opens watts at 55 % of FTP on the 10 W grid', () => {
@@ -184,6 +196,41 @@ describe('recording a free ride', () => {
 		for (let i = 1; i < 60; i++) free.second(pedal);
 		await free.end();
 		expect(ended).toEqual(['release']);
+	});
+
+	// #4600: a failed save is a line on Rides, under the buffer's id, and the
+	// card's Try again saves it once, taking the line away.
+	it('keeps a failed save on this device, and saves it on a retry', async () => {
+		kept.length = 0;
+		offline = true;
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		for (let i = 0; i < 60; i++) free.second(pedal);
+		expect(await free.end()).toMatchObject({ failure: { final: false } });
+		expect(kept).toMatchObject([{ seconds: 60, avgWatts: 150 }]);
+		expect(free.unsavedStartedAt).not.toBeNull();
+		offline = false;
+		expect(await free.retrySave()).toEqual({ saved: { id: 'r1' } });
+		expect(uploads).toHaveLength(2);
+		expect(kept).toEqual([]);
+		expect(await free.retrySave()).toBeNull();
+	});
+
+	// #4600: a buffer that would not open is said, not swallowed.
+	it('says when this browser keeps no copy of the ride', async () => {
+		vi.mocked(openRideBuffer).mockResolvedValueOnce({
+			crashSafe: false,
+			append() {},
+			end() {},
+			release() {},
+			since: async () => [],
+			retitle() {},
+		});
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		expect(free.crashSafe).toBe(true);
+		free.second(pedal);
+		await vi.waitFor(() => expect(free.crashSafe).toBe(false));
 	});
 
 	it('lets a ride under a minute go instead of saving it', async () => {

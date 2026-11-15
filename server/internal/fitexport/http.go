@@ -146,8 +146,11 @@ func toRide(req exportRequest) (Ride, string) {
 			)
 		case !here.RoadInBounds():
 			return Ride{}, fmt.Sprintf("sample %d is off the road: %g m along it at %g m high", i, s.M, s.Alt)
+		// A client numbers its samples one a second, and a late reading
+		// carries the dot on by the second it missed (#4600).
 		case i > 0 && !protocol.RoadFollows(
-			protocol.RiderMetrics{M: req.Samples[i-1].M}, here, s.Second-req.Samples[i-1].Second):
+			protocol.RiderMetrics{M: req.Samples[i-1].M}, here,
+			max(s.Second-req.Samples[i-1].Second, protocol.MaxRoadCatchUpSeconds)):
 			return Ride{}, fmt.Sprintf("sample %d moves along the road backwards or faster than %d m/s", i, protocol.MaxRoadSpeedMps)
 		}
 		samples = append(samples, Sample{

@@ -18,6 +18,7 @@ import { homeRoad } from '#lib/ride/home-roads.ts';
 import type { RideableRoute } from '#lib/ride/roads.ts';
 import type { RideBatzen } from '#lib/ride/batzen.ts';
 import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
+import { createHistoryStore, summarise } from '#lib/history.svelte.ts';
 import { createLiveStats } from '#lib/ride/live-stats.svelte.ts';
 import {
 	uploadRide,
@@ -61,7 +62,15 @@ export function freeRideJson(
 }
 
 export type FreeRideOutcome =
-	| { saved: { id: string; xp?: number; batzen?: RideBatzen } }
+	| {
+			saved: {
+				id: string;
+				xp?: number;
+				batzen?: RideBatzen;
+				/** Saved without its road: the sentence that says why (#4600). */
+				roadLeftOff?: string;
+			};
+	  }
 	| { failure: SaveFailure }
 	| { short: true };
 
@@ -143,6 +152,18 @@ export function createFreeRide(deps: {
 	const live = createLiveStats(deps.ftp);
 	let rideId = '';
 	let buffer: RideBuffer | null = null;
+	/**
+	 * Whether this browser keeps its own copy of the ride (#4600): false when
+	 * the crash buffer would not open, and a ride that then fails to save
+	 * lives only on its closing card, which has to say so.
+	 */
+	let crashSafe = $state(true);
+	/** The ended ride's upload and buffer, while a failed save can be retried. */
+	let unsaved: {
+		ride: RideUpload;
+		buffer: RideBuffer | null;
+		id: string;
+	} | null = null;
 	// A road is an attribute of the free ride, not a mode (#3027, decided
 	// 2026-09-28): Grade reads Road on one, and Watts rides ERG by the road.
 	let onRoad = $state.raw<{
@@ -195,7 +216,7 @@ export function createFreeRide(deps: {
 			: null,
 	);
 
-	return {
+	const free = {
 		get armed() {
 			return armed;
 		},
@@ -265,6 +286,14 @@ export function createFreeRide(deps: {
 		},
 		get outcome() {
 			return outcome;
+		},
+		/** When the ended ride that has not saved started (ISO 8601), for its .fit. */
+		get unsavedStartedAt(): string | null {
+			return unsaved?.ride.startedAt ?? null;
+		},
+		/** The browser keeps its own copy of this ride, or of the one that ended. */
+		get crashSafe() {
+			return crashSafe;
 		},
 		arm() {
 			// A new arming is a new ride's clock; the last one's ended time
@@ -405,6 +434,8 @@ export function createFreeRide(deps: {
 				live.reset();
 				rideId = crypto.randomUUID();
 				buffer = null;
+				crashSafe = true;
+				unsaved = null;
 				const opening = rideId;
 				void openRideBuffer({
 					rideId,
@@ -414,8 +445,10 @@ export function createFreeRide(deps: {
 					workoutJson: freeRideJson(onRoad?.route),
 					...(saveOn && { routeId: saveOn.id }),
 				}).then((opened) => {
-					if (rideId === opening) buffer = opened;
-					else opened.release();
+					if (rideId === opening) {
+						buffer = opened;
+						crashSafe = opened.crashSafe;
+					} else opened.release();
 				});
 			}
 			// The upload's own fields: its decoder refuses anything else.
@@ -503,16 +536,53 @@ export function createFreeRide(deps: {
 				outcome = { short: true };
 				return outcome;
 			}
-			saving = true;
-			const result = await uploadRide(ride);
-			saving = false;
-			if ('saved' in result) ended?.end();
-			// Not saved and no longer recorded: a ride to offer back (#2617).
-			else ended?.release();
-			outcome = result;
-			return result;
+			unsaved = { ride, buffer: ended, id: rideId };
+			return save();
+		},
+		/** The same upload again, after a failure the server may not repeat. */
+		async retrySave(): Promise<FreeRideOutcome | null> {
+			if (!unsaved || saving || !outcome || !('failure' in outcome))
+				return null;
+			if (outcome.failure.final) return null;
+			return save();
 		},
 	};
+
+	async function save(): Promise<FreeRideOutcome | null> {
+		const kept = unsaved;
+		if (!kept) return null;
+		saving = true;
+		const result = await uploadRide(kept.ride);
+		saving = false;
+		// Read now, not at the ride's start: Rides may have changed it since.
+		const history = createHistoryStore(() => account.me?.id);
+		if ('saved' in result) {
+			kept.buffer?.end();
+			// A retry that went through leaves one copy, on the account.
+			history.remove(kept.id);
+			unsaved = null;
+		} else {
+			// Not saved and no longer recorded: a ride to offer back (#2617).
+			kept.buffer?.release();
+			// And a line on Rides' "On this device only" (#4600), the way a
+			// workout alone keeps one: its summary, under the buffer's own id,
+			// so the seconds the buffer holds save from there.
+			history.remove(kept.id);
+			history.add({
+				id: kept.id,
+				workoutName: freeRideLabel(onRoad?.route),
+				startedAt: kept.ride.startedAt,
+				execution: 0,
+				executionScored: false,
+				ftp: deps.ftp(),
+				...summarise(kept.ride.samples),
+			});
+		}
+		outcome = result;
+		return result;
+	}
+
+	return free;
 }
 
 export type FreeRide = ReturnType<typeof createFreeRide>;

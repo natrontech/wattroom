@@ -21,7 +21,7 @@ Part of the product spec. [docs/SPEC.md](../SPEC.md) indexes every section and s
 | The trainer's road           | FTMS 0x11 carries the pace model's own road (`SIM_DEFAULTS`): Crr **0.004** and Cw = ρ × CdA = **0.39 kg/m**. FTMS's Cw is FE-C's: the trainer's drag is ½ × Cw × (v + wind)², the pace model's own at the same speed. FTMS carries no mass: the trainer simulates the one its maker's app gave it, and WattRoom never writes one. WattRoom never sends 0x12, the wheel circumference: on a Kickr it moves only the speed and distance reported |
 | Riding on a road             | virtual speed above **0.5 m/s** — presence, auto-pause, auto-end and the recording rule read this                                        |
 | Corners                      | a bend of radius r is taken at √(**0.6 g** × r), a 31° lean, and the pace brakes at **4 m/s²** to meet it; there is no brake control     |
-| A sample on a road           | its place runs forward from 0 to the route's length, at most **30 m** a second; its height stays within **−500 … 9,000 m** (the .fit's own floor) |
+| A sample on a road           | its place runs forward from 0 to the route's length, at most **30 m** a second; a reading that lands late carries it on by the seconds it missed, at most **2** at once, so **60 m** from one sample to the next; its height stays within **−500 … 9,000 m** (the .fit's own floor) |
 | A road on a workout          | the reader's cut (A route's place), at most **48 KiB** packed                                                                            |
 | Leg                          | at most **6 h**                                                                                                                         |
 

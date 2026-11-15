@@ -216,6 +216,13 @@ const (
 	MaxRoadSpeedMps = 30
 	MinRoadAltM     = -500
 	MaxRoadAltM     = 9000
+	// A reading that lands late carries the dot on by the seconds it missed,
+	// at most this many at once (#4600): a tab the browser throttled catches
+	// up a little and never teleports. So one sample moves at most
+	// MaxRoadStepM, which a descent at 54 km/h already needs after one late
+	// reading; held to a second's 30 m, the whole ride was refused.
+	MaxRoadCatchUpSeconds = 2
+	MaxRoadStepM          = MaxRoadSpeedMps * MaxRoadCatchUpSeconds
 
 	// Everest together (docs/spec/roads.md "Road stats", #3193): the most one
 	// rider climbs in a second, MaxRoadSpeedMps up the stored grade's +20 %

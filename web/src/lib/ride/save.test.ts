@@ -5,7 +5,8 @@ vi.mock('#lib/api.ts', () => ({ api }));
 const account = vi.hoisted(() => ({ load: vi.fn() }));
 vi.mock('#lib/account.svelte.ts', () => ({ account }));
 
-const { uploadRide, recordingUpload } = await import('./save');
+const { uploadRide, recordingUpload, ROAD_LEFT_OFF, ROAD_UNREAD } =
+	await import('./save');
 
 const ride = {
 	workoutName: 'Openers',
@@ -156,7 +157,7 @@ describe('a save refused over its road', () => {
 			})
 			.mockResolvedValueOnce({ ok: true, data: { id: 'r-3' } });
 		expect(await uploadRide(onRoad)).toEqual({
-			saved: { id: 'r-3', roadLeftOff: true },
+			saved: { id: 'r-3', roadLeftOff: ROAD_LEFT_OFF },
 		});
 		expect(api).toHaveBeenLastCalledWith('/api/rides', {
 			method: 'POST',
@@ -187,5 +188,51 @@ describe('a save refused over its road', () => {
 				final: true,
 			},
 		});
+	});
+});
+
+describe("a save refused over its road's samples (#4600)", () => {
+	const second = { watts: 210, cadence: 88, hr: 0 };
+	const onRoad = {
+		...ride,
+		routeId: 'route-1',
+		drive: 'sim' as const,
+		samples: [{ ...second, m: 0, alt: 900, lap: 0, reverse: false }],
+	};
+	const refusal = {
+		ok: false,
+		error: {
+			error: 'validation_error',
+			message: "A sample's place on the road is out of range.",
+			field: 'samples',
+		},
+	};
+
+	it('saves every second again with no road under them, and says so', async () => {
+		api.mockClear();
+		api
+			.mockResolvedValueOnce(refusal)
+			.mockResolvedValueOnce({ ok: true, data: { id: 'r-4' } });
+		expect(await uploadRide(onRoad)).toEqual({
+			saved: { id: 'r-4', roadLeftOff: ROAD_UNREAD },
+		});
+		expect(api).toHaveBeenLastCalledWith('/api/rides', {
+			method: 'POST',
+			json: {
+				...ride,
+				routeId: undefined,
+				drive: undefined,
+				samples: [second],
+			},
+		});
+	});
+
+	it('asks once for a ride with no road, whose refusal stands', async () => {
+		api.mockClear();
+		api.mockResolvedValueOnce(refusal);
+		expect(await uploadRide(ride)).toMatchObject({
+			failure: { final: true },
+		});
+		expect(api).toHaveBeenCalledTimes(1);
 	});
 });

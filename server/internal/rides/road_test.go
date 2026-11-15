@@ -78,6 +78,23 @@ func TestARoadRideKeepsItsDistanceAndHeightInTheFit(t *testing.T) {
 	}
 }
 
+// One late reading on a descent (#4600): the dot catches up the second it
+// missed, 40 m in one sample at 72 km/h. A 3-hour ride with one of those was
+// refused whole, as a ride off the road.
+func TestARoadRideWithALateReadingOnADescentSaves(t *testing.T) {
+	h := setup(t)
+	late := func(i int, m, alt float64) (float64, float64) {
+		if i >= 60 {
+			return m + 32, alt
+		}
+		return m, alt
+	}
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", roadRideBody(120, late))
+	if status != http.StatusCreated {
+		t.Fatalf("got %d %v, want the ride saved", status, got)
+	}
+}
+
 func TestARoadRideOutsideTheRoadsBoundsIsRefused(t *testing.T) {
 	h := setup(t)
 	for _, tc := range []struct {
@@ -90,9 +107,9 @@ func TestARoadRideOutsideTheRoadsBoundsIsRefused(t *testing.T) {
 			}
 			return m, alt
 		}},
-		{"faster than 30 m a second", func(i int, m, alt float64) (float64, float64) {
+		{"further than 60 m from one sample to the next", func(i int, m, alt float64) (float64, float64) {
 			if i >= 60 {
-				return m + 31, alt
+				return m + 61, alt
 			}
 			return m, alt
 		}},

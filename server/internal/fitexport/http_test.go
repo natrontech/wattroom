@@ -116,7 +116,7 @@ func TestHandlerRejectsBadInput(t *testing.T) {
 		"out of order":      `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":5,"watts":200},{"second":2,"watts":200}]}`,
 		// #3052: along the road, forward only, at a rider's speed, at a road's height.
 		"back down the road":  `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":50},{"second":1,"watts":200,"m":40}]}`,
-		"faster than a rider": `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":50},{"second":1,"watts":200,"m":81}]}`,
+		"faster than a rider": `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":50},{"second":1,"watts":200,"m":111}]}`,
 		"above any road":      `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":50,"alt":9001}]}`,
 	}
 
@@ -168,6 +168,16 @@ func itoa(i int) string {
 		i /= 10
 	}
 	return string(digits)
+}
+
+// A reading that landed late carries the dot on by the second it missed
+// (#4600): 40 m between two samples a second apart is a descent at 72 km/h
+// after one late reading, and a ride with one of those still exports.
+func TestHandlerWritesALateReadingOnADescent(t *testing.T) {
+	rec := post(t, `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":100,"alt":400},{"second":1,"watts":200,"m":140,"alt":396}]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
 }
 
 // A gap between samples allows its seconds' worth of road (#3052): a rider

@@ -4,7 +4,6 @@ const upload = vi.fn();
 const toastSaved = vi.fn();
 const push = vi.fn();
 vi.mock('#lib/ride/save.ts', () => ({
-	ROAD_LEFT_OFF: 'left off',
 	recordingUpload: () => ({}),
 	toastSaved: (saved: unknown) => toastSaved(saved),
 	uploadRide: () => upload(),
