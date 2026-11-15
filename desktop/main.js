@@ -27,6 +27,7 @@ const badge = require('./badge');
 const bluetooth = require('./bluetooth');
 const deepLink = require('./deep-link');
 const hud = require('./hud');
+const leave = require('./leave');
 const log = require('./log');
 const loginItem = require('./login-item');
 const notifications = require('./notifications');
@@ -256,6 +257,7 @@ function load(win) {
 function installHandlers(win) {
 	bluetooth.attach(win);
 	permissions.attach(win);
+	leave.attach(win, { onStay: updater.standDown });
 	guardNavigation(win);
 	textMenu(win);
 

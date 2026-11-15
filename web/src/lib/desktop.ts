@@ -35,6 +35,17 @@ const RELEASES_REPO = 'natrontech/wattroom-releases';
 const FEED = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 const TAG_PREFIX = 'desktop-v';
 
+/**
+ * Whether leaving the page mid-ride may be refused here (#4600): always in a
+ * browser, which asks "Leave site?"; in the shell only when it asks the rider
+ * itself (desktop leave.js). An older shell refused its own quit in silence.
+ */
+export function mayRefuseLeaving(): boolean {
+	const shell = (globalThis as { wattroom?: { asksBeforeLeaving?: unknown } })
+		.wattroom;
+	return !shell || shell.asksBeforeLeaving === true;
+}
+
 /** The shell's version when this page runs inside it, else null. */
 export function shellVersion(): string | null {
 	const shell = (globalThis as { wattroom?: { version?: unknown } }).wattroom;

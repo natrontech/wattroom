@@ -327,6 +327,7 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	}));
 	expect(bridge.present).toBe(true);
 	expect(bridge.keys).toEqual([
+		'asksBeforeLeaving',
 		'hud',
 		'installUpdate',
 		'keepAwake',
@@ -617,6 +618,57 @@ test('the navigation guard refuses another origin', async () => {
 	expect(opened).toEqual(['https://example.com/']);
 
 	await app.close();
+});
+
+// Leaving mid-ride (#4600): the app refuses the unload, and the shell asks
+// the rider instead of refusing a quit in silence. The native dialog is not
+// Playwright-drivable, so its answer is stubbed in main.
+async function refusingPage() {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	// Chromium honours a refusal only from a page the rider has touched.
+	await win.locator('body').click();
+	await win.evaluate(() =>
+		addEventListener('beforeunload', (e) => {
+			e.preventDefault();
+			e.returnValue = '';
+		}),
+	);
+	const answer = (pick) =>
+		app.evaluate(({ dialog }, choice) => {
+			globalThis.__asked = globalThis.__asked ?? [];
+			dialog.showMessageBoxSync = (_win, opts) => {
+				globalThis.__asked.push(opts.message);
+				return choice;
+			};
+		}, pick);
+	// Not awaited inside main: the quit runs the page's refusal first.
+	const quit = () =>
+		app.evaluate(({ app: a }) => void setTimeout(() => a.quit()));
+	return { app, answer, quit };
+}
+
+test('quitting while the page refuses asks the rider, and Stay keeps the app', async () => {
+	const { app, answer, quit } = await refusingPage();
+	await answer(0);
+	await quit();
+	await expect
+		.poll(() => app.evaluate(() => globalThis.__asked))
+		.toEqual(['Leave your ride?']);
+	// Still here, and still answering.
+	await new Promise((r) => setTimeout(r, 1000));
+	expect(await app.evaluate(() => globalThis.__asked.length)).toBe(1);
+	await answer(1);
+	await app.close();
+});
+
+test('quitting while the page refuses asks the rider, and Leave quits', async () => {
+	const { app, answer, quit } = await refusingPage();
+	await answer(1);
+	const closed = app.waitForEvent('close', { timeout: 15_000 });
+	await quit();
+	await closed;
 });
 
 // A same-origin link the SERVER redirects off-site never reaches will-navigate
