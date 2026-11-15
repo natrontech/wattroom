@@ -47,7 +47,7 @@
 	import { PACER_CATEGORIES, PACER_PAR } from '#lib/road/pacer.ts';
 	import type { RideShift } from '#lib/ride/ride-shift.ts';
 	import { roadEndOffered } from '#lib/ride/road-end.ts';
-	import { trainerLine } from '#lib/ride/status-lines.ts';
+	import { statusLine, trainerLine } from '#lib/ride/status-lines.ts';
 	import RoadEnd from '#lib/ride/RoadEnd.svelte';
 	import RideNarrator from '#lib/ride/RideNarrator.svelte';
 	import Skyline from '#lib/ride/Skyline.svelte';
@@ -237,6 +237,9 @@
 	];
 	const pair = createPairAgain((next) => onrepair?.(next));
 	const fault = $derived(stale && !idle ? trainerLine('silent') : null);
+	// Nothing on this device would survive a crash now (#4600): said, as the
+	// rider can still end and save, and a crash would leave nothing to recover.
+	const noCopy = $derived(free.recording && free.crashSafe === false);
 	// Once per device, to a rider who kept "Don't make me shift" (#3333).
 	const hint = untrack(() => gearsNews(!cassette));
 
@@ -282,6 +285,16 @@
 </script>
 
 {#snippet faultLine()}
+	{#if !fault && noCopy}
+		<div
+			data-status-line
+			role="status"
+			class="flex min-w-0 flex-1 items-center gap-4"
+		>
+			<span class="bg-z5 size-2.5 shrink-0 rounded-full"></span>
+			<p class="min-w-0 truncate {WORDS}">{statusLine('no-crash-copy').text}</p>
+		</div>
+	{/if}
 	{#if fault}
 		<!-- Ride-critical status is slot 1's first line (G3), never a toast. -->
 		<div

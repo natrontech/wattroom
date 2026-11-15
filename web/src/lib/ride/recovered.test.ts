@@ -70,6 +70,10 @@ describe('canSave', () => {
 	it('never for a ride that names no rider — Download and Discard only', () => {
 		expect(canSave(ride({ ownerId: undefined }))).toBe(false);
 	});
+
+	it('never for a ride the server refused for good (#4600)', () => {
+		expect(canSave(ride({ refused: 'Overlaps a ride.' }))).toBe(false);
+	});
 });
 
 describe('exportFilename', () => {
@@ -111,6 +115,12 @@ describe('a recovered ride on a road', () => {
 		const payload = uploadPayload(onRoad)!;
 		expect(payload.routeId).toBe('route-1');
 		expect(payload.samples[1]).toMatchObject({ m: 6.4, alt: 100.3 });
+		// A crash's drive went with the page: no time on the road is claimed.
+		expect(payload).not.toHaveProperty('drive');
+	});
+
+	it('claims its time on the road when End ride knew how it was driven (#4600)', () => {
+		expect(uploadPayload({ ...onRoad, drive: 'sim' })!.drive).toBe('sim');
 	});
 
 	it('offers to carry on from its last metre', () => {

@@ -3,6 +3,7 @@ import { countClimbed } from '#lib/ride/climbed-count.svelte.ts';
 import { createProfileStore } from '#lib/profile.svelte.ts';
 import type { createRideFlags } from '#lib/ride/flags.svelte.ts';
 import { createFreeRide, freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+import { outbox } from '#lib/ride/outbox.svelte.ts';
 import { createGhostSplit } from '#lib/ride/ghost-split.svelte.ts';
 import { createPacer } from '#lib/ride/pacer.svelte.ts';
 import { rememberRoad } from '#lib/ride/last-ride.ts';
@@ -54,6 +55,8 @@ export function holdRoadAlone(deps: {
 		pacer = createPacer(() => free);
 		// Counted here, not on the screen, so a screen opened again carries on.
 		climbed = countClimbed(free);
+		// Saved later by the outbox (#4600): the closing card says so.
+		$effect(() => outbox.claim(free.claim));
 		$effect(() => {
 			const trainer = solo.trainer;
 			if (!trainer) return;

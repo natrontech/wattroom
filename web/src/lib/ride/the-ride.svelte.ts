@@ -233,8 +233,23 @@ export const theRide = {
 	get signalLost() {
 		return root?.signal.lost ?? false;
 	},
+	/** Nothing on this device would survive a crash (#1466); a road ride's too (#4600). */
+	/**
+	 * Leaving the page now would end a ride, or lose one (#4600): riding,
+	 * saving, or a ride whose save failed that this device could not keep.
+	 * The window asks before it unloads.
+	 */
+	get atRisk() {
+		const free = road?.free;
+		return (
+			theRide.live ||
+			outcome.saving ||
+			!!free?.saving ||
+			(!!free?.outcome && 'failure' in free.outcome && !free.outcome.kept)
+		);
+	},
 	get noCrashSafety() {
-		return noCrashSafety;
+		return road ? road.free.crashSafe === false : noCrashSafety;
 	},
 	get saving() {
 		return outcome.saving;

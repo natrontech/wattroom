@@ -84,7 +84,7 @@ export const rideDock = {
 				),
 				alert: true,
 			};
-		if (!theRide.road && theRide.noCrashSafety)
+		if (theRide.noCrashSafety)
 			return { text: statusLine('no-crash-copy').text, alert: false };
 		return null;
 	},

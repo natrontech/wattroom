@@ -24,6 +24,8 @@
 	import { themeFor } from '#lib/themes.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { rideFrame } from '#lib/ride/ride-frame.svelte.ts';
+	import { keepPages } from '#lib/ride/keep-pages.ts';
+	import { outbox } from '#lib/ride/outbox.svelte.ts';
 	import { theRide } from '#lib/ride/the-ride.svelte.ts';
 	import { createProfileStore } from '#lib/profile.svelte.ts';
 	import { pullProfile } from '#lib/profile-sync.svelte.ts';
@@ -57,6 +59,7 @@
 		setShellBadge,
 		setShellPlace,
 		shellTitleBar,
+		shellVersion,
 	} from '#lib/desktop.ts';
 	import { sidebarUnread } from '#lib/nav/sidebar-unread.ts';
 	import { hangUpOnHide } from '#lib/channel/hang-up-on-hide.ts';
@@ -110,6 +113,20 @@
 			return;
 		}
 		if (friendsPinged(presence.version)) void friends.reload();
+	});
+
+	// A ride under way fetches every page's code (#4600): a deploy mid-ride
+	// would otherwise turn the next link into a reload that ends the ride.
+	$effect(() => {
+		if (theRide.live) keepPages();
+	});
+
+	// Rides this device kept because a save failed go up on their own once the
+	// server answers (#4600), and a rider who signs in sends theirs.
+	$effect(() => {
+		if (!account.me?.id) return;
+		outbox.start();
+		void outbox.run();
 	});
 
 	// Account → local profile cache, once me arrives (ADR-0009: server truth).
@@ -353,6 +370,15 @@
 <svelte:window
 	onkeydown={(e) => {
 		if (e.key === 'Escape' && navDrawer.open) navDrawer.open = false;
+	}}
+	onbeforeunload={(e) => {
+		// A reload, a closed tab or a full-page link would end the ride or lose
+		// it (#4600): the browser asks first. Not in the desktop shell, where a
+		// refused unload is a Quit that silently does nothing.
+		if (!theRide.atRisk || shellVersion()) return;
+		e.preventDefault();
+		// Safari asks only when this is set.
+		e.returnValue = '';
 	}}
 />
 

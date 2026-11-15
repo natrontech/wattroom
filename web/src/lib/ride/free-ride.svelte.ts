@@ -17,13 +17,19 @@ import { createRoadLaps, type RoadSecond } from '#lib/ride/road-ride.ts';
 import { homeRoad } from '#lib/ride/home-roads.ts';
 import type { RideableRoute } from '#lib/ride/roads.ts';
 import type { RideBatzen } from '#lib/ride/batzen.ts';
-import { openRideBuffer, type RideBuffer } from '#lib/ride/buffer.ts';
+import {
+	openRideBuffer,
+	type BufferedSample,
+	type RideBuffer,
+	type RideMeta,
+} from '#lib/ride/buffer.ts';
 import { createLiveStats } from '#lib/ride/live-stats.svelte.ts';
 import {
 	uploadRide,
 	type RideUpload,
 	type SaveFailure,
 } from '#lib/ride/save.ts';
+import { outbox } from '#lib/ride/outbox.svelte.ts';
 import { DEFAULTS } from '#lib/workout/guards.ts';
 import { play } from '#lib/sound/cues.ts';
 
@@ -62,8 +68,38 @@ export function freeRideJson(
 
 export type FreeRideOutcome =
 	| { saved: { id: string; xp?: number; batzen?: RideBatzen } }
-	| { failure: SaveFailure }
+	/** `kept`: this device holds every second of it, checked (#4600). */
+	| { failure: SaveFailure; kept: boolean }
 	| { short: true };
+
+/**
+ * What a free ride whose save failed says after the server's words (#4600):
+ * where the ride is now, and what happens next. "Kept on this device" only
+ * when it was checked to be, which the card used to say regardless.
+ */
+export function notSavedLine(failure: SaveFailure, kept: boolean): string {
+	if (!kept)
+		return 'This browser could not keep a copy of it, so keep this page open and press Try again.';
+	return failure.final
+		? 'It is kept on this device, and Rides offers it to download.'
+		: 'It is kept on this device and saves on its own once the server answers.';
+}
+
+/**
+ * A ride's seconds as the crash buffer holds them (#4600): what a failed save
+ * writes in one go, from the seconds the closing card shows.
+ */
+export function bufferedSamples(
+	samples: RideUpload['samples'],
+	startedAt: number,
+): BufferedSample[] {
+	return samples.map(({ hr, ...sample }, i) => ({
+		...sample,
+		seq: i + 1,
+		heartRate: hr,
+		at: startedAt + i * 1000,
+	}));
+}
 
 /**
  * A free ride (ADR-0059): riding a voice channel with no session and no
@@ -143,6 +179,27 @@ export function createFreeRide(deps: {
 	const live = createLiveStats(deps.ftp);
 	let rideId = '';
 	let buffer: RideBuffer | null = null;
+	/**
+	 * Whether this device is keeping the ride (#4600): null until the buffer
+	 * answers, then its word, read again every second, as a store can stop
+	 * mid-ride. The riding screen says false; the closing card says what End
+	 * ride left.
+	 */
+	let kept = $state<boolean | null>(null);
+	/** The last ride's upload and its buffer, while it is not on the account. */
+	let unsaved: { ride: RideUpload; buffer: RideBuffer; rideId: string } | null =
+		null;
+	const metaOf = (
+		id: string,
+		started: number,
+	): RideMeta & { ownerId: string | undefined } => ({
+		rideId: id,
+		ownerId: account.me?.id,
+		startedAt: started,
+		workoutName: FREE_RIDE_NAME,
+		workoutJson: freeRideJson(onRoad?.route),
+		...(saveOn && { routeId: saveOn.id }),
+	});
 	// A road is an attribute of the free ride, not a mode (#3027, decided
 	// 2026-09-28): Grade reads Road on one, and Watts rides ERG by the road.
 	let onRoad = $state.raw<{
@@ -194,6 +251,13 @@ export function createFreeRide(deps: {
 				}
 			: null,
 	);
+
+	/** The unsaved ride is on the account now; its card says so. */
+	function settled(saved: { id: string; xp?: number; batzen?: RideBatzen }) {
+		if (!unsaved) return;
+		unsaved = null;
+		outcome = { saved };
+	}
 
 	return {
 		get armed() {
@@ -265,6 +329,17 @@ export function createFreeRide(deps: {
 		},
 		get outcome() {
 			return outcome;
+		},
+		/**
+		 * Whether this device is keeping the ride being ridden (#4600); null
+		 * until its store answers. False is the riding screen's to say.
+		 */
+		get crashSafe() {
+			return kept;
+		},
+		/** The ride that ended unsaved, by its buffer's id; null once saved. */
+		get unsavedId() {
+			return unsaved?.rideId ?? null;
 		},
 		arm() {
 			// A new arming is a new ride's clock; the last one's ended time
@@ -405,17 +480,16 @@ export function createFreeRide(deps: {
 				live.reset();
 				rideId = crypto.randomUUID();
 				buffer = null;
+				kept = null;
+				unsaved = null;
 				const opening = rideId;
-				void openRideBuffer({
-					rideId,
-					ownerId: account.me?.id,
-					startedAt,
-					workoutName: FREE_RIDE_NAME,
-					workoutJson: freeRideJson(onRoad?.route),
-					...(saveOn && { routeId: saveOn.id }),
-				}).then((opened) => {
-					if (rideId === opening) buffer = opened;
-					else opened.release();
+				void openRideBuffer(metaOf(rideId, startedAt)).then((opened) => {
+					// Still this ride, and still riding: End ride before the store
+					// answered keeps the ride its own way.
+					if (rideId === opening && startedAt !== null) {
+						buffer = opened;
+						kept = opened.crashSafe;
+					} else opened.release();
 				});
 			}
 			// The upload's own fields: its decoder refuses anything else.
@@ -460,6 +534,7 @@ export function createFreeRide(deps: {
 			});
 			seconds = samples.length;
 			live.push({ watts: sample.watts });
+			if (buffer) kept = buffer.crashSafe;
 			buffer?.append({
 				seq: samples.length,
 				watts: sample.watts,
@@ -471,17 +546,19 @@ export function createFreeRide(deps: {
 		},
 		/**
 		 * End ride: disarms, and saves what was ridden — or lets a misclick go,
-		 * under docs/SPEC.md's minute. A failed save stays in the crash buffer,
-		 * which is what offers it back.
+		 * under docs/SPEC.md's minute. A failed save stays on this device, all of
+		 * it and checked (#4600), which is what offers it back; `kept` says
+		 * whether it did.
 		 */
 		async end(): Promise<FreeRideOutcome | null> {
 			armed = false;
 			ramp = null;
 			if (startedAt === null || saving) return null;
+			const began = startedAt;
 			const ride: RideUpload = {
 				workoutName: FREE_RIDE_NAME,
 				workoutJson: freeRideJson(onRoad?.route),
-				startedAt: new Date(startedAt).toISOString(),
+				startedAt: new Date(began).toISOString(),
 				samples,
 				...(saveOn && {
 					routeId: saveOn.id,
@@ -494,6 +571,7 @@ export function createFreeRide(deps: {
 				}),
 			};
 			const ended = buffer;
+			const id = rideId;
 			startedAt = null;
 			ridden = samples;
 			samples = [];
@@ -505,12 +583,50 @@ export function createFreeRide(deps: {
 			}
 			saving = true;
 			const result = await uploadRide(ride);
+			if ('saved' in result) {
+				saving = false;
+				ended?.end();
+				outcome = result;
+				return result;
+			}
+			// Not saved: every second onto the device before anything says it is
+			// kept (#4600). A store that never answered the ride's first second
+			// gets its chance now.
+			const store = ended ?? (await openRideBuffer(metaOf(id, began)));
+			kept = await store.keep(bufferedSamples(ride.samples, began), {
+				drive: ride.drive,
+				...(result.failure.final && { refused: result.failure.message }),
+			});
+			// No longer recorded: a ride to offer back (#2617).
+			store.release();
 			saving = false;
-			if ('saved' in result) ended?.end();
-			// Not saved and no longer recorded: a ride to offer back (#2617).
-			else ended?.release();
-			outcome = result;
-			return result;
+			unsaved = { ride, buffer: store, rideId: id };
+			outcome = { failure: result.failure, kept };
+			if (kept && !result.failure.final) outbox.kick();
+			return outcome;
+		},
+		/** Try again (#4600): the same upload; the server keys it on its start. */
+		async retry(): Promise<void> {
+			const last = unsaved;
+			if (!last || saving) return;
+			saving = true;
+			const result = await uploadRide(last.ride);
+			saving = false;
+			if (unsaved !== last) return;
+			if ('saved' in result) {
+				last.buffer.end();
+				settled(result.saved);
+			} else outcome = { failure: result.failure, kept: kept ?? false };
+		},
+		/**
+		 * The unsaved ride reached the account some other way, the outbox
+		 * (#4600), which took it off the device as well. True when it was this
+		 * ride's, so the card says it and no toast doubles it.
+		 */
+		claim(id: string, saved: { id: string; xp?: number; batzen?: RideBatzen }) {
+			if (unsaved?.rideId !== id) return false;
+			settled(saved);
+			return true;
 		},
 	};
 }

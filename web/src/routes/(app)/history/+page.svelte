@@ -23,6 +23,7 @@
 	import { page } from '$app/state';
 	import Banner from '#lib/components/Banner.svelte';
 	import RecoveredRides from '#lib/ride/RecoveredRides.svelte';
+	import { outbox } from '#lib/ride/outbox.svelte.ts';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { api } from '#lib/api.ts';
@@ -155,6 +156,15 @@
 		void load();
 		void loadProgression();
 	}
+
+	// The outbox sent a ride this device kept (#4600): the list has it now.
+	let sentSeen = outbox.sent;
+	$effect(() => {
+		if (outbox.sent === sentSeen) return;
+		sentSeen = outbox.sent;
+		void load();
+		void loadProgression();
+	});
 
 	// A chart's drilldown (the rides chart above, once /progression's) lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);

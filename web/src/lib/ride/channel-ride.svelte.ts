@@ -13,6 +13,7 @@ import {
 import type { SessionState } from '#lib/protocol.ts';
 import type { createRecording } from '#lib/session/recording.svelte.ts';
 import { countClimbed } from '#lib/ride/climbed-count.svelte.ts';
+import { outbox } from '#lib/ride/outbox.svelte.ts';
 import { createRide } from '#lib/session/ride.svelte.ts';
 import { toasts } from '#lib/toast.svelte.ts';
 import { createSignalWatch } from '#lib/workout/signal-watch.svelte.ts';
@@ -76,6 +77,8 @@ export function holdChannelRide(first: ChannelRideDeps) {
 		// Counted with the ride, not on its screen: riding together, every
 		// sample says it, for the crew's Everest together (#3193).
 		climb = countClimbed(free);
+		// Saved later by the outbox (#4600): the free ride's card says so.
+		$effect(() => outbox.claim(free.claim));
 		ride = createRide({
 			get live() {
 				return via.live;

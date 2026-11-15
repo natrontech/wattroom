@@ -16,7 +16,7 @@
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { formatClock, formatKm } from '#lib/format.ts';
 	import { createProfileStore } from '#lib/profile.svelte.ts';
-	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
+	import { freeRideLabel, notSavedLine } from '#lib/ride/free-ride.svelte.ts';
 	import FreeRiding from '#lib/ride/FreeRiding.svelte';
 	import FreeRideTv from '#lib/ride/FreeRideTv.svelte';
 	import { gearsEnabled } from '#lib/ride/gears-enabled.ts';
@@ -168,8 +168,18 @@
 			{/if}
 			{#if 'failure' in outcome}
 				<Banner tone="error">
-					It did not save — {outcome.failure.message} It is kept on this device, and
-					Ride offers it again.
+					It did not save — {outcome.failure.message}
+					{notSavedLine(outcome.failure, outcome.kept)}
+					{#snippet action()}
+						{#if !outcome.failure.final}
+							<button
+								onclick={() => void free.retry()}
+								disabled={free.saving}
+								class="btn-link text-xs"
+								>{free.saving ? 'Saving…' : 'Try again'}</button
+							>
+						{/if}
+					{/snippet}
 				</Banner>
 			{/if}
 		{/snippet}

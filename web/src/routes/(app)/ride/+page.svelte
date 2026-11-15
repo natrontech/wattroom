@@ -34,6 +34,7 @@
 	import { doorsFor } from '#lib/crew-lounge.ts';
 	import { ownRoad } from '#lib/ride/free-ride-controls.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
+	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -163,6 +164,15 @@
 	const session = $derived(theRide.session);
 	// What is ridden now: the setup's workout, until Change workout (#4257).
 	const riding = $derived(session?.workout ?? workout);
+	// The tab says the ride (#4600): a free ride on a road is not the workout
+	// the setup's other card remembers.
+	const tabName = $derived(
+		theRide.road
+			? freeRideLabel(theRide.road.route)
+			: !session && kind === 'free'
+				? freeRideLabel(road)
+				: riding.name,
+	);
 	// The setup is a desk page and wears the page frame (G7); the ride and
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
@@ -191,9 +201,12 @@
 			if (!res.ok) throw new Error(`No fixture named ${replayName}.`);
 			const fixture = await res.json();
 			const replaying = new SimulatedTrainer({ replay: fixture.samples });
-			// A free ride on a road takes the trainer as the card's Start does.
-			if (game || (kind === 'free' && road)) start(replaying);
-			else await begin(replaying);
+			// A free ride on a road takes the trainer as the card's Start does,
+			// connected, as a paired one is: it rides no session that connects it.
+			if (game || (kind === 'free' && road)) {
+				await replaying.connect();
+				start(replaying);
+			} else await begin(replaying);
 		} catch (cause) {
 			error = cause instanceof Error ? cause.message : String(cause);
 		}
@@ -234,8 +247,7 @@
 
 <svelte:head
 	><title
-		>{shelfPending || shelfMissing || doors ? 'Ride' : `${riding.name} · Ride`} ·
-		WattRoom</title
+		>{shelfPending || shelfMissing || doors ? 'Ride' : `${tabName} · Ride`} · WattRoom</title
 	></svelte:head
 >
 

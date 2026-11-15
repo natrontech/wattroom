@@ -31,12 +31,13 @@ export function exportPayload(ride: RecoveredRide) {
  * #794 has no workout to save, and an offer you cannot act on is not an offer.
  * A ride buffered before #2805 names no rider, and filing it would put whoever
  * rode it — their heart rate included — into whoever is signed in now: it can
- * still be downloaded, never saved.
+ * still be downloaded, never saved. Nor is a ride the server refused for good
+ * (#4600): Save would only be refused again.
  */
 export function canSave(
 	ride: RecoveredRide,
 ): ride is RecoveredRide & { workoutJson: string; ownerId: string } {
-	return !!ride.workoutJson && !!ride.ownerId;
+	return !!ride.workoutJson && !!ride.ownerId && !ride.refused;
 }
 
 /** The ride upload, for a ride the card may save. */
@@ -57,9 +58,11 @@ export function uploadPayload(ride: RecoveredRide) {
 			...(sample.lap && { lap: sample.lap }),
 			...(sample.reverse && { reverse: true }),
 		})),
-		// A free ride on a road saves against its route (#3027); how the
-		// trainer was driven went with the page, so the time is not claimed.
+		// A free ride on a road saves against its route (#3027). How the
+		// trainer was driven is known only to a ride that reached End ride
+		// (#4600); a crash's went with the page, so its time is not claimed.
 		...(ride.routeId && { routeId: ride.routeId }),
+		...(ride.routeId && ride.drive && { drive: ride.drive }),
 	};
 }
 
