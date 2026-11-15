@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.38] - 2026-11-15
+
+### Fixed
+
+- Long rides on your own roads save again. One late reading from the trainer on a fast descent could make the whole ride fail to save. (#4603)
+- A ride that does not save is no longer lost. It stays on this device, saves itself once the server is back, and its card offers Try again and Download .fit. (#4604)
+- A WattRoom update during your ride no longer ends it, and the browser asks before you reload or close the tab while you ride. (#4604)
+
 ## [2026.11.37] - 2026-11-14
 
 ### Added
@@ -4612,7 +4620,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.37...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.38...HEAD
+[2026.11.38]: https://github.com/natrontech/wattroom/compare/2026.11.37...2026.11.38
 [2026.11.37]: https://github.com/natrontech/wattroom/compare/2026.11.36...2026.11.37
 [2026.11.36]: https://github.com/natrontech/wattroom/compare/2026.11.35...2026.11.36
 [2026.11.35]: https://github.com/natrontech/wattroom/compare/2026.11.34...2026.11.35
