@@ -621,53 +621,54 @@ test('the navigation guard refuses another origin', async () => {
 });
 
 // Leaving mid-ride (#4600): the app refuses the unload, and the shell asks
-// the rider instead of refusing a quit or a reload in silence. The native
-// dialog is not Playwright-drivable, so its answer is stubbed in main.
-async function refusingPage(choice) {
+// the rider instead of refusing a quit in silence. The native dialog is not
+// Playwright-drivable, so its answer is stubbed in main.
+async function refusingPage() {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
-	await app.evaluate(({ dialog }, pick) => {
-		globalThis.__asked = [];
-		dialog.showMessageBoxSync = (_win, opts) => {
-			globalThis.__asked.push(opts.message);
-			return pick;
-		};
-	}, choice);
 	// Chromium honours a refusal only from a page the rider has touched.
 	await win.locator('body').click();
-	await win.evaluate(() => {
-		window.__marker = 'still here';
+	await win.evaluate(() =>
 		addEventListener('beforeunload', (e) => {
 			e.preventDefault();
 			e.returnValue = '';
-		});
-		setTimeout(() => location.reload());
-	});
-	return { app, win };
+		}),
+	);
+	const answer = (pick) =>
+		app.evaluate(({ dialog }, choice) => {
+			globalThis.__asked = globalThis.__asked ?? [];
+			dialog.showMessageBoxSync = (_win, opts) => {
+				globalThis.__asked.push(opts.message);
+				return choice;
+			};
+		}, pick);
+	// Not awaited inside main: the quit runs the page's refusal first.
+	const quit = () =>
+		app.evaluate(({ app: a }) => void setTimeout(() => a.quit()));
+	return { app, answer, quit };
 }
 
-test('a page that refuses to unload asks the rider, and Stay keeps it', async () => {
-	const { app, win } = await refusingPage(0);
+test('quitting while the page refuses asks the rider, and Stay keeps the app', async () => {
+	const { app, answer, quit } = await refusingPage();
+	await answer(0);
+	await quit();
 	await expect
 		.poll(() => app.evaluate(() => globalThis.__asked))
 		.toEqual(['Leave your ride?']);
+	// Still here, and still answering.
 	await new Promise((r) => setTimeout(r, 1000));
-	expect(await win.evaluate(() => window.__marker)).toBe('still here');
+	expect(await app.evaluate(() => globalThis.__asked.length)).toBe(1);
+	await answer(1);
 	await app.close();
 });
 
-test('a page that refuses to unload asks the rider, and Leave lets it go', async () => {
-	const { app, win } = await refusingPage(1);
-	await expect
-		.poll(() =>
-			win.evaluate(() => window.__marker ?? 'reloaded').catch(() => 'loading'),
-		)
-		.toBe('reloaded');
-	expect(await app.evaluate(() => globalThis.__asked)).toEqual([
-		'Leave your ride?',
-	]);
-	await app.close();
+test('quitting while the page refuses asks the rider, and Leave quits', async () => {
+	const { app, answer, quit } = await refusingPage();
+	await answer(1);
+	const closed = app.waitForEvent('close', { timeout: 15_000 });
+	await quit();
+	await closed;
 });
 
 // A same-origin link the SERVER redirects off-site never reaches will-navigate
