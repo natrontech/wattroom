@@ -1,4 +1,8 @@
-import { BikeKg, PaceDefaultCdA } from '#lib/protocol.ts';
+import {
+	BikeKg,
+	MaxRoadCatchUpSeconds,
+	PaceDefaultCdA,
+} from '#lib/protocol.ts';
 import { gradeAt, heightAt } from '#lib/road/at-metre.ts';
 import { createPace } from '#lib/road/pace.ts';
 import { turnedRound, type Road } from '#lib/road/road.ts';
@@ -86,14 +90,17 @@ export function createRoadRide(
 		start: (): RoadSecond => place(1),
 		/**
 		 * One sample at `at` (ms). The dot moves by the whole seconds since the
-		 * last, held to 0–2: a tab the browser throttled catches up a little,
+		 * last, held to 0–MaxRoadCatchUpSeconds: a tab the browser throttled catches up a little,
 		 * and never teleports down the road.
 		 */
 		second(watts: number, at: number): RoadSecond {
 			const seconds =
 				lastAt === undefined
 					? 1
-					: Math.min(2, Math.max(0, Math.round((at - lastAt) / 1000)));
+					: Math.min(
+							MaxRoadCatchUpSeconds,
+							Math.max(0, Math.round((at - lastAt) / 1000)),
+						);
 			lastAt = at;
 			for (let i = 0; i < seconds; i++) {
 				const along = from + pace.distance;

@@ -157,8 +157,9 @@
 		void loadProgression();
 	}
 
-	// The outbox sent a ride this device kept (#4600): the list has it now.
-	let sentSeen = outbox.sent;
+	// The outbox sent a ride this device kept (#4600), since the list was read
+	// or while it was: the list has it now.
+	let sentSeen = untrack(() => data.sent);
 	$effect(() => {
 		if (outbox.sent === sentSeen) return;
 		sentSeen = outbox.sent;

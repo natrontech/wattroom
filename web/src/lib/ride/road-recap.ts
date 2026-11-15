@@ -1,5 +1,5 @@
 import { formatKm } from '#lib/format.ts';
-import { MaxRoadSpeedMps } from '#lib/protocol.ts';
+import { MaxRoadStepM } from '#lib/protocol.ts';
 import { zoneOf } from '#lib/components/zones.ts';
 import type { ClimbBest } from '#lib/road/attempts.ts';
 import { classedOf, climbsOf, type ClimbClass } from '#lib/road/climbs.ts';
@@ -160,8 +160,8 @@ function riddenMetres(samples: readonly RoadSample[]): number[] {
 	const out = [0];
 	for (let i = 1; i < samples.length; i++) {
 		const step = Math.abs((samples[i].m ?? 0) - (samples[i - 1].m ?? 0));
-		// A jump further than a second rides is a new lap, as rideProfile reads it.
-		out.push(out[i - 1] + (step <= MaxRoadSpeedMps ? step : 0));
+		// A jump further than one sample rides is a new lap, as rideProfile reads it.
+		out.push(out[i - 1] + (step <= MaxRoadStepM ? step : 0));
 	}
 	return out;
 }

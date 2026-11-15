@@ -117,14 +117,14 @@ func FromMetrics(startedAt time.Time, metrics []protocol.RiderMetrics, replayedM
 // samples keep the metres along the road and no lap (#3598): a lap ridden
 // back counts them down, and a loop's line or a jump to a channel-mate's
 // metre starts them again anywhere. Within a lap they move at most
-// MaxRoadSpeedMps a second, either way, so a longer step is a new lap
+// MaxRoadStepM a sample, either way, so a longer step is a new lap
 // starting under the rider, ridden at the second before's pace (#4261). The
 // replay's distance is the record (ADR-0074): the metres end on it.
 func ridden(metrics []protocol.RiderMetrics, replayedM *int32) []float64 {
 	out := make([]float64, len(metrics))
 	step := 0.0
 	for i := 1; i < len(metrics); i++ {
-		if d := math.Abs(metrics[i].M - metrics[i-1].M); d <= protocol.MaxRoadSpeedMps {
+		if d := math.Abs(metrics[i].M - metrics[i-1].M); d <= protocol.MaxRoadStepM {
 			step = d
 		}
 		out[i] = out[i-1] + step

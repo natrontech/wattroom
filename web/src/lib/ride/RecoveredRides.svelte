@@ -6,7 +6,7 @@
 	// (AGENTS.md — the rider is on a bike).
 	import { apiBlob } from '#lib/api.ts';
 	import { downloadBlob } from '#lib/download.ts';
-	import { discardRide } from '#lib/ride/buffer.ts';
+	import { discardRide, refuseRide } from '#lib/ride/buffer.ts';
 	import {
 		canSave,
 		confirmDiscard,
@@ -32,6 +32,9 @@
 	// The signed-in rider's own, never the last rider's on this browser (#2805).
 	const rides = recoverableRides();
 	let busy = $state(false);
+	// Refused by the server, so no Save is offered again (#4600). The seconds
+	// stay: a refusal used to delete the only copy of a ride with them.
+	let refused = $state<string[]>([]);
 
 	// `forget` is also how a saved or exported ride leaves the card, so the ask
 	// belongs on the Discard button and not in here (errors.md, #1493): by the
@@ -72,10 +75,18 @@
 		const outcome = await uploadRide(payload);
 		busy = false;
 		if ('failure' in outcome) {
-			onError(outcome.failure.message);
-			// A refusal the server will repeat is not worth a second card:
-			// the samples go, the sentence stays.
-			if (outcome.failure.final) await forget(ride.rideId);
+			if (!outcome.failure.final) {
+				onError(outcome.failure.message);
+				return;
+			}
+			// A refusal the server will repeat: its Save goes, and the ride
+			// stays to download, until the rider discards it.
+			refused = [...refused, ride.rideId];
+			// And across reloads: the outbox never sends it again.
+			await refuseRide(ride.rideId, outcome.failure.message);
+			onError(
+				`${outcome.failure.message} The ride is still here: download its .fit to keep it.`,
+			);
 			return;
 		}
 		await forget(ride.rideId);
@@ -94,7 +105,7 @@
 			{recordedMinutes(ride)} min recorded.
 		</p>
 		<div class="mt-2 flex gap-2">
-			{#if canSave(ride)}
+			{#if canSave(ride) && !refused.includes(ride.rideId)}
 				<button
 					onclick={() => save(ride)}
 					disabled={busy}
@@ -104,8 +115,9 @@
 			<button
 				onclick={() => download(ride)}
 				disabled={busy}
-				class="btn {canSave(ride) ? 'btn-secondary' : 'btn-primary'} btn-xs"
-				>Download .fit</button
+				class="btn {canSave(ride) && !refused.includes(ride.rideId)
+					? 'btn-secondary'
+					: 'btn-primary'} btn-xs">Download .fit</button
 			>
 			<button onclick={() => discard(ride)} class="btn btn-secondary btn-xs"
 				>Discard</button

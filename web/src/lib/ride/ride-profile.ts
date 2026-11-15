@@ -1,4 +1,4 @@
-import { MaxRoadSpeedMps } from '#lib/protocol.ts';
+import { MaxRoadStepM } from '#lib/protocol.ts';
 import type { Road } from '#lib/road/road.ts';
 import type { Frame } from '#lib/road/skyline.ts';
 
@@ -12,8 +12,8 @@ const STEP_M = 20;
  * page whole. Null for a ride off a road, or one too short to draw.
  *
  * A zero is left out of the saved samples, so on a road ride a missing
- * metre or height is 0. A sample further on than a rider goes in a second
- * is a new lap from the road's start, not a ride.
+ * metre or height is 0. A sample further on than MaxRoadStepM from the one
+ * before is a new lap from the road's start, not a ride.
  */
 export function rideProfile(
 	samples: readonly { m?: number; alt?: number }[],
@@ -23,7 +23,7 @@ export function rideProfile(
 	const ridden = [0];
 	for (let i = 1; i < samples.length; i++) {
 		const step = Math.abs((samples[i].m ?? 0) - (samples[i - 1].m ?? 0));
-		ridden.push(ridden[i - 1] + (step <= MaxRoadSpeedMps ? step : 0));
+		ridden.push(ridden[i - 1] + (step <= MaxRoadStepM ? step : 0));
 	}
 	const length = ridden.at(-1)!;
 	if (length < 2 * STEP_M) return null;

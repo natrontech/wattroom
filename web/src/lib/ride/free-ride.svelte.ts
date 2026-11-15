@@ -67,7 +67,15 @@ export function freeRideJson(
 }
 
 export type FreeRideOutcome =
-	| { saved: { id: string; xp?: number; batzen?: RideBatzen } }
+	| {
+			saved: {
+				id: string;
+				xp?: number;
+				batzen?: RideBatzen;
+				/** Saved without its road: the sentence that says why (#4600). */
+				roadLeftOff?: string;
+			};
+	  }
 	/** `kept`: this device holds every second of it, checked (#4600). */
 	| { failure: SaveFailure; kept: boolean }
 	| { short: true };
@@ -340,6 +348,10 @@ export function createFreeRide(deps: {
 		/** The ride that ended unsaved, by its buffer's id; null once saved. */
 		get unsavedId() {
 			return unsaved?.rideId ?? null;
+		},
+		/** When the ended ride that has not saved started (ISO 8601), for its .fit. */
+		get unsavedStartedAt(): string | null {
+			return unsaved?.ride.startedAt ?? null;
 		},
 		arm() {
 			// A new arming is a new ride's clock; the last one's ended time

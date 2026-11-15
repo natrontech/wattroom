@@ -10,15 +10,19 @@ import {
 	type RidesPage,
 	type ServerRide,
 } from '#lib/ride/list.ts';
+import { outbox } from '#lib/ride/outbox.svelte.ts';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch }) => {
+	// Before the read: a ride the outbox sends while it runs is not in it.
+	const sent = outbox.sent;
 	const [ridesResult, progressionResult] = await Promise.all([
 		loadApi<RidesPage>(fetch, '/api/rides'),
 		fetchProgression(fetch),
 	]);
 	const cursor = ridesResult.ok ? rideCursorOf(ridesResult.data) : null;
 	return {
+		sent,
 		rides: ridesResult.ok ? ridesResult.data.rides : null,
 		more: ridesResult.ok ? !!ridesResult.data.more && !!cursor : false,
 		cursor,
@@ -31,6 +35,8 @@ export const load: PageLoad = async ({ fetch }) => {
 };
 
 export type HistoryPageData = {
+	/** The outbox's count when the list was read (#4600). */
+	sent: number;
 	rides: ServerRide[] | null;
 	/** The server has older rides than the page holds (#1549). */
 	more: boolean;

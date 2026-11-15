@@ -3,12 +3,7 @@ import { createHistoryStore, summarise } from '#lib/history.svelte.ts';
 import type { RideBatzen } from '#lib/ride/batzen.ts';
 import type { RideBuffer } from '#lib/ride/buffer.ts';
 import { outbox } from '#lib/ride/outbox.svelte.ts';
-import {
-	ROAD_LEFT_OFF,
-	recordingUpload,
-	toastSaved,
-	uploadRide,
-} from '#lib/ride/save.ts';
+import { recordingUpload, toastSaved, uploadRide } from '#lib/ride/save.ts';
 import { toasts } from '#lib/toast.svelte.ts';
 import type { createRideSession } from '#lib/workout/session.svelte.ts';
 
@@ -68,10 +63,7 @@ export function saveRideAlone(
 				// A retry that went through leaves one copy, on the account.
 				history.remove(id);
 				if (mine) {
-					answers.status(
-						outcome.saved.roadLeftOff ? ROAD_LEFT_OFF : null,
-						null,
-					);
+					answers.status(outcome.saved.roadLeftOff ?? null, null);
 					answers.saved(
 						outcome.saved.id || null,
 						outcome.saved.xp,

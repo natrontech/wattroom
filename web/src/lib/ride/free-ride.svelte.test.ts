@@ -234,6 +234,8 @@ describe('recording a free ride', () => {
 			expect(store.kept[0]).toHaveLength(60);
 			expect(store.kept[0][59]).toMatchObject({ seq: 60, heartRate: 120 });
 			expect(free.unsavedId).not.toBeNull();
+			// The card's .fit reads when it started.
+			expect(free.unsavedStartedAt).toMatch(/^\d{4}-\d\d-\d\dT/);
 		});
 
 		it('says it is not kept when the device would not take it', async () => {

@@ -109,13 +109,27 @@ const FINAL = new Set(['validation_error', 'invalid_request', 'conflict']);
 /** What a ride saved without its road says, wherever it lands (#4262). */
 export const ROAD_LEFT_OFF =
 	'Saved without its road, which is not one of your routes.';
+/** And what one saved without the places along its road says (#4600). */
+export const ROAD_UNREAD =
+	'Saved without its road: a place along it could not be read. Every second is there.';
 
 /** The toast a ride saved from off its closing card leaves, linking it. */
-export function toastSaved(saved: { id: string; roadLeftOff?: true }): void {
-	toasts.push(
-		saved.roadLeftOff ? ROAD_LEFT_OFF : 'Ride saved to your history.',
-		{ href: saved.id ? `/history/${saved.id}` : undefined },
-	);
+export function toastSaved(saved: { id: string; roadLeftOff?: string }): void {
+	toasts.push(saved.roadLeftOff ?? 'Ride saved to your history.', {
+		href: saved.id ? `/history/${saved.id}` : undefined,
+	});
+}
+
+/** The ride with no road under it: its seconds, and nothing of where. */
+function offTheRoad(ride: RideUpload): RideUpload {
+	return {
+		...ride,
+		routeId: undefined,
+		drive: undefined,
+		samples: ride.samples.map(
+			({ m: _m, alt: _alt, lap: _lap, reverse: _reverse, ...second }) => second,
+		),
+	};
 }
 
 /**
@@ -141,7 +155,8 @@ export async function uploadRide(ride: RideUpload): Promise<
 				id: string;
 				xp?: number;
 				batzen?: RideBatzen;
-				roadLeftOff?: true;
+				/** Saved without its road: the sentence that says why. */
+				roadLeftOff?: string;
 			};
 	  }
 	| { failure: SaveFailure }
@@ -153,6 +168,14 @@ export async function uploadRide(ride: RideUpload): Promise<
 		!res.ok && res.error.field === 'routeId' && !!ride.routeId;
 	if (roadLeftOff)
 		res = await post({ ...ride, routeId: undefined, drive: undefined });
+	// Refused over its samples while they carry a road (#4600): one place on
+	// the road the server would not take cost a 3-hour ride. Without the road
+	// every second still saves, as a ride with no road under it.
+	const roadUnread =
+		!res.ok &&
+		res.error.field === 'samples' &&
+		ride.samples.some((s) => s.m !== undefined);
+	if (roadUnread) res = await post(offTheRoad(ride));
 	if (res.ok) {
 		// A saved ride can move what the account suggests — an FTP, an LTHR —
 		// and /api/me is where those ride (#2626): re-read it now, so the
@@ -163,7 +186,8 @@ export async function uploadRide(ride: RideUpload): Promise<
 				id: String(res.data?.id ?? ''),
 				xp: res.data?.xp,
 				batzen: res.data?.batzen,
-				...(roadLeftOff && { roadLeftOff: true as const }),
+				...(roadLeftOff && { roadLeftOff: ROAD_LEFT_OFF }),
+				...(roadUnread && { roadLeftOff: ROAD_UNREAD }),
 			},
 		};
 	}

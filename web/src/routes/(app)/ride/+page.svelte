@@ -14,6 +14,7 @@
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { account } from '#lib/account.svelte.ts';
 	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
 	import TheRide from '#lib/ride/TheRide.svelte';
 	import { withProfile } from '#lib/workout/road-workout.ts';
 	import PreRide from '#lib/ride/PreRide.svelte';
@@ -34,7 +35,6 @@
 	import { doorsFor } from '#lib/crew-lounge.ts';
 	import { ownRoad } from '#lib/ride/free-ride-controls.ts';
 	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
-	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -164,8 +164,8 @@
 	const session = $derived(theRide.session);
 	// What is ridden now: the setup's workout, until Change workout (#4257).
 	const riding = $derived(session?.workout ?? workout);
-	// The tab says the ride (#4600): a free ride on a road is not the workout
-	// the setup's other card remembers.
+	// The tab says what rides (#4600): a free ride on a road is no workout, and
+	// naming the card's last workout over one read as a second ride under it.
 	const tabName = $derived(
 		theRide.road
 			? freeRideLabel(theRide.road.route)

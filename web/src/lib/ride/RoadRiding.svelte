@@ -9,6 +9,8 @@
 	 * never ends it, and this view only reads it.
 	 */
 	import RidePictures from '#lib/ride/RidePictures.svelte';
+	import { apiBlob } from '#lib/api.ts';
+	import { shareFile } from '#lib/share.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	import { canSimulate } from '#lib/ble/can-simulate.ts';
 	import { FtmsTrainer } from '#lib/ble/ftms.ts';
@@ -66,6 +68,39 @@
 	function end() {
 		tv = false;
 		void ride?.end();
+	}
+
+	// A ride that did not save is still on this card (#4600): the same upload
+	// again, or its seconds as a .fit to keep or upload by hand. Without the
+	// browser's own copy this card is the only one, and leaving it loses it.
+	let exporting = $state(false);
+	let exportError = $state<string | null>(null);
+	async function downloadFit() {
+		const free = ride?.free;
+		const startedAt = free?.unsavedStartedAt;
+		if (!free || !startedAt || free.ridden.length === 0) return;
+		exporting = true;
+		exportError = null;
+		try {
+			const res = await apiBlob('/api/rides/export', {
+				method: 'POST',
+				json: {
+					startedAt,
+					samples: free.ridden.map((sample, second) => ({
+						second,
+						watts: sample.watts,
+						cadence: sample.cadence,
+						heartRate: sample.hr,
+					})),
+				},
+			});
+			if (!res.ok) throw new Error(res.error.message);
+			await shareFile(res.data.blob, res.data.filename ?? 'ride.fit');
+		} catch (cause) {
+			exportError = cause instanceof Error ? cause.message : String(cause);
+		} finally {
+			exporting = false;
+		}
 	}
 
 	// The climbs this ride holds your best on (#4516): read once the ride is
@@ -166,20 +201,32 @@
 					{ghost.newBest}
 				</p>
 			{/if}
+			{#if 'saved' in outcome && outcome.saved.roadLeftOff}
+				<Banner tone="warn">{outcome.saved.roadLeftOff}</Banner>
+			{/if}
 			{#if 'failure' in outcome}
 				<Banner tone="error">
-					It did not save — {outcome.failure.message}
-					{notSavedLine(outcome.failure, outcome.kept)}
-					{#snippet action()}
+					<p>
+						It did not save — {outcome.failure.message}
+						{notSavedLine(outcome.failure, outcome.kept)}
+					</p>
+					{#if exportError}<p class="mt-1">{exportError}</p>{/if}
+					<div class="mt-3 flex flex-wrap gap-3">
 						{#if !outcome.failure.final}
 							<button
 								onclick={() => void free.retry()}
 								disabled={free.saving}
-								class="btn-link text-xs"
+								class="btn btn-primary"
 								>{free.saving ? 'Saving…' : 'Try again'}</button
 							>
 						{/if}
-					{/snippet}
+						<button
+							onclick={() => void downloadFit()}
+							disabled={exporting}
+							class="btn btn-secondary"
+							>{exporting ? 'Preparing…' : 'Download .fit'}</button
+						>
+					</div>
 				</Banner>
 			{/if}
 		{/snippet}
