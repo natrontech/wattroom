@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.39] - 2026-11-15
+
+### Fixed
+
+- In the desktop app, quitting, restarting for an update or reloading during a ride now asks first instead of ending the ride. (#4608)
+- A workout that does not save now says honestly whether this device kept it, and warns during the ride if it cannot keep a copy. (#4607)
+
 ## [2026.11.38] - 2026-11-15
 
 ### Fixed
@@ -4620,7 +4627,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.38...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.39...HEAD
+[2026.11.39]: https://github.com/natrontech/wattroom/compare/2026.11.38...2026.11.39
 [2026.11.38]: https://github.com/natrontech/wattroom/compare/2026.11.37...2026.11.38
 [2026.11.37]: https://github.com/natrontech/wattroom/compare/2026.11.36...2026.11.37
 [2026.11.36]: https://github.com/natrontech/wattroom/compare/2026.11.35...2026.11.36
