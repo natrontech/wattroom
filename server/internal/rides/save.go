@@ -67,8 +67,8 @@ type createRequest struct {
 
 // roadRefusal answers a sample off the road in the bounds protocol holds it to.
 var roadRefusal = fmt.Sprintf(
-	"A sample's place on the road is out of range — within a lap it only moves the lap's way, at most %d m a second, between %d m and %d m high.",
-	protocol.MaxRoadSpeedMps, protocol.MinRoadAltM, protocol.MaxRoadAltM)
+	"A sample's place on the road is out of range — within a lap it only moves the lap's way, at most %d m from one sample to the next, between %d m and %d m high.",
+	protocol.MaxRoadStepM, protocol.MinRoadAltM, protocol.MaxRoadAltM)
 
 // lapFollows says whether a sample follows the one before it on the road
 // (#3598): within a lap, along it the lap's way and no faster than a rider
@@ -80,9 +80,9 @@ func lapFollows(prev, next protocol.RiderMetrics, prevLap, nextLap int, reverse 
 	case nextLap != prevLap:
 		return false
 	case reverse:
-		return protocol.RoadFollows(next, prev, 1)
+		return protocol.RoadFollows(next, prev, protocol.MaxRoadCatchUpSeconds)
 	}
-	return protocol.RoadFollows(prev, next, 1)
+	return protocol.RoadFollows(prev, next, protocol.MaxRoadCatchUpSeconds)
 }
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {

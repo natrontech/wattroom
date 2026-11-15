@@ -14,6 +14,7 @@
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import { account } from '#lib/account.svelte.ts';
 	import { theRide } from '#lib/ride/the-ride.svelte.ts';
+	import { freeRideLabel } from '#lib/ride/free-ride.svelte.ts';
 	import TheRide from '#lib/ride/TheRide.svelte';
 	import { withProfile } from '#lib/workout/road-workout.ts';
 	import PreRide from '#lib/ride/PreRide.svelte';
@@ -163,6 +164,15 @@
 	const session = $derived(theRide.session);
 	// What is ridden now: the setup's workout, until Change workout (#4257).
 	const riding = $derived(session?.workout ?? workout);
+	// The tab says what rides (#4600): a free ride on a road is no workout, and
+	// naming the card's last workout over one read as a second ride under it.
+	const tabName = $derived(
+		theRide.road
+			? freeRideLabel(theRide.road.route)
+			: !session && kind === 'free'
+				? freeRideLabel(road)
+				: riding.name,
+	);
 	// The setup is a desk page and wears the page frame (G7); the ride and
 	// its summary keep the riding surface's own gutters.
 	const setup = $derived(
@@ -234,8 +244,7 @@
 
 <svelte:head
 	><title
-		>{shelfPending || shelfMissing || doors ? 'Ride' : `${riding.name} · Ride`} ·
-		WattRoom</title
+		>{shelfPending || shelfMissing || doors ? 'Ride' : `${tabName} · Ride`} · WattRoom</title
 	></svelte:head
 >
 
