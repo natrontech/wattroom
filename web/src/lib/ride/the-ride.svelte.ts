@@ -160,6 +160,8 @@ async function startWorkout(
 			flags,
 			session: () => session,
 			ask: () => game?.ask ?? 0,
+			// A store can stop mid-ride (#4600): said as it happens, not only at Start.
+			kept: (safe) => (noCrashSafety = !safe),
 		});
 		// The game starts when the count-in ends, as a workout's clock does:
 		// its first second goes out once the ride rides (#4539).
@@ -243,6 +245,7 @@ export const theRide = {
 		return (
 			theRide.live ||
 			outcome.saving ||
+			!outcome.kept ||
 			!!free?.saving ||
 			(!!free?.outcome && 'failure' in free.outcome && !free.outcome.kept)
 		);
