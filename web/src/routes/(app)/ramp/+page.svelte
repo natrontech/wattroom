@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { backOr } from '#lib/back-link.ts';
+	import BackLink from '#lib/components/BackLink.svelte';
 	import Banner from '#lib/components/Banner.svelte';
 	import RecoveredRides from '#lib/ride/RecoveredRides.svelte';
 	import { theRide } from '#lib/ride/the-ride.svelte.ts';
@@ -40,6 +43,15 @@
 			error = cause instanceof Error ? cause.message : String(cause);
 		}
 	}
+
+	// The page that sent the rider here (Settings' FTP line, Devices, the
+	// ride's pre-ride card), else Workouts, the row the test sits under.
+	const back = $derived(
+		backOr(page.url.searchParams.get('back'), {
+			href: '/workouts',
+			label: 'Workouts',
+		}),
+	);
 </script>
 
 <svelte:head><title>Ramp test · WattRoom</title></svelte:head>
@@ -55,6 +67,7 @@
 	{#if riding}
 		<TheRide />
 	{:else}
+		<BackLink {back} class="mb-3" />
 		<h1 class="page-title">Ramp test</h1>
 		<p class="text-muted mt-2 max-w-xl text-sm">
 			The one workout whose point is to end. Starts at {RAMP.startWatts} W, adds

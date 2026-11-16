@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBack } from '#lib/back-link.ts';
 	import { untrack } from 'svelte';
 	// A conversation, as a place (ADR-0020, #468). The voice channel's
 	// connection survives navigation (#191), so reading a DM keeps you in the
@@ -27,6 +28,9 @@
 	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Radio from '@lucide/svelte/icons/radio';
 	import { toasts } from '#lib/toast.svelte.ts';
+
+	// The page a rider link is opened from, as its way back.
+	const backTo = $derived(page.url.pathname + page.url.search);
 
 	const peerId = $derived(page.params.peer ?? '');
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));
@@ -213,7 +217,7 @@
 		     has no head, and still has a status. -->
 		<span class="flex min-w-0 items-center gap-2 text-sm">
 			<a
-				href="/u/{peerId}"
+				href={withBack(`/u/${peerId}`, backTo)}
 				class="shrink-0 truncate font-medium hover:underline"
 				title="{peerName}'s page">{peerName}</a
 			>

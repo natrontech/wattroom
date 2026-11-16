@@ -5,6 +5,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { account } from '#lib/account.svelte.ts';
+	import { backOr } from '#lib/back-link.ts';
+	import BackLink from '#lib/components/BackLink.svelte';
 	import Banner from '#lib/components/Banner.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import WorkoutPreview from '#lib/components/WorkoutPreview.svelte';
@@ -73,6 +75,15 @@
 	);
 	// Every "Import a route" door asks for a route file (#3684).
 	const asRoute = page.url.searchParams.get('as') === 'route';
+	// The page that sent the rider here (a ride's road picker, a session's),
+	// else the shelf the file lands on. Read once, as above: the intervals
+	// landing below clears the query.
+	const back = backOr(
+		page.url.searchParams.get('back'),
+		asRoute
+			? { href: '/workouts/routes', label: 'Routes' }
+			: { href: '/workouts', label: 'Workouts' },
+	);
 
 	// Never render a button that will fail (errors.md): a new workout on a
 	// full shelf is a 429, and a shelf that could not be read at all must not
@@ -192,6 +203,7 @@
 >
 
 <main class="page">
+	<BackLink {back} class="mb-3" />
 	<h1 class="page-title text-balance">
 		{asRoute ? 'Import a route' : 'Import a workout or a route'}
 	</h1>

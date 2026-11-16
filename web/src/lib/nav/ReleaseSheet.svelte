@@ -7,6 +7,8 @@
 	// The first new thing is the headline, said large, with the rest of its
 	// entry under it; every other entry wears its section's mark. The releases
 	// that landed while you were away open in place.
+	import { page } from '$app/state';
+	import { withBack } from '#lib/back-link.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import MessageText from '#lib/chat/MessageText.svelte';
 	import { changelog } from '#lib/changelog.svelte.ts';
@@ -195,8 +197,10 @@
 			<div
 				class="border-ink/10 bg-surface sticky bottom-0 flex items-center justify-between border-t px-8 py-4"
 			>
-				<a href="/whats-new" onclick={onclose} class="btn-link text-sm"
-					>All releases</a
+				<a
+					href={withBack('/whats-new', page.url.pathname + page.url.search)}
+					onclick={onclose}
+					class="btn-link text-sm">All releases</a
 				>
 				<button type="button" onclick={gotIt} class="btn btn-primary btn-lg"
 					>Got it</button

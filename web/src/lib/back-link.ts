@@ -19,7 +19,19 @@ export function localPath(back: string | null): string | null {
 
 /** `path`, carrying the page it is opened from as its way back. */
 export const withBack = (path: string, back?: string | null): string =>
-	back ? `${path}?back=${encodeURIComponent(back)}` : path;
+	back
+		? `${path}${path.includes('?') ? '&' : '?'}back=${encodeURIComponent(back)}`
+		: path;
+
+/** The page the rider is on now, as a `?back=` value — null outside a browser. */
+export const here = (): string | null =>
+	typeof location === 'undefined' ? null : location.pathname + location.search;
+
+/** `?back=` if it is a path on this site, else the page's own parent. */
+export const backOr = (back: string | null, parent: BackLink): BackLink => {
+	const href = localPath(back);
+	return href ? { href, label: 'Back' } : parent;
+};
 
 /** The route page's: the picker a row's name was opened from, else Routes. */
 export function routeBackLink(back: string | null): BackLink {

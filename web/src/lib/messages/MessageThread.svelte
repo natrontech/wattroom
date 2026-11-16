@@ -4,6 +4,8 @@
 	// the way back to the crew) and a DM's (where they are) stay with the caller
 	// — what differs surface to surface is what a line IS and what you can do to
 	// it, not how the log scrolls or the box sends.
+	import { page } from '$app/state';
+	import { withBack } from '#lib/back-link.ts';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -47,6 +49,9 @@
 	import { confirm } from '#lib/confirm.svelte.ts';
 	import { copyText } from '#lib/copy.ts';
 	import { toasts } from '#lib/toast.svelte.ts';
+
+	// The page a rider link is opened from, as its way back.
+	const backTo = $derived(page.url.pathname + page.url.search);
 
 	let {
 		source,
@@ -349,7 +354,9 @@
 								<!-- The face is the way to the person (#1765). -->
 								<svelte:element
 									this={message.fromId ? 'a' : 'span'}
-									href={message.fromId ? `/u/${message.fromId}` : undefined}
+									href={message.fromId
+										? withBack(`/u/${message.fromId}`, backTo)
+										: undefined}
 									class="block rounded-full"
 									{@attach hoverCard(() => message.fromId)}
 								>

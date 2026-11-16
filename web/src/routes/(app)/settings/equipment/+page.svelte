@@ -7,6 +7,7 @@
 	// One card everywhere (#1000): the same `SensorOverview` /ride, /ramp and
 	// the Training place draw, so the answer reads identically wherever a
 	// rider happens to be standing.
+	import { withBack } from '#lib/back-link.ts';
 	import { canSimulate } from '#lib/ble/can-simulate.ts';
 	import { FtmsTrainer } from '#lib/ble/ftms.ts';
 	import { SimulatedTrainer } from '#lib/ble/simulated.ts';
@@ -205,7 +206,7 @@
 	<section class="panel panel-xl mt-8">
 		<h2 class="font-display font-bold">Measurement</h2>
 		<a
-			href="/ramp"
+			href={withBack('/ramp', '/settings/equipment')}
 			class="border-frame hover:border-muted/40 mt-4 flex items-center gap-3 rounded-lg border px-4 py-3"
 		>
 			<Gauge size={16} class="text-muted shrink-0" />

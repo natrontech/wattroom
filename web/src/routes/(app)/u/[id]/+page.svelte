@@ -6,6 +6,8 @@
 	import { page } from '$app/state';
 	import { api } from '#lib/api.ts';
 	import { account } from '#lib/account.svelte.ts';
+	import { backOr } from '#lib/back-link.ts';
+	import BackLink from '#lib/components/BackLink.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import Banner from '#lib/components/Banner.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
@@ -55,6 +57,17 @@
 	// The resolved id: the loader turns /u/me into yours (#1330).
 	const id = $derived(
 		page.params.id === 'me' ? (data.id ?? '') : (page.params.id ?? ''),
+	);
+	// The way back: the page that opened it (a crew's members, a
+	// conversation, Friends), else the row it sits under — Home for your own,
+	// Friends for anyone else's.
+	const back = $derived(
+		backOr(
+			page.url.searchParams.get('back'),
+			page.params.id === 'me' || id === account.me?.id
+				? { href: '/home', label: 'Home' }
+				: { href: '/friends', label: 'Friends' },
+		),
 	);
 	let rider = $state<Rider | null>(untrack(() => data.rider));
 	// The badges behind the level (#701, ADR-0027). Same audience as the
@@ -237,6 +250,7 @@
 {/snippet}
 
 <main class="page">
+	<BackLink {back} class="mb-3" />
 	{#if missing}
 		<EmptyState variant="page">
 			<p class="text-ink text-sm">This rider isn't here.</p>

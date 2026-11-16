@@ -4,6 +4,7 @@
 	// now it is one tree with a section per route, so every part of it can be
 	// linked to from wherever it is needed — the voice channel's Sound panel, a
 	// suggested FTP, the first-run card.
+	import { withBack } from '#lib/back-link.ts';
 	import { page } from '$app/state';
 	import { api } from '#lib/api.ts';
 	import { buildLine } from '#lib/build-line.ts';
@@ -51,7 +52,10 @@
 		<p>
 			wattroom
 			{#if data.release}
-				<a href="/whats-new" class="hover:text-ink underline">{data.release}</a>
+				<a
+					href={withBack('/whats-new', page.url.pathname)}
+					class="hover:text-ink underline">{data.release}</a
+				>
 			{/if}
 			{#if data.version && data.version !== 'dev'}
 				<!-- +dirty is display-only; the commit link needs the bare sha. -->

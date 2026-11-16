@@ -4,6 +4,7 @@
 	// where the time went, the numbers it was scored on, and what it won.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import BackLink from '#lib/components/BackLink.svelte';
 	import Banner from '#lib/components/Banner.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import IntervalGraph from '#lib/components/IntervalGraph.svelte';
@@ -37,7 +38,6 @@
 	import { apiBlob } from '#lib/api.ts';
 	import { shareFile } from '#lib/share.ts';
 	import { zoneSeconds } from '#lib/ride/stats.ts';
-	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Award from '@lucide/svelte/icons/award';
 	import Download from '@lucide/svelte/icons/download';
 	import ImageDown from '@lucide/svelte/icons/image-down';
@@ -174,13 +174,7 @@
 <svelte:head><title>{title ?? 'Ride'} · Rides · WattRoom</title></svelte:head>
 
 <main class="page">
-	<a
-		href={back.href}
-		class="text-muted hover:text-ink link-standalone gap-1.5 text-xs"
-	>
-		<ArrowLeft size={14} />
-		{back.label}
-	</a>
+	<BackLink {back} />
 
 	{#if missing}
 		<div class="mt-8">

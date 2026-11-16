@@ -8,6 +8,7 @@
 	// reaches about crews they are not in, so what it discloses is the
 	// decision.
 	import Compass from '@lucide/svelte/icons/compass';
+	import BackLink from '#lib/components/BackLink.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
 	import Banner from '#lib/components/Banner.svelte';
@@ -59,6 +60,7 @@
 <svelte:head><title>Find a crew · WattRoom</title></svelte:head>
 
 <main class="page">
+	<BackLink back={{ href: '/home', label: 'Home' }} class="mb-3" />
 	<header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 		<h1 class="page-title">Find a crew</h1>
 		<p class="text-muted text-xs">

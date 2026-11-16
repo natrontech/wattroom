@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBack } from '#lib/back-link.ts';
 	import { confirm } from '#lib/confirm.svelte.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
@@ -348,7 +349,9 @@
 								     showed 200 W with nothing to say nobody chose it. -->
 									This 200 W is where we start everyone, not a measurement.
 								{/if}
-								<a href="/ramp" class="hover:text-ink underline"
+								<a
+									href={withBack('/ramp', '/settings/profile')}
+									class="hover:text-ink underline"
 									>A ramp test measures it for you.</a
 								>
 							{/if}
@@ -391,7 +394,9 @@
 						Threshold heart rate — anchors your HR zones the way FTP anchors
 						power zones.
 						{#if !lthr}
-							<a href="/ramp" class="hover:text-ink underline"
+							<a
+								href={withBack('/ramp', '/settings/profile')}
+								class="hover:text-ink underline"
 								>A ramp test with a strap suggests one.</a
 							>
 						{/if}

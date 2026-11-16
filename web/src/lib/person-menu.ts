@@ -19,6 +19,7 @@ import User from '@lucide/svelte/icons/user';
 import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '#lib/api.ts';
+import { here, withBack } from '#lib/back-link.ts';
 import { friends, type Friend } from '#lib/friends/friends.svelte.ts';
 import { hiddenRiders } from '#lib/hidden-riders.svelte.ts';
 import type {
@@ -163,7 +164,7 @@ export function personMenu(
 	const riderPage: MenuItem = {
 		label: 'Rider page',
 		icon: User,
-		onSelect: () => go(`/u/${id}`),
+		onSelect: () => go(withBack(`/u/${id}`, here())),
 	};
 	const message: MenuItem = {
 		label: options.conversation ? 'Open the conversation' : 'Message',
