@@ -94,6 +94,12 @@ order by s.starts_at;
 -- name: ExportUserWorkouts :many
 select name, author, definition, created_at from workouts where owner_id = $1 order by created_at;
 
+-- name: ExportUserPersonalPlans :many
+-- The rider's own plan (#4615): each planned day and the workout it names.
+select p.day, w.name as workout_name, p.created_at
+from personal_plans p join workouts w on w.id = p.workout_id
+where p.user_id = $1 order by p.day, p.created_at;
+
 -- name: ExportUserXp :many
 select amount, source, ref, at from xp_events where user_id = $1 order by at;
 

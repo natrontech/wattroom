@@ -26,6 +26,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/crews"
 	"github.com/natrontech/wattroom/server/internal/keyset"
+	"github.com/natrontech/wattroom/server/internal/plans"
 	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -237,10 +238,30 @@ var planTools = []map[string]any{
 		},
 	},
 	{
+		"name": "plan_workout",
+		"description": "Puts a workout from the rider's shelf on a day of their own plan: seen by the " +
+			"rider alone, mailed to nobody, offered on WattRoom's Home on that day. Use this for a " +
+			"training week; schedule_workout is for riding with a crew. `workoutId` is an id " +
+			"create_workout answered. Between today and three months out, 100 planned at most. " +
+			"Answers the plan's `id`.",
+		"inputSchema": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"workoutId": map[string]any{"type": "string", "description": "A shelf workout id from create_workout."},
+				"day": map[string]any{
+					"type":        "string",
+					"description": "The rider's own calendar date, YYYY-MM-DD, e.g. 2026-11-19.",
+				},
+			},
+			"required": []string{"workoutId", "day"},
+		},
+	},
+	{
 		"name": "get_schedule",
-		"description": "The rider's crews (`id`, `name`) and every session planned in them from now " +
-			"on, soonest first: workout, `startsAt`, crew, voice channel and how many said they are in. " +
-			"A session on a road reads `Route ride` with that road's `km` and `gainM`.",
+		"description": "The rider's crews (`id`, `name`), every session planned in them from now " +
+			"on, soonest first: workout, `startsAt`, crew, voice channel and how many said they are in; " +
+			"and `plan`, the rider's own planned days (`id`, `day`, `workoutId`, `workoutName`) from " +
+			"yesterday on. A session on a road reads `Route ride` with that road's `km` and `gainM`.",
 		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
 	},
 }
@@ -261,7 +282,7 @@ func (s *Service) call(w http.ResponseWriter, ctx context.Context, r *http.Reque
 		payload, err = progression.Summary(ctx, s.store.Queries, user)
 	case "list_rides":
 		payload, err = s.listRides(ctx, user, params.Arguments)
-	case "create_workout", "schedule_workout", "get_schedule":
+	case "create_workout", "schedule_workout", "plan_workout", "get_schedule":
 		if !s.tokens.CanWrite(r) {
 			s.reply(w, req.ID, nil, &rpcError{Code: -32602, Message: "this token only reads: " +
 				"the rider creates one with Let it plan workouts ticked under Settings, Data, Coach access"})
@@ -272,6 +293,8 @@ func (s *Service) call(w http.ResponseWriter, ctx context.Context, r *http.Reque
 			payload, err = s.createWorkout(ctx, user, params.Arguments)
 		case "schedule_workout":
 			payload, err = s.scheduleWorkout(ctx, user, params.Arguments)
+		case "plan_workout":
+			payload, err = s.planWorkout(ctx, user, params.Arguments)
 		default:
 			payload, err = s.schedule(ctx, user)
 		}
@@ -469,6 +492,23 @@ func (s *Service) scheduleWorkout(ctx context.Context, user db.User, args json.R
 	return plan, nil
 }
 
+// planWorkout is plan_workout (#4615): the plan API's own handler, run as
+// the rider, so its bounds and its ownership check are the only ones.
+func (s *Service) planWorkout(ctx context.Context, user db.User, args json.RawMessage) (any, error) {
+	var in struct {
+		WorkoutID string `json:"workoutId"`
+		Day       string `json:"day"`
+	}
+	if err := json.Unmarshal(args, &in); err != nil || in.WorkoutID == "" || in.Day == "" {
+		return nil, errInvalidParams("plan_workout takes workoutId and day")
+	}
+	out, err := s.viaAPI(ctx, user, "/api/plan", map[string]any{"workoutId": in.WorkoutID, "day": in.Day})
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"id": out["id"], "day": out["day"], "workoutId": out["workoutId"]}, nil
+}
+
 // schedule is get_schedule: the crews a plan can go to, and Home's list of
 // what is planned in them, without who planned it or who answered.
 func (s *Service) schedule(ctx context.Context, user db.User) (any, error) {
@@ -536,7 +576,33 @@ func (s *Service) schedule(ctx context.Context, user db.User) (any, error) {
 		}
 		sessions = append(sessions, out)
 	}
-	return map[string]any{"crews": crewsOut, "sessions": sessions}, nil
+	plan, err := s.ownPlan(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"crews": crewsOut, "sessions": sessions, "plan": plan}, nil
+}
+
+// ownPlan is the rider's own planned days from yesterday through three
+// months out, the window plan_workout writes into. A workout on a road is
+// named `Route ride`: its name is a place.
+func (s *Service) ownPlan(ctx context.Context, user db.User) ([]plans.PlanJSON, error) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	rows, err := plans.List(ctx, s.store.Queries, user.ID,
+		pgtype.Date{Time: today.AddDate(0, 0, -1), Valid: true},
+		pgtype.Date{Time: today.AddDate(0, 3, 1), Valid: true})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]plans.PlanJSON, 0, len(rows))
+	for _, p := range rows {
+		j := p.JSON()
+		if workout.OnRoad(string(p.Row.Definition)) {
+			j.WorkoutName = "Route ride"
+		}
+		out = append(out, j)
+	}
+	return out, nil
 }
 
 // viaAPI serves one POST on the app's own mux as the rider (#4207) and reads

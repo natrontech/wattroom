@@ -954,6 +954,39 @@ func (q *Queries) ExportUserPasskeys(ctx context.Context, userID pgtype.UUID) ([
 	return items, nil
 }
 
+const exportUserPersonalPlans = `-- name: ExportUserPersonalPlans :many
+select p.day, w.name as workout_name, p.created_at
+from personal_plans p join workouts w on w.id = p.workout_id
+where p.user_id = $1 order by p.day, p.created_at
+`
+
+type ExportUserPersonalPlansRow struct {
+	Day         pgtype.Date
+	WorkoutName string
+	CreatedAt   pgtype.Timestamptz
+}
+
+// The rider's own plan (#4615): each planned day and the workout it names.
+func (q *Queries) ExportUserPersonalPlans(ctx context.Context, userID pgtype.UUID) ([]ExportUserPersonalPlansRow, error) {
+	rows, err := q.db.Query(ctx, exportUserPersonalPlans, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserPersonalPlansRow
+	for rows.Next() {
+		var i ExportUserPersonalPlansRow
+		if err := rows.Scan(&i.Day, &i.WorkoutName, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const exportUserPins = `-- name: ExportUserPins :many
 select c.name as crew_name, p.title, p.body, p.created_at, p.updated_at
 from crew_pins p

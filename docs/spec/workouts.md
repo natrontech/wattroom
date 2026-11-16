@@ -107,3 +107,22 @@ route's place). A `road` step may set `fromM`, where on the road it starts;
 absent is where the last one left off. It has no target and is unscored.
 
 A workout may also carry top-level `"unscored": true`, which says its execution score is meaningless and stores the ride with `execution_scored = false` — no percentage on the ride, no `execution% × 50` XP bonus. Absent is scored. The **ramp test is the only workout that sets it**, and the editor never offers it: it is a property of a workout that measures the rider, not a setting (#1400).
+
+## Your plan
+
+A rider's **plan** is their own workouts on days (#4615): a shelf workout on
+a date, seen by them alone and mailed to nobody. A crew's planned sessions
+are the crew's **schedule**, which mails the crew; the plan never does.
+
+- A plan is a **day**, the rider's own calendar date, with no time and no zone.
+- Planned **between today and three months out**, at most **100** ahead at
+  once: the crew schedule's bounds (crew.md), so the two plans agree on how
+  far ahead a rider thinks. The server allows a day either side of its own,
+  since the rider's date may be a zone ahead or behind.
+- A plan names a workout on the shelf; deleting the workout unplans it.
+- Home leads with **today's ride** when one is planned; Workouts shows **your
+  week**, today and six days on. A workout is planned from its menu, unplanned
+  with an undo.
+- An agent with a planning token writes it with `plan_workout` and reads it in
+  `get_schedule`'s `plan`. A workout on a road reaches the agent as
+  `Route ride`.
