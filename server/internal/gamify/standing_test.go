@@ -26,10 +26,15 @@ func TestARideSavedTellsTheRoomsTheRidersStanding(t *testing.T) {
 	s, _, alice, _ := setup(t)
 	heard := &standingHeard{}
 	s.SetStanding(heard)
-	s.now = func() time.Time { return time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC) }
-	// Last week and this one: a streak of two weeks.
-	addRide(t, s, alice, time.Date(2026, 11, 4, 7, 0, 0, 0, time.UTC), 3600, 600, 600)
-	addRide(t, s, alice, time.Date(2026, 11, 10, 7, 0, 0, 0, time.UTC), 3600, 600, 600)
+	// Last week and this one: a streak of two weeks. Dated from the real
+	// clock: a ride counts toward a streak only when it started no earlier
+	// than the week before it was saved (#3514), and created_at is now(), so
+	// fixed dates went stale a week after they were written.
+	now := time.Now().UTC()
+	week := stats.WeekStart(now, time.UTC)
+	s.now = func() time.Time { return now }
+	addRide(t, s, alice, week.AddDate(0, 0, -6), 3600, 600, 600)
+	addRide(t, s, alice, week, 3600, 600, 600)
 
 	s.rideSaved(t.Context(), alice.ID, stats.RideFacts{Seconds: 3600, AboveFtpSec: sufferfestSec})
 	s.rideSaved(t.Context(), alice.ID, stats.RideFacts{Seconds: 3600, AboveFtpSec: sufferfestSec})
