@@ -26,6 +26,7 @@
 		menu,
 		badge,
 		actions,
+		onopen,
 	}: {
 		workout: Workout;
 		/** Where the title goes — the primary action, per ux.md. */
@@ -36,6 +37,8 @@
 		menu: () => MenuEntry[];
 		badge?: Snippet;
 		actions: Snippet;
+		/** The title's click, before it follows `href` (#4616's ride sheet). */
+		onopen?: (event: MouseEvent) => void;
 	} = $props();
 </script>
 
@@ -47,7 +50,9 @@
 	<!-- Not one big anchor: the card carries several actions, and nesting them
 	     inside a link is invalid and unreachable by keyboard. -->
 	<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 pt-4">
-		<a {href} class="font-display font-bold hover:underline">{workout.name}</a>
+		<a {href} onclick={onopen} class="font-display font-bold hover:underline"
+			>{workout.name}</a
+		>
 		{#if focus}<span class="eyebrow">{focus}</span>{/if}
 		{@render badge?.()}
 		<span class="text-muted num ml-auto text-xs"

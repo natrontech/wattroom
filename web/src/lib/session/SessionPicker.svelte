@@ -57,6 +57,7 @@
 		channelName = 'this voice channel',
 		pick,
 		road,
+		opens,
 	}: {
 		shelf: ShelfEntry[];
 		/** Why your own workouts are missing from the shelf, when they are. */
@@ -103,6 +104,8 @@
 		pick?: string;
 		/** The road it opens on (#4224): the one the rider is already on. */
 		road?: string;
+		/** The tab it opens on, when the ride sheet already chose (#4616). */
+		opens?: 'workouts' | 'roads';
 		onClose: () => void;
 	} = $props();
 
@@ -111,7 +114,8 @@
 	 *  shell around it to answer the key. */
 	let depth = $state(0);
 
-	let tab = $state<'workouts' | 'roads' | 'games'>('workouts');
+	// svelte-ignore state_referenced_locally
+	let tab = $state<'workouts' | 'roads' | 'games'>(opens ?? 'workouts');
 	// svelte-ignore state_referenced_locally
 	let mode = $state<PickerIntent>(
 		intent === 'ride' && onRide ? 'ride' : onStart ? intent : 'plan',
@@ -356,6 +360,7 @@
 				{#each tabs as t (t.id)}
 					<button
 						onclick={() => (tab = t.id)}
+						aria-pressed={tab === t.id}
 						class="rounded px-3 py-1 text-xs {tab === t.id
 							? 'bg-surface-raised text-ink'
 							: 'text-muted hover:text-ink'}">{t.label}</button
@@ -376,15 +381,17 @@
 		>
 			<Bike size={28} class="text-neon shrink-0" />
 			<span class="min-w-0 flex-1">
-				<span class="font-display block text-lg font-bold">Ride together</span>
+				<span class="font-display block text-lg font-bold"
+					>Each on their own</span
+				>
 				<span class="text-muted block text-sm"
-					>Everyone rides their own: watts, grade or a road, and you see each
-					other.</span
+					>Everyone rides their own watts and weight, and you see each other. On
+					a road you spread out: for one bunch, pick a road below.</span
 				>
 			</span>
 			<span class="btn btn-primary btn-lg shrink-0">Start</span>
 		</button>
-		<p class="eyebrow px-5 pt-3">or ride one workout or road together</p>
+		<p class="eyebrow px-5 pt-3">or one workout, or one road in one bunch</p>
 	{/if}
 
 	{#if tab === 'roads' && roadsOn}

@@ -59,9 +59,10 @@ describe('the picker (#4082)', () => {
 	});
 });
 
-// One door to a session (#4564): Ride together is the picker's first
-// choice, above the workouts, and only where the picker can start one.
-describe('Ride together in the picker', () => {
+// One door to a session (#4564): Each on their own (Ride together until
+// #4616) is the picker's first choice, above the workouts, and only where
+// the picker can start one.
+describe('Each on their own in the picker', () => {
 	const props = {
 		shelf: [entry('w1', 'Last Ridden')],
 		ftp: 250,
@@ -73,8 +74,8 @@ describe('Ride together in the picker', () => {
 
 	it('comes first, before the workouts', () => {
 		const body = render(SessionPicker, { props }).body;
-		expect(body).toContain('Ride together');
-		expect(body.indexOf('Ride together')).toBeLessThan(
+		expect(body).toContain('Each on their own');
+		expect(body.indexOf('Each on their own')).toBeLessThan(
 			body.indexOf('Start Last Ridden'),
 		);
 	});
@@ -83,6 +84,6 @@ describe('Ride together in the picker', () => {
 		const body = render(SessionPicker, {
 			props: { ...props, intent: 'plan' as const },
 		}).body;
-		expect(body).not.toContain('Ride together');
+		expect(body).not.toContain('Each on their own');
 	});
 });

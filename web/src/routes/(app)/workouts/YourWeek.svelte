@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { rideClick } from '#lib/nav/ask-ride.ts';
 	/**
 	 * The rider's own week (#4615): what they planned for themselves, today
 	 * first, each day's workout one press from riding. Seen by them alone; a
@@ -61,8 +62,10 @@
 							<p class="text-muted text-[11px]">{dayLabel(day, now)}</p>
 							<p class="truncate text-sm font-semibold">{ride.workoutName}</p>
 						</div>
-						<a href="/ride?w={ride.workoutId}" class="btn btn-primary btn-xs"
-							>Ride</a
+						<a
+							href="/ride?w={ride.workoutId}"
+							onclick={(e) => rideClick(e, { pick: ride.workoutId })}
+							class="btn btn-primary btn-xs">Ride</a
 						>
 						<button
 							onclick={() => unplan(ride)}

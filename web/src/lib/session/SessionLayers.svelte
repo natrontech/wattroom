@@ -2,6 +2,7 @@
 	import { createSessionSetup } from '#lib/session/session-setup.svelte.ts';
 	import type { PickerIntent } from '#lib/channel/context.ts';
 	import type { ControlRoute } from '#lib/protocol.ts';
+	import type { RideWho } from '#lib/session/ride-choice.ts';
 
 	/**
 	 * What the shell opens over a voice channel for its session: TV mode and
@@ -13,6 +14,14 @@
 		let tv = $state(false);
 		let pick = $state<string>();
 		let road = $state<string>();
+		let opens = $state<'workouts' | 'roads'>();
+		let together = $state(true);
+		// The ride sheet (#4616): with whom, then what, pre-filled by its door.
+		const ride = $state<{
+			open: boolean;
+			who: RideWho | null;
+			pick: string | null;
+		}>({ open: false, who: null, pick: null });
 		const setup = createSessionSetup();
 		return {
 			get tv() {
@@ -32,11 +41,33 @@
 			get road() {
 				return road;
 			},
-			openPicker(intent: PickerIntent = 'start', id?: string, on?: string) {
+			/** The tab the picker opens on, when the ride sheet chose one. */
+			get opens() {
+				return opens;
+			},
+			/** Whether the picker offers Each on their own at its top: not when
+			 *  the ride sheet already asked and the rider chose otherwise. */
+			get together() {
+				return together;
+			},
+			ride,
+			openPicker(
+				intent: PickerIntent = 'start',
+				id?: string,
+				on?: string,
+				from?: { opens: 'workouts' | 'roads' },
+			) {
 				setup.intent = intent;
 				pick = id;
 				road = on;
+				opens = from?.opens;
+				together = !from;
 				setup.open = true;
+			},
+			openRide(who: RideWho | null = null, id: string | null = null) {
+				ride.who = who;
+				ride.pick = id;
+				ride.open = true;
 			},
 		};
 	}
@@ -73,6 +104,8 @@
 	import type { createRiders } from '#lib/channel/riders.svelte.ts';
 	import type { Phase } from '#lib/channel/types.ts';
 	import SessionPicker from '#lib/session/SessionPicker.svelte';
+	import RideChoice from '#lib/session/RideChoice.svelte';
+	import { ownRoad } from '#lib/ride/free-ride-controls.ts';
 	import TrainerOverview from '#lib/session/TrainerOverview.svelte';
 	import { needsTrainer } from '#lib/session/sensor-status.ts';
 	import TvOverlay from '#lib/session/TvOverlay.svelte';
@@ -222,6 +255,14 @@
 	// Whether it follows is the live connection's (#3103): a resume from
 	// the status banner starts a session the same way.
 	const GO = { reset: false };
+	// The session riding here that this rider is not in: what the ride
+	// sheet offers to join (#4616).
+	const running = $derived(
+		shared && !channel.you.inSession
+			? liveSessionId({ phase: shared.phase, id: shared.id ?? '' })
+			: undefined,
+	);
+	const inRide = $derived(riders.filter((r) => r.inSession).length);
 	// A game is a session (docs/SESSIONS.md): from a call it opens one of the
 	// crew's own and this tab goes to it; the call and its room stay.
 	function startGame(game: GameStart) {
@@ -291,6 +332,7 @@
 		shelf={layers.setup.shelf}
 		pick={layers.pick}
 		road={layers.road}
+		opens={layers.opens}
 		shelfError={layers.setup.custom.error}
 		onRetryShelf={() => void layers.setup.custom.retry()}
 		intent={layers.setup.intent}
@@ -337,7 +379,7 @@
 					layers.setup.open = false;
 					startGame(game);
 				}}
-		onTogether={device.spectator
+		onTogether={device.spectator || !layers.together
 			? undefined
 			: () => {
 					layers.setup.open = false;
@@ -349,6 +391,56 @@
 				}}
 		trainer={unpaired ? trainerCard : undefined}
 		onClose={() => (layers.setup.open = false)}
+	/>
+{/if}
+
+{#if layers.ride.open}
+	<RideChoice
+		channelName={placeName}
+		running={running
+			? { workout: shared?.workoutName || 'the session', riders: inRide }
+			: null}
+		shelf={layers.setup.shelf}
+		who={layers.ride.who}
+		pick={layers.ride.pick}
+		onAlone={(id) => {
+			layers.ride.open = false;
+			void goto(id ? `/ride?w=${encodeURIComponent(id)}` : '/ride?alone');
+		}}
+		onJoin={() => {
+			layers.ride.open = false;
+			if (running)
+				void goto(joinSessionPath(channel.address.crew, running), GO);
+		}}
+		onJoinOwn={(workout) => {
+			// Beside the session, on this channel's riding surface (#2329).
+			layers.ride.open = false;
+			void connection.ownRide.start(workout);
+		}}
+		onJoinFree={() => {
+			layers.ride.open = false;
+			void goto(channel.address.training);
+		}}
+		onStartBunch={() => {
+			layers.ride.open = false;
+			layers.openPicker('start', undefined, ownRoad(connection.freeRide.road), {
+				opens: 'roads',
+			});
+		}}
+		onStartWorkout={(id) => {
+			layers.ride.open = false;
+			layers.openPicker('start', id ?? undefined, undefined, {
+				opens: 'workouts',
+			});
+		}}
+		onStartEach={() => {
+			layers.ride.open = false;
+			void startRideTogether(channel.address.crew).then((res) => {
+				if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+				else void goto(joinSessionPath(channel.address.crew, res.data.id), GO);
+			});
+		}}
+		onClose={() => (layers.ride.open = false)}
 	/>
 {/if}
 

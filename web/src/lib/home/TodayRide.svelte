@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { rideClick } from '#lib/nav/ask-ride.ts';
 	/**
 	 * Today's ride from the rider's own plan (#4615): the workout they or
 	 * their coach put on today, one big press from riding it. Absent when
@@ -23,8 +24,10 @@
 				<p class="font-display min-w-0 flex-1 truncate text-lg font-bold">
 					{ride.workoutName}
 				</p>
-				<a href="/ride?w={ride.workoutId}" class="btn btn-primary btn-lg"
-					><Play size={15} /> Ride it</a
+				<a
+					href="/ride?w={ride.workoutId}"
+					onclick={(e) => rideClick(e, { pick: ride.workoutId })}
+					class="btn btn-primary btn-lg"><Play size={15} /> Ride it</a
 				>
 			</div>
 		{/each}
