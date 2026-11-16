@@ -48,6 +48,9 @@ function readLegacy(): CustomWorkout[] {
 	}
 }
 
+/** How long a read counts as current; tab-flipping inside it asks nothing. */
+const FRESH_MS = 10_000;
+
 export function createCustomStore() {
 	let entries = $state<CustomWorkout[]>([]);
 	let loaded = $state(false);
@@ -75,7 +78,24 @@ export function createCustomStore() {
 	// advancing, never a rider with two thousand workouts.
 	const MAX_PAGES = 20;
 
-	async function refresh(): Promise<void> {
+	// One read at a time: a focus landing while Workouts opens asks once.
+	let reading: Promise<void> | null = null;
+	let readAt = 0;
+	function refresh(): Promise<void> {
+		return (reading ??= read().finally(() => {
+			reading = null;
+			readAt = Date.now();
+		}));
+	}
+
+	// After a write: a read already under way may predate it, so wait it
+	// out and read once more.
+	async function reread(): Promise<void> {
+		await reading;
+		await refresh();
+	}
+
+	async function read(): Promise<void> {
 		const collected: unknown[] = [];
 		let query = '';
 		for (let page = 0; page < MAX_PAGES; page++) {
@@ -128,6 +148,19 @@ export function createCustomStore() {
 
 	void migrate().then(refresh);
 
+	// The shelf is written from outside this app too (#4614): an agent over
+	// the MCP, another device. Coming back to the window reads it again, so
+	// a workout made elsewhere shows without a restart.
+	if (typeof window !== 'undefined')
+		window.addEventListener('focus', () => void fresh());
+
+	/** Reads again unless a read answered in the last FRESH_MS. */
+	function fresh(): Promise<void> {
+		if (reading) return reading;
+		if (readAt && Date.now() - readAt < FRESH_MS) return Promise.resolve();
+		return refresh();
+	}
+
 	return {
 		/** False until the first fetch answers — screens hold their skeletons on it. */
 		get loaded(): boolean {
@@ -154,6 +187,8 @@ export function createCustomStore() {
 			return max > 0 && entries.length + dropped >= max;
 		},
 		retry: refresh,
+		/** Reads again when the last read is older than a few seconds. */
+		fresh,
 		get all(): CustomWorkout[] {
 			return [...entries].sort((a, b) => b.savedAt - a.savedAt);
 		},
@@ -172,14 +207,14 @@ export function createCustomStore() {
 				{ method: id ? 'PUT' : 'POST', json: { workout: result.workout } },
 			);
 			if (!res.ok) return { id: id ?? '', error: res.error.message };
-			await refresh();
+			await reread();
 			return { id: res.data.id, error: null };
 		},
 		/** Returns an error message, or null. */
 		async remove(id: string): Promise<string | null> {
 			const res = await api(`/api/workouts/${id}`, { method: 'DELETE' });
 			if (!res.ok) return res.error.message;
-			await refresh();
+			await reread();
 			return null;
 		},
 	};

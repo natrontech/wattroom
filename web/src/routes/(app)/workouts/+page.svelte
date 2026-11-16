@@ -46,6 +46,9 @@
 	const previewFtp = $derived(account.me?.ftpWatts || 265);
 
 	const custom = customWorkouts();
+	// Opening Workouts reads the shelf again (#4614): it may have been
+	// written from outside the app since it was read.
+	void custom.fresh();
 	let active = $state<Focus | 'All'>('All');
 
 	// SPEC's "suggested for today" (#222): a badge with its one-clause why —

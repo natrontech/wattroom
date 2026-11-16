@@ -104,4 +104,32 @@ describe('the saved-workout shelf', () => {
 		expect(broken.full).toBe(false);
 		expect(broken.error).not.toBeNull();
 	});
+
+	it('shows a workout written elsewhere once the rider comes back to the window (#4614)', async () => {
+		let total = 1;
+		const fetcher = vi.fn(async (input: RequestInfo | URL) =>
+			shelfOf(total).fetcher(input),
+		);
+		vi.stubGlobal('fetch', fetcher);
+		const store = await settled(createCustomStore());
+		expect(store.all).toHaveLength(1);
+
+		total = 2; // an agent saved one over the API
+		vi.useFakeTimers({ now: Date.now() + 11_000, toFake: ['Date'] });
+		window.dispatchEvent(new Event('focus'));
+		await store.fresh();
+		vi.useRealTimers();
+		expect(store.all).toHaveLength(2);
+	});
+
+	it('asks nothing again while the last read is still current', async () => {
+		const { fetcher } = shelfOf(1);
+		vi.stubGlobal('fetch', fetcher);
+		const store = await settled(createCustomStore());
+		const before = fetcher.mock.calls.length;
+		await store.fresh();
+		window.dispatchEvent(new Event('focus'));
+		await store.fresh();
+		expect(fetcher.mock.calls.length).toBe(before);
+	});
 });
