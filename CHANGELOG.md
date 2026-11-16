@@ -17,6 +17,21 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.40] - 2026-11-16
+
+### Added
+
+- In a voice channel, Ride now asks two things: alone, or with the channel (join the session that's running, or start one), and what to ride. Joining lets you ride the session's workout, your own workout in ERG, or free. Starting on a road offers One road, one bunch (everyone kept together) or Each on their own, and says that the second spreads you out. Outside a call, a workout's Ride still starts at once. (#4624)
+- In the sidebar's You view, your rider page now has its own row at the top, and Routes is a row of its own beside Workouts instead of a tab you had to find. (#4623)
+- Plan a workout from your shelf on a day of your week, from its menu under Workouts. Only you see it and nobody gets an email. Home then leads with today's ride, one press from riding it, and an AI coach can lay out your week with the new plan_workout tool. (#4621)
+
+### Fixed
+
+- A workout an AI coach, another device or the API saves now shows under Workouts when you open Workouts or come back to the window, without restarting the app. (#4618)
+- A rider page opened from a crew's members, a conversation or Friends now has a Back link to where you came from, and so do Find a crew, What's new, Import and the ramp test. (#4619)
+- "Change your look" opens the look editor again (#4612)
+- A ride you download as a .fit, when it could not be saved, now keeps its distance, speed and elevation, so it uploads to Strava or Garmin Connect as a full ride. (#4611)
+
 ## [2026.11.39] - 2026-11-15
 
 ### Fixed
@@ -4627,7 +4642,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.39...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.40...HEAD
+[2026.11.40]: https://github.com/natrontech/wattroom/compare/2026.11.39...2026.11.40
 [2026.11.39]: https://github.com/natrontech/wattroom/compare/2026.11.38...2026.11.39
 [2026.11.38]: https://github.com/natrontech/wattroom/compare/2026.11.37...2026.11.38
 [2026.11.37]: https://github.com/natrontech/wattroom/compare/2026.11.36...2026.11.37
