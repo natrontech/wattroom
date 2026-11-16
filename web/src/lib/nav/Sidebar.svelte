@@ -36,6 +36,7 @@
 		crewOfPath,
 		dmsCurrent,
 		pages,
+		youPages,
 	} from './pages';
 	import { readFolded, rememberFolded } from './folds';
 	import { untrack } from 'svelte';
@@ -174,9 +175,18 @@
 			<!-- A crew's pages, its text channels, its voice channels (#2447). -->
 			<CrewColumn {crew} {pathname} />
 		{:else}
+			<!-- What is yours, then what you ride from (#4617): one list, the
+			     group ended by a hairline rather than a heading of its own. -->
 			<ul class="space-y-0.5">
-				{#each pages as entry (entry.href)}
+				{#each [...youPages, ...pages] as entry, i (entry.href)}
 					{@const on = destination === entry.href}
+					{#if i === youPages.length && i > 0}
+						<li
+							role="separator"
+							class="border-ink/10 mx-2 !my-2 border-t"
+							aria-hidden="true"
+						></li>
+					{/if}
 					<!-- The one announceable thing with no home in the sidebar (#1010):
 					     a friend request announced itself once and then left no
 					     trace. It counted people waiting on you from a word in the

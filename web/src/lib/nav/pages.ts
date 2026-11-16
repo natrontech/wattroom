@@ -3,7 +3,9 @@ import ChartColumn from '@lucide/svelte/icons/chart-column';
 import History from '@lucide/svelte/icons/history';
 import House from '@lucide/svelte/icons/house';
 import Music from '@lucide/svelte/icons/music';
+import Route from '@lucide/svelte/icons/route';
 import Settings from '@lucide/svelte/icons/settings';
+import User from '@lucide/svelte/icons/user';
 import Users from '@lucide/svelte/icons/users';
 import type { Icon } from '#lib/icons.ts';
 
@@ -48,9 +50,7 @@ export const pages: {
 		// ADR-0020 rule 1 wants the row above them lit all the same: the column
 		// went dark on the directory and on the `/rooms` stub still receiving live
 		// navigation (#1863).
-		// Your rider page is Home's level tile opened (#467), and the name
-		// card that used to light for it goes to You now (#2581).
-		covers: ['/rooms', '/crews', '/u/me'],
+		covers: ['/rooms', '/crews'],
 	},
 	{
 		href: '/workouts',
@@ -60,9 +60,23 @@ export const pages: {
 		// lit under them — the column used to go dark (audit 2026-09-09).
 		covers: ['/ride', '/ramp'],
 	},
+	// A row of its own (#4617): a road is something you ride, and a tab
+	// under Workouts was the one place a rider never looked for it.
+	{ href: '/workouts/routes', label: 'Routes', icon: Route },
 	{ href: '/history', label: 'Rides', icon: History },
 	{ href: '/music', label: 'Music', icon: Music },
 	{ href: '/friends', label: 'Friends', icon: Users },
+];
+
+/**
+ * What is yours (#4617, the sidebar's You mode only): a short group above
+ * the rows you ride from. It holds a page once the page exists: Plan joins
+ * with #4615, the garage once it opens between rides, not only inside one.
+ * Medals stay on the rider page, which used to be reachable only from your
+ * row's menu and Home's level tile.
+ */
+export const youPages: typeof pages = [
+	{ href: '/u/me', label: 'Rider page', icon: User },
 ];
 
 /**
@@ -120,13 +134,17 @@ export function crewOfPath(pathname: string): string | undefined {
 	return /^\/crew\/([^/]+)/.exec(pathname)?.[1];
 }
 
-/** Which destination a path lights up. */
+/**
+ * Which destination a path lights up: the longest row or cover that holds
+ * it, so /workouts/routes lights Routes and not Workouts.
+ */
 export function activeHref(pathname: string): string | undefined {
-	return pages.find(
-		(p) =>
-			pathname.startsWith(p.href) ||
-			p.covers?.some((c) => pathname.startsWith(c)),
-	)?.href;
+	let best: { href: string; length: number } | undefined;
+	for (const p of [...youPages, ...pages])
+		for (const prefix of [p.href, ...(p.covers ?? [])])
+			if (pathname.startsWith(prefix) && prefix.length > (best?.length ?? 0))
+				best = { href: p.href, length: prefix.length };
+	return best?.href;
 }
 
 /**
