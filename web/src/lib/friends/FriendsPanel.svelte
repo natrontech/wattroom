@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { withBack } from '#lib/back-link.ts';
 	import { goto } from '$app/navigation';
 	import type { Snippet } from 'svelte';
 	import { levelFromXp } from '#lib/level.ts';
@@ -37,6 +39,9 @@
 	import { personMenu } from '#lib/person-menu.ts';
 	import { toasts } from '#lib/toast.svelte.ts';
 	import { placePath } from '#lib/whereabouts.ts';
+
+	// The page a rider link is opened from, as its way back.
+	const backTo = $derived(page.url.pathname + page.url.search);
 
 	// The list, my code and its load error live in the store (#876): the app
 	// refreshes it off the presence ping and announces what arrives in it,
@@ -252,7 +257,7 @@
 				<!-- docs/SPEC.md allows 60 characters, and three controls hold
 				     the other end of the row: the name gives way (#2182). -->
 				<a
-					href="/u/{friend.id}"
+					href={withBack(`/u/${friend.id}`, backTo)}
 					class="truncate hover:underline"
 					{@attach hoverCard(() => friend.id)}>{friend.name}</a
 				>

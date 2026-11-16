@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { localPath, rideBackLink, routeBackLink, withBack } from './back-link';
+import {
+	backOr,
+	localPath,
+	rideBackLink,
+	routeBackLink,
+	withBack,
+} from './back-link';
 
 const offSite = [
 	null,
@@ -69,5 +75,24 @@ describe('withBack', () => {
 		expect(withBack('/workouts/routes/r1', '/ride')).toBe(
 			'/workouts/routes/r1?back=%2Fride',
 		);
+	});
+	it('adds to a link that already asks for something', () => {
+		expect(withBack('/workouts/import?as=route', '/ride')).toBe(
+			'/workouts/import?as=route&back=%2Fride',
+		);
+	});
+});
+
+describe('backOr', () => {
+	const home = { href: '/home', label: 'Home' };
+	it('goes back to the page that opened it', () => {
+		expect(backOr('/crew/c1/members', home)).toEqual({
+			href: '/crew/c1/members',
+			label: 'Back',
+		});
+	});
+	it('goes to the parent when opened from nowhere, or from off the site', () => {
+		for (const back of [null, '', '//evil.example', 'https://evil.example'])
+			expect(backOr(back, home), String(back)).toEqual(home);
 	});
 });

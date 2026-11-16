@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { withBack } from '#lib/back-link.ts';
 	import { formatMonth } from '#lib/format.ts';
 	// The crew's people and its bans (#1150, #1208, #1212): roles from a
 	// person's menu, the hand-over behind a confirm, and the unban that names
@@ -26,6 +28,9 @@
 	import Shield from '@lucide/svelte/icons/shield';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import ShieldOff from '@lucide/svelte/icons/shield-off';
+
+	// The page a rider link is opened from, as its way back.
+	const backTo = $derived(page.url.pathname + page.url.search);
 
 	let { crew, onchange }: { crew: Crew; onchange: () => void } = $props();
 	const administers = $derived(crew.role === 'owner' || crew.role === 'admin');
@@ -140,7 +145,7 @@
 			{@attach contextMenu(() => personEntries(person))}
 		>
 			<a
-				href="/u/{person.id}"
+				href={withBack(`/u/${person.id}`, backTo)}
 				class="shrink-0"
 				{@attach hoverCard(() => person.id)}
 			>
@@ -154,7 +159,7 @@
 			<span class="min-w-0 flex-1">
 				<span class="flex items-center gap-1.5">
 					<a
-						href="/u/{person.id}"
+						href={withBack(`/u/${person.id}`, backTo)}
 						{@attach hoverCard(() => person.id)}
 						class="hover:text-ink truncate text-sm font-medium hover:underline"
 						>{person.displayName}</a
@@ -239,7 +244,7 @@
 				title={MENU_HINT}
 				{@attach contextMenu(() => bannedEntries(person))}
 			>
-				<a href="/u/{person.id}" class="shrink-0">
+				<a href={withBack(`/u/${person.id}`, backTo)} class="shrink-0">
 					<Avatar
 						name={person.displayName}
 						avatarUrl={person.avatarUrl}
@@ -249,7 +254,7 @@
 				</a>
 				<span class="min-w-0 flex-1">
 					<a
-						href="/u/{person.id}"
+						href={withBack(`/u/${person.id}`, backTo)}
 						class="hover:text-ink block truncate text-sm font-medium hover:underline"
 						>{person.displayName}</a
 					>

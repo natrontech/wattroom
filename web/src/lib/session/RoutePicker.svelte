@@ -10,6 +10,8 @@
 </script>
 
 <script lang="ts">
+	import { page } from '$app/state';
+	import { withBack } from '#lib/back-link.ts';
 	import type { Snippet } from 'svelte';
 	import RouteProfile from '#lib/components/RouteProfile.svelte';
 	import RouteRow from '#lib/components/RouteRow.svelte';
@@ -159,8 +161,12 @@
 	<!-- Teach, do not apologise (ux.md): one line and the way in (#3683). -->
 	<p class="text-muted flex flex-wrap items-center gap-x-3 gap-y-2 p-4 text-sm">
 		Your routes ride here — import a GPX, TCX or FIT.
-		<a href="/workouts/import?as=route" class="btn btn-secondary btn-xs"
-			>Import a route</a
+		<a
+			href={withBack(
+				'/workouts/import?as=route',
+				page.url.pathname + page.url.search,
+			)}
+			class="btn btn-secondary btn-xs">Import a route</a
 		>
 	</p>
 {:else}

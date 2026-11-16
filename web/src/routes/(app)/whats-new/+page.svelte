@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { backOr } from '#lib/back-link.ts';
+	import BackLink from '#lib/components/BackLink.svelte';
 	import Banner from '#lib/components/Banner.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
@@ -8,11 +11,21 @@
 	// What's new (#345): the changelog the running build shipped with. Reading
 	// it acknowledges the current version, so the home notice stops nagging.
 	void changelog.load().then(() => changelog.dismiss());
+
+	// Opened from the release sheet or Settings' build line, which pass
+	// where they were; a bare link goes back Home.
+	const back = $derived(
+		backOr(page.url.searchParams.get('back'), {
+			href: '/home',
+			label: 'Home',
+		}),
+	);
 </script>
 
 <svelte:head><title>What's new · WattRoom</title></svelte:head>
 
 <main class="page">
+	<BackLink {back} class="mb-3" />
 	<div class="flex flex-wrap items-center gap-3">
 		<div>
 			<h1 class="page-title">What's new</h1>

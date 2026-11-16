@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { api } from '#lib/api.ts';
 	import { routeBackLink } from '#lib/back-link.ts';
+	import BackLink from '#lib/components/BackLink.svelte';
 	import Banner from '#lib/components/Banner.svelte';
 	import ClimbTable from '#lib/components/ClimbTable.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
@@ -177,9 +178,7 @@
 >
 
 <main class="page">
-	<a href={back.href} class="text-muted hover:text-ink text-xs"
-		>← {back.label}</a
-	>
+	<BackLink {back} />
 
 	{#if missing}
 		<div class="mt-8">

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import { withBack } from '#lib/back-link.ts';
 	import { PROFILE_LIMITS } from '#lib/profile.svelte.ts';
 	import Banner from '#lib/components/Banner.svelte';
 	/**
@@ -246,7 +248,7 @@
 			{/if}
 		</label>
 		<a
-			href="/ramp"
+			href={withBack('/ramp', page.url.pathname + page.url.search)}
 			class="text-muted hover:text-ink mt-1 inline-flex min-h-6 items-center text-xs underline"
 			>Measure it with a ramp test</a
 		>

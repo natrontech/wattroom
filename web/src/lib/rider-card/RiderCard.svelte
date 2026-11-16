@@ -3,6 +3,8 @@
 	// at once — the faces every feed teaches — and fills in where they are from
 	// their page's own read, whose gate it keeps: a rider you may not open
 	// shows no whereabouts.
+	import { page } from '$app/state';
+	import { withBack } from '#lib/back-link.ts';
 	import Eye from '@lucide/svelte/icons/eye';
 	import EyeOff from '@lucide/svelte/icons/eye-off';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
@@ -21,6 +23,9 @@
 	import { whereabouts } from '#lib/whereabouts.ts';
 	import { placeCard, riderCard } from './rider-card.svelte';
 	import { cachedRider } from './cache';
+
+	// The page a rider link is opened from, as its way back.
+	const backTo = $derived(page.url.pathname + page.url.search);
 
 	let { id, anchor }: { id: string; anchor: HTMLElement } = $props();
 
@@ -141,8 +146,10 @@
 				{account.me?.statusLine ? 'Edit status' : 'Set a status'}</button
 			>
 		{/if}
-		<a href="/u/{id}" onclick={riderCard.close} class="btn btn-secondary btn-xs"
-			><User size={13} /> Rider page</a
+		<a
+			href={withBack(`/u/${id}`, backTo)}
+			onclick={riderCard.close}
+			class="btn btn-secondary btn-xs"><User size={13} /> Rider page</a
 		>
 		{#if rider && !you}
 			<button

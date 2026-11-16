@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { withBack } from '#lib/back-link.ts';
 	/**
 	 * Onto one of your own roads, before a free ride starts (#3027): the
 	 * road becomes the free ride's grade, and its metres its record. Given `onpick` it only picks:
@@ -148,7 +149,10 @@
 					>Your routes ride here — import a GPX, TCX or FIT.</span
 				>
 				<a
-					href="/workouts/import?as=route"
+					href={withBack(
+						'/workouts/import?as=route',
+						page.url.pathname + page.url.search,
+					)}
 					class="btn btn-secondary {onpick ? 'btn-lg' : 'btn-xs'}"
 					>Import a route</a
 				>
@@ -174,7 +178,10 @@
 			</ul>
 			<!-- The next road is an import away too, not only the first (#4235). -->
 			<a
-				href="/workouts/import?as=route"
+				href={withBack(
+					'/workouts/import?as=route',
+					page.url.pathname + page.url.search,
+				)}
 				class="btn btn-secondary mt-3 {onpick ? 'btn-lg' : 'btn-xs'}"
 				>Import a route</a
 			>
