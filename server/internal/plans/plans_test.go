@@ -3,6 +3,7 @@ package plans
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -73,9 +74,12 @@ func (f fixture) days(t *testing.T, user string) []string {
 	if code != http.StatusOK {
 		t.Fatalf("list: %d %v", code, body)
 	}
+	plans, _ := body["plans"].([]any)
 	var out []string
-	for _, p := range body["plans"].([]any) {
-		out = append(out, p.(map[string]any)["day"].(string))
+	for _, p := range plans {
+		row, _ := p.(map[string]any)
+		day, _ := row["day"].(string)
+		out = append(out, day)
 	}
 	return out
 }
@@ -88,7 +92,7 @@ func TestPlanIsTheRidersAlone(t *testing.T) {
 	if code != http.StatusCreated {
 		t.Fatalf("create: %d %v", code, made)
 	}
-	id := made["id"].(string)
+	id, _ := made["id"].(string)
 	if got := f.days(t, "alice"); len(got) != 1 || got[0] != "2026-11-19" {
 		t.Fatalf("alice's plan: %v", got)
 	}
@@ -173,7 +177,7 @@ func TestPlanCeiling(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, body := f.call(t, "alice", "POST", "/api/plan", `{"workoutId":"`+f.workout["alice"]+`","day":"2026-11-21"}`)
-	if code != http.StatusTooManyRequests || !strings.Contains(body["message"].(string), "Remove one") {
+	if code != http.StatusTooManyRequests || !strings.Contains(fmt.Sprint(body["message"]), "Remove one") {
 		t.Fatalf("101st plan: %d %v", code, body)
 	}
 }
