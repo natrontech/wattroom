@@ -23,6 +23,7 @@
 	import { channelAddress, sessionPath } from '#lib/channel/address.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { askVoice } from '#lib/channel/voice-intent.ts';
+	import { rideClick } from '#lib/nav/ask-ride.ts';
 	import { account, voiceUp } from '#lib/account.svelte.ts';
 	import { toasts } from '#lib/toast.svelte.ts';
 	import Lock from '@lucide/svelte/icons/lock';
@@ -311,8 +312,15 @@
 					     session's own page, which joins no voice by itself. One
 					     line on a 24 px floor (#3895), running to the row's edge
 					     before its ellipsis takes over. -->
+					<!-- In this channel's call, the line asks the ride sheet with
+					     Join chosen (#4616): ride their workout, your own, or free.
+					     From anywhere else it is the way to the session's page. -->
 					<a
 						{href}
+						onclick={(event) => {
+							if (channelConnection.call?.address.channel === c.id)
+								rideClick(event, { who: 'join' });
+						}}
 						aria-current={on ? 'page' : undefined}
 						title="join the ride"
 						class="flex min-h-11 items-center gap-1 rounded py-1 pr-0 pl-8 text-[10px] md:min-h-6 {on

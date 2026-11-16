@@ -265,7 +265,7 @@
 							onclick={() => (how = 'together')}
 							aria-pressed={!racingIt}
 							class="btn btn-lg {racingIt ? 'btn-ghost' : 'btn-secondary'}"
-							>Ride it together</button
+							>One road, one bunch</button
 						>
 						<button
 							onclick={() => (how = 'race')}

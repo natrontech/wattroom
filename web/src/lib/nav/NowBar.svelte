@@ -16,22 +16,14 @@
 	import AwayLeave from '#lib/nav/AwayLeave.svelte';
 	import VoiceControls from '#lib/nav/VoiceControls.svelte';
 	import { account, voiceUp } from '#lib/account.svelte.ts';
-	import {
-		contextMenu,
-		menu,
-		openMenu,
-		type MenuItem,
-	} from '#lib/context-menu.svelte.ts';
+	import { menu, openMenu, type MenuItem } from '#lib/context-menu.svelte.ts';
 	import { fitControls, KEPT } from '#lib/ride/bar-fit.ts';
 	import { CONTROLS, type RideControl } from '#lib/ride/ride-controls.ts';
 	import { channelConnection } from '#lib/channel/connection.svelte.ts';
 	import { navDrawer } from '#lib/nav/drawer.svelte.ts';
-	import { crewLive } from '#lib/nav/crew-live.svelte.ts';
-	import { joinSessionPath } from '#lib/channel/address.ts';
 	import { device } from '#lib/device.svelte.ts';
 	import Bike from '@lucide/svelte/icons/bike';
-	import Radio from '@lucide/svelte/icons/radio';
-	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import { askRide } from '#lib/nav/ask-ride.ts';
 	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Music from '@lucide/svelte/icons/music';
@@ -71,31 +63,9 @@
 				(!!voiceError && !(voiceStatus === 'failed' && onPlace))),
 	);
 
-	// Ride is the device's free ride; its arrow starts a session of the
-	// crew's own, or joins one that runs (docs/SESSIONS.md). Starting asks the
-	// picker on the call's page; the session is the crew's, never the call's.
-	// A phone has no trainer, so neither (#412). Off a session only: one ride.
-	const canStart = $derived(!channelConnection.session);
-	const running = $derived(
-		crewLive.crews.find((c) => c.id === conn?.address.crew)?.sessions ?? [],
-	);
-	const rideItems = () => [
-		{
-			label: 'Start a session',
-			icon: Radio,
-			onSelect: () => {
-				nowPanel.ask = 'session';
-				if (!onPlace && conn) void goto(conn.address.home);
-			},
-		},
-		...running.map((session) => ({
-			label: `Join ${session.workout} · ${session.riders.length} riding`,
-			icon: Bike,
-			onSelect: () => {
-				if (conn) void goto(joinSessionPath(conn.address.crew, session.id));
-			},
-		})),
-	];
+	// Ride opens the ride sheet (#4616): with whom, then what, the one way
+	// into a ride from a call, joining included. A phone has no trainer, so
+	// none (#412).
 
 	// One panel open at a time, drawn by the channel's shell. Off the channel,
 	// the music button goes to it and opens there.
@@ -407,32 +377,13 @@
 			{#if place}<div class="ml-auto flex shrink-0 items-center gap-1">
 					{#if conn && !riding && !device.spectator && pathname !== conn.address.training}
 						<div class="flex">
-							<a
-								href={conn.address.training}
-								{@attach contextMenu(() => (canStart ? rideItems() : []))}
-								class="btn btn-secondary min-h-11 {canStart
-									? 'rounded-r-none'
-									: ''}"
-								title="A free ride in {conn.address.name}"
-								><Bike size={14} /> <span class="max-md:sr-only">Ride</span></a
+							<button
+								onclick={() => askRide()}
+								class="btn btn-secondary min-h-11"
+								title="Ride: alone, or with {conn.address.name}"
+								><Bike size={14} />
+								<span class="max-md:sr-only">Ride</span></button
 							>
-							{#if canStart}
-								<button
-									onclick={(event) => {
-										const box = event.currentTarget.getBoundingClientRect();
-										openMenu(
-											rideItems(),
-											box.right,
-											box.top,
-											event.currentTarget,
-										);
-									}}
-									aria-label="More ways to ride"
-									aria-haspopup="menu"
-									class="btn btn-secondary min-h-11 rounded-l-none px-2 max-sm:min-w-11"
-									><ChevronDown size={14} /></button
-								>
-							{/if}
 						</div>
 					{:else if riding && !rideBar.on}
 						<a

@@ -21,6 +21,7 @@
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import { device, isSpectator } from '#lib/device.svelte.ts';
 	import WorkoutCard from './WorkoutCard.svelte';
+	import { askRide, rideClick } from '#lib/nav/ask-ride.ts';
 	import YourWeek from './YourWeek.svelte';
 	import PlanOnDay from './PlanOnDay.svelte';
 	import CalendarPlus from '@lucide/svelte/icons/calendar-plus';
@@ -85,7 +86,9 @@
 		label: 'Ride',
 		icon: Play,
 		onSelect: () =>
-			on ? (routeFor = { id, workout }) : void goto(`/ride?w=${id}`),
+			on
+				? (routeFor = { id, workout })
+				: askRide({ pick: id }) || void goto(`/ride?w=${id}`),
 	});
 	// Any workout on one of your roads (#3594) — not from a phone spectator,
 	// who rides nothing.
@@ -300,6 +303,7 @@
 					<WorkoutCard
 						workout={entry.workout}
 						href="/ride?w={entry.id}"
+						onopen={(e) => rideClick(e, { pick: entry.id })}
 						ftp={previewFtp}
 						menu={() => customMenu(entry)}
 					>
@@ -385,6 +389,7 @@
 			<WorkoutCard
 				workout={entry.workout}
 				href="/ride?w={entry.id}"
+				onopen={(e) => rideClick(e, { pick: entry.id })}
 				ftp={previewFtp}
 				focus={entry.focus}
 				summary={entry.summary}
@@ -428,6 +433,11 @@
 			class="btn btn-primary btn-xs ml-auto">Ride</button
 		>
 	{:else}
-		<a href="/ride?w={id}" class="btn btn-primary btn-xs ml-auto">Ride</a>
+		<!-- In a call, Ride asks with whom first (#4616); out of one it rides. -->
+		<a
+			href="/ride?w={id}"
+			onclick={(e) => rideClick(e, { pick: id })}
+			class="btn btn-primary btn-xs ml-auto">Ride</a
+		>
 	{/if}
 {/snippet}

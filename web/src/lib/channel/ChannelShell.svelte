@@ -355,9 +355,18 @@
 	$effect(() => () => (nowPanel.open = null));
 	// The bar's "Start a session for everyone", answered where the picker is.
 	$effect(() => {
-		if (nowPanel.ask !== 'session') return;
-		nowPanel.ask = null;
-		layers.openPicker(undefined, undefined, ownRoad(connection.freeRide.road));
+		if (nowPanel.ask === 'session') {
+			nowPanel.ask = null;
+			layers.openPicker(
+				undefined,
+				undefined,
+				ownRoad(connection.freeRide.road),
+			);
+		} else if (nowPanel.ask === 'ride') {
+			// The ride sheet (#4616), pre-filled by the door that asked.
+			nowPanel.ask = null;
+			layers.openRide(nowPanel.who, nowPanel.pick);
+		}
 	});
 	let pickerAt = $state<HTMLElement | null>(null);
 </script>
