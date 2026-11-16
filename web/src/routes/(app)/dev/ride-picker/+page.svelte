@@ -15,7 +15,7 @@
 	import Users from '@lucide/svelte/icons/users';
 
 	type Who = 'alone' | 'join' | 'start';
-	type What = 'session' | 'mine' | 'free';
+	type What = 'session' | 'bunch' | 'mine' | 'free';
 
 	// Made-up data: a voice channel with a session running, a shelf, a plan.
 	const running = {
@@ -114,22 +114,39 @@
 	const whats = $derived(
 		(who === 'join'
 			? (['session', 'mine', 'free'] as What[])
-			: (['mine', 'free'] as What[])
+			: who === 'start'
+				? (['bunch', 'mine', 'free'] as What[])
+				: (['mine', 'free'] as What[])
 		).map((id) => ({
 			id,
-			label:
-				id === 'session'
-					? `Ride ${running.workout} with them`
-					: id === 'mine'
-						? 'My own workout, in ERG'
-						: 'Free ride on a road',
-			hint:
-				id === 'session'
-					? `One timeline, ${running.coach} coaches`
-					: id === 'mine'
-						? 'From your shelf, today’s plan first'
-						: 'Grade from the road, your gears',
-			icon: id === 'session' ? Radio : id === 'mine' ? CalendarCheck : Mountain,
+			label: {
+				session: `Ride ${running.workout} with them`,
+				bunch: 'One road, one bunch',
+				mine:
+					who === 'start'
+						? 'A workout, everyone rides it'
+						: 'My own workout, in ERG',
+				free:
+					who === 'alone' || who === null
+						? 'Free ride on a road'
+						: 'A road, each on their own',
+			}[id],
+			hint: {
+				session: `One timeline, ${running.coach} coaches`,
+				bunch:
+					'Everyone at the group’s mean % FTP: nobody drops, nobody rides away',
+				mine: 'From your shelf, today’s plan first',
+				free:
+					who === 'alone' || who === null
+						? 'Grade from the road, your gears'
+						: 'Your own watts and weight: you spread out',
+			}[id],
+			icon: {
+				session: Radio,
+				bunch: Users,
+				mine: CalendarCheck,
+				free: Mountain,
+			}[id],
 		})),
 	);
 	$effect(() => {
@@ -148,6 +165,9 @@
 				: 'Start riding',
 	);
 	const trade = $derived(who === 'join' && what !== 'session');
+	// From a ride on 2026-11-09 (#4616): two riders who wanted to ride
+	// together picked their own physics and drifted apart.
+	const spread = $derived(who === 'start' && what === 'free');
 
 	const choice = (on: boolean) =>
 		`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left min-h-14 ${
@@ -244,7 +264,10 @@
 						<button
 							class={choice(what === w.id)}
 							disabled={who === null}
-							onclick={() => (what = w.id)}
+							onclick={() => {
+								what = w.id;
+								pick = null;
+							}}
 						>
 							<w.icon size={20} />
 							<span>
@@ -255,7 +278,7 @@
 					{/each}
 				</div>
 
-				{#if what === 'mine' || what === 'free'}
+				{#if what === 'mine' || what === 'free' || what === 'bunch'}
 					<!-- The list the answer opens: big rows, no typing. -->
 					<div class="mt-3 flex flex-wrap gap-2">
 						{#each what === 'mine' ? shelf : roads as name (name)}
@@ -274,6 +297,20 @@
 			</div>
 		</div>
 
+		{#if spread}
+			<div
+				class="border-frame mt-5 flex gap-2 rounded-lg border px-4 py-3 text-sm"
+			>
+				<Info size={16} class="mt-0.5 shrink-0" />
+				<p>
+					On a road each on their own, everyone's own watts and weight move
+					them, so the channel spreads out along it. To stay together, pick
+					<button class="btn-link" onclick={() => (what = 'bunch')}
+						>One road, one bunch</button
+					>.
+				</p>
+			</div>
+		{/if}
 		{#if trade}
 			<!-- The trade, said once and plainly (#4616). -->
 			<div
