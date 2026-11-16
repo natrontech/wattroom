@@ -57,8 +57,8 @@
 	<div class="flex w-full items-center gap-2" title={MENU_HINT}>
 		<!-- You, one click from any crew (#2581): the switcher's You, without
 		     opening the switcher — the YOU section that tried to be this
-		     listed Workouts twice. Your rider page is Home's level tile and
-		     this card's menu. Home's row is the lit one, so this never is. -->
+		     listed Workouts twice. Your rider page has its own row in You mode
+		     (#4617). A row above is always the lit one, so this never is. -->
 		<a
 			href="/home"
 			onclick={() => chosenCrew.set('you')}

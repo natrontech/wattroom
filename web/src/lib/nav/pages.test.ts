@@ -29,9 +29,16 @@ describe('activeHref', () => {
 	it('keeps Home lit on the crew directory and the retired /rooms stub', () => {
 		expect(activeHref('/crews/directory')).toBe('/home');
 		expect(activeHref('/rooms')).toBe('/home');
-		// Your rider page is Home's level tile opened; the name card that lit
-		// for it goes to You now (#2581).
-		expect(activeHref('/u/me')).toBe('/home');
+	});
+
+	// B of #4617: the rider page and Routes are rows of their own, and the
+	// most specific row wins, so Routes never lights Workouts too.
+	it('lights the rider page and Routes as rows of their own', () => {
+		expect(activeHref('/u/me')).toBe('/u/me');
+		expect(activeHref('/workouts/routes')).toBe('/workouts/routes');
+		expect(activeHref('/workouts/routes/abc')).toBe('/workouts/routes');
+		expect(activeHref('/workouts')).toBe('/workouts');
+		expect(activeHref('/workouts/edit')).toBe('/workouts');
 	});
 
 	// The sidebar draws the messages tree's own rows — a thread's row for
