@@ -26,10 +26,14 @@ func TestARideSavedTellsTheRoomsTheRidersStanding(t *testing.T) {
 	s, _, alice, _ := setup(t)
 	heard := &standingHeard{}
 	s.SetStanding(heard)
-	s.now = func() time.Time { return time.Date(2026, 11, 11, 12, 0, 0, 0, time.UTC) }
+	// The streak skips a ride started over a week before the week it was saved
+	// in, and Postgres stamps the save with the real clock, so the rides sit
+	// around today: a fixed date drops out of the streak a week later.
+	now := time.Now().UTC()
+	s.now = func() time.Time { return now }
 	// Last week and this one: a streak of two weeks.
-	addRide(t, s, alice, time.Date(2026, 11, 4, 7, 0, 0, 0, time.UTC), 3600, 600, 600)
-	addRide(t, s, alice, time.Date(2026, 11, 10, 7, 0, 0, 0, time.UTC), 3600, 600, 600)
+	addRide(t, s, alice, now.AddDate(0, 0, -7), 3600, 600, 600)
+	addRide(t, s, alice, now, 3600, 600, 600)
 
 	s.rideSaved(t.Context(), alice.ID, stats.RideFacts{Seconds: 3600, AboveFtpSec: sufferfestSec})
 	s.rideSaved(t.Context(), alice.ID, stats.RideFacts{Seconds: 3600, AboveFtpSec: sufferfestSec})
