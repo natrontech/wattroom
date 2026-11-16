@@ -21,6 +21,9 @@
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import { device, isSpectator } from '#lib/device.svelte.ts';
 	import WorkoutCard from './WorkoutCard.svelte';
+	import YourWeek from './YourWeek.svelte';
+	import PlanOnDay from './PlanOnDay.svelte';
+	import CalendarPlus from '@lucide/svelte/icons/calendar-plus';
 	import { durationSeconds } from '#lib/workout/engine.ts';
 	import {
 		byFocus,
@@ -130,6 +133,11 @@
 		rideItem(entry.id, entry.workout),
 		...routeItems(entry.id, entry.workout),
 		{
+			label: 'Plan it on a day',
+			icon: CalendarPlus,
+			onSelect: () => (planFor = { id: entry.id, name: entry.workout.name }),
+		},
+		{
 			label: 'Edit',
 			icon: Pencil,
 			onSelect: () => void goto(`/workouts/edit?w=${entry.id}`),
@@ -142,6 +150,8 @@
 			danger: true,
 		},
 	];
+	// The workout being put on a day of the rider's own week (#4615).
+	let planFor = $state<{ id: string; name: string } | null>(null);
 	// Find it by name or by what it trains — the picker had this and the
 	// page did not (#1713): your own shelf is the one list with no ceiling.
 	let query = $state('');
@@ -209,6 +219,12 @@
 		aria-label="Find a workout or a route"
 		class="input mt-6 w-full max-w-sm"
 	/>
+
+	<!-- The rider's own week (#4615) above the shelf it is planned from;
+	     absent until the shelf holds something to plan. -->
+	{#if custom.loaded && custom.all.length > 0}
+		<YourWeek />
+	{/if}
 
 	<!-- Yours first: they are the ones you had to make on purpose. -->
 	<section class="mt-8">
@@ -389,6 +405,13 @@
 			{...routeFor}
 			road={on ?? undefined}
 			onclose={() => (routeFor = null)}
+		/>
+	{/if}
+	{#if planFor}
+		<PlanOnDay
+			workoutId={planFor.id}
+			name={planFor.name}
+			onclose={() => (planFor = null)}
 		/>
 	{/if}
 </main>

@@ -89,7 +89,7 @@ type export struct {
 func (x *export) categories() []category {
 	return []category{
 		x.rides(), x.chat(), x.messages(), x.sessions(), x.friends(), x.dismissedRequests(), x.hiddenRiders(),
-		x.playlists(), x.tracks(), x.plannedSessions(), x.workouts(), x.xp(), x.trophies(),
+		x.playlists(), x.tracks(), x.plannedSessions(), x.workouts(), x.plan(), x.xp(), x.trophies(),
 		x.identities(), x.passkeys(), x.coachAccess(), x.reactions(), x.crews(), x.pins(),
 		x.scheduledSessions(), x.channelMembers(), x.soundboard(), x.rideUploads(), x.ridePhotos(),
 		x.avatar(), x.images(), x.emoji(), x.medals(), x.routes(), x.wallet(), x.wardrobe(),

@@ -3,6 +3,7 @@ package account
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -80,6 +81,16 @@ func (x *export) workouts() category {
 		return mapRows(rows, err, func(row db.ExportUserWorkoutsRow) any {
 			return map[string]any{"name": row.Name, "author": row.Author,
 				"createdAt": row.CreatedAt.Time, "workout": json.RawMessage(row.Definition)}
+		})
+	}}
+}
+
+func (x *export) plan() category {
+	return category{"plan.json", []string{"personal_plans"}, func() (any, error) {
+		rows, err := x.q.ExportUserPersonalPlans(x.ctx, x.user.ID)
+		return mapRows(rows, err, func(row db.ExportUserPersonalPlansRow) any {
+			return map[string]any{"day": row.Day.Time.Format(time.DateOnly), "workout": row.WorkoutName,
+				"plannedAt": row.CreatedAt.Time}
 		})
 	}}
 }

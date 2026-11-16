@@ -276,6 +276,14 @@ type Passkey struct {
 	LastUsedAt   pgtype.Timestamptz
 }
 
+type PersonalPlan struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	WorkoutID pgtype.UUID
+	Day       pgtype.Date
+	CreatedAt pgtype.Timestamptz
+}
+
 type Playlist struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID

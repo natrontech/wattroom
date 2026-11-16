@@ -46,6 +46,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/og"
+	"github.com/natrontech/wattroom/server/internal/plans"
 	"github.com/natrontech/wattroom/server/internal/playlists"
 	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/recap"
@@ -168,6 +169,8 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	shelf := customworkouts.New(st, tokens.ActingSource(authService), log)
 	shelf.SetRoads(roads)
 	shelf.Register(mux)
+	// The rider's own plan (#4615): shelf workouts on days, mailed to nobody.
+	plans.New(st, tokens.ActingSource(authService), log).Register(mux)
 	// A rider's planned week from intervals.icu, pulled into the importer
 	// (#2327); hidden unless the operator registered a client.
 	intervals.New(authService, log, baseURL).Register(mux)

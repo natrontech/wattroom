@@ -15,6 +15,7 @@
 	import FirstRun from '#lib/home/FirstRun.svelte';
 	import RecentRides from '#lib/home/RecentRides.svelte';
 	import ThisWeek from '#lib/home/ThisWeek.svelte';
+	import TodayRide from '#lib/home/TodayRide.svelte';
 	import type { ServerRide } from '#lib/ride/list.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import { leadsWithJoining } from '#lib/nav/crews.ts';
@@ -244,6 +245,9 @@
 	     first crew, when the crew is the one thing to do (ADR-0010). -->
 	<div class="mt-4">
 		<div class="flex flex-col gap-3" data-testid="home-actions">
+			<!-- What the rider planned for today (#4615) leads: the ride they
+			     already decided on is the fastest one to start. -->
+			<TodayRide />
 			{#if headline}
 				<a href={headline.href} class="btn btn-primary btn-lg col-span-2"
 					><Radio size={15} /> {headline.cta}</a

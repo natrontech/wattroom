@@ -16,6 +16,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/crews"
 	"github.com/natrontech/wattroom/server/internal/customworkouts"
+	"github.com/natrontech/wattroom/server/internal/plans"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -60,6 +61,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, db.User) {
 	nobody := tokens.ActingSource(&testx.Users{})
 	customworkouts.New(st, nobody, log).Register(mux)
 	crews.New(st, nobody, log).Register(mux)
+	plans.New(st, nobody, log).Register(mux)
 	New(st, &fakeTokens{user: &u}, mux, log).Register(mux)
 	return mux, st, u
 }
@@ -501,6 +503,7 @@ func TestAReadTokenCannotPlan(t *testing.T) {
 		"create_workout":   `{"workout":` + sweetSpot + `}`,
 		"schedule_workout": `{"crewId":"` + store.UUIDString(crew) + `","workout":` + sweetSpot + `,"startsAt":"` + time.Now().Add(24*time.Hour).Format(time.RFC3339) + `"}`,
 		"get_schedule":     `{}`,
+		"plan_workout":     `{"workoutId":"` + store.UUIDString(user.ID) + `","day":"2026-12-01"}`,
 	} {
 		if _, e := planCall(t, mux, "wrt_ok", tool, args); e == nil || !strings.Contains(fmt.Sprint(e["message"]), "only reads") {
 			t.Errorf("%s with a read token: %v, want a refusal saying it only reads", tool, e)
@@ -519,8 +522,8 @@ func TestAReadTokenCannotPlan(t *testing.T) {
 func TestAPlanningTokenCreatesSchedulesAndReadsBack(t *testing.T) {
 	mux, st, user := setup(t)
 	_, body := rpc(t, mux, "Bearer wrt_plan", `{"jsonrpc":"2.0","id":1,"method":"tools/list"}`)
-	if tools, _ := body["result"].(map[string]any)["tools"].([]any); len(tools) != 5 {
-		t.Fatalf("a planning token lists %d tools, want 5: %v", len(tools), body)
+	if tools, _ := body["result"].(map[string]any)["tools"].([]any); len(tools) != 6 {
+		t.Fatalf("a planning token lists %d tools, want 6: %v", len(tools), body)
 	}
 
 	saved, e := planCall(t, mux, "wrt_plan", "create_workout", `{"workout":`+sweetSpot+`}`)
@@ -631,5 +634,56 @@ func TestGetScheduleNamesNoPlace(t *testing.T) {
 		if !strings.Contains(string(raw), want) {
 			t.Errorf("get_schedule lacks %s: %s", want, raw)
 		}
+	}
+}
+
+// An agent lays out a rider's week (#4615): a shelf workout on a day of the
+// rider's own plan, read back through get_schedule, mailed to nobody — no
+// crew is involved at all. Someone else's workout plans nothing.
+func TestPlanWorkoutPutsAShelfWorkoutOnADay(t *testing.T) {
+	mux, st, _ := setup(t)
+	saved, e := planCall(t, mux, "wrt_plan", "create_workout", `{"workout":`+sweetSpot+`}`)
+	if e != nil {
+		t.Fatalf("create_workout: %v", e)
+	}
+	day := time.Now().UTC().AddDate(0, 0, 2).Format(time.DateOnly)
+	plan, e := planCall(t, mux, "wrt_plan", "plan_workout", `{"workoutId":"`+fmt.Sprint(saved["id"])+`","day":"`+day+`"}`)
+	if e != nil || plan["id"] == "" || plan["day"] != day {
+		t.Fatalf("plan_workout: %v %v", plan, e)
+	}
+	got, e := planCall(t, mux, "wrt_plan", "get_schedule", `{}`)
+	if e != nil {
+		t.Fatalf("get_schedule: %v", e)
+	}
+	own, _ := got["plan"].([]any)
+	if len(own) != 1 {
+		t.Fatalf("get_schedule plan: %v", got["plan"])
+	}
+	first, _ := own[0].(map[string]any)
+	if first["id"] != plan["id"] || first["day"] != day || first["workoutName"] != "2x20 Sweet Spot" || first["workoutId"] != saved["id"] {
+		t.Errorf("planned day: %v", first)
+	}
+
+	stranger, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{DisplayName: "bob", FtpWatts: 200, WeightKg: 70})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", stranger.ID) })
+	theirs, err := st.Queries.CreateWorkout(t.Context(), db.CreateWorkoutParams{OwnerID: stranger.ID, Name: "Bob's", Author: "bob", Definition: []byte(sweetSpot)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, args, want string }{
+		{"someone else's workout", `{"workoutId":"` + store.UUIDString(theirs.ID) + `","day":"` + day + `"}`, "not on your shelf"},
+		{"a year out", `{"workoutId":"` + fmt.Sprint(saved["id"]) + `","day":"` + time.Now().AddDate(1, 0, 0).Format(time.DateOnly) + `"}`, "three months"},
+		{"not a date", `{"workoutId":"` + fmt.Sprint(saved["id"]) + `","day":"Thursday"}`, "date like"},
+		{"no day", `{"workoutId":"` + fmt.Sprint(saved["id"]) + `"}`, "workoutId and day"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, e := planCall(t, mux, "wrt_plan", "plan_workout", tc.args)
+			if e == nil || e["code"] != float64(-32602) || !strings.Contains(fmt.Sprint(e["message"]), tc.want) {
+				t.Errorf("%v, want -32602 saying %q", e, tc.want)
+			}
+		})
 	}
 }
