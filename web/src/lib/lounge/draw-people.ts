@@ -596,7 +596,13 @@ export function specs(g: Ctx, f: Figure, hx: number, ey: number) {
 export function drawFigure(g: Ctx, f: Figure, x: number, base: number) {
 	sitter(
 		g,
-		{ t: 0, still: true, waveAt: -Infinity } as SceneInput,
+		// Only what sitter reads; no club, so no crown on the preview.
+		{
+			t: 0,
+			still: true,
+			waveAt: -Infinity,
+			club: { crowns: [] as string[] },
+		} as SceneInput,
 		f,
 		x,
 		base,
