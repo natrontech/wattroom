@@ -141,7 +141,9 @@
 					{#if k.id === 'free'}
 						You drive the trainer. Hold a grade, or hold your watts.
 					{:else}
-						The plan drives it.{lastWorkout ? ` Last: ${lastWorkout}.` : ''}
+						The plan drives it in ERG, on a road or none.{lastWorkout
+							? ` Last: ${lastWorkout}.`
+							: ''}
 					{/if}
 				</span>
 			</button>
@@ -172,6 +174,13 @@
 					{/if}
 				{:else}
 					<span class="text-muted">No road</span>
+					{#if kind === 'workout'}
+						<!-- A workout rides any road (#3594): ERG holds the targets,
+						     the road only places you on it. Said, or nobody finds it. -->
+						<span class="text-muted text-sm"
+							>Pick one and the workout rides along it.</span
+						>
+					{/if}
 				{/if}
 			</div>
 			<div class="mt-3 flex flex-wrap gap-2">

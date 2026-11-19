@@ -6,7 +6,7 @@ import { expect, test } from './crew';
  * NowBar's Ride, starts a session Each on their own and is told the road
  * spreads them out, takes One road, one bunch instead and lands on the
  * session picker's Roads; then a workout's Ride, still in the call, opens the
- * sheet with that workout chosen and rides it alone.
+ * sheet with that workout chosen, and Alone takes it to the ride card.
  */
 test('in a call, Ride asks with whom and what before it rides', async ({
 	riders,
@@ -30,7 +30,7 @@ test('in a call, Ride asks with whom and what before it rides', async ({
 	await sheet
 		.getByRole('button', { name: 'One road, one bunch', exact: true })
 		.click();
-	await sheet.getByRole('button', { name: 'Choose it' }).click();
+	await sheet.getByRole('button', { name: 'Next', exact: true }).click();
 	await expect(sheet).toBeHidden();
 	await expect(
 		page.getByRole('heading', { name: 'Start a session' }),
@@ -40,7 +40,8 @@ test('in a call, Ride asks with whom and what before it rides', async ({
 	).toBeVisible();
 	await page.keyboard.press('Escape');
 
-	// A workout's Ride, still in the call: the sheet, with it chosen.
+	// A workout's Ride, still in the call: the sheet, with it chosen. Alone
+	// asks nothing more and goes on to the ride card on that workout.
 	// In-app, so the call stays: a reload would leave it. The sidebar is
 	// the crew's here; your own row at its foot is the way to You.
 	await page.getByTitle(/your own Home/).click();
@@ -52,10 +53,11 @@ test('in a call, Ride asks with whom and what before it rides', async ({
 	const card = page.getByRole('listitem').filter({ hasText: 'Recovery Spin' });
 	await card.getByRole('link', { name: 'Ride', exact: true }).first().click();
 	await expect(sheet).toBeVisible();
-	await expect(
-		sheet.getByRole('button', { name: 'Recovery Spin', pressed: true }),
-	).toBeVisible();
 	await sheet.getByRole('button', { name: /^Alone/ }).click();
-	await sheet.getByRole('button', { name: 'Ride', exact: true }).click();
+	await expect(sheet.getByText(/Your workout or a free ride/)).toBeVisible();
+	await sheet.getByRole('button', { name: 'Next', exact: true }).click();
 	await expect(page).toHaveURL(/\/ride\?w=/);
+	await expect(
+		page.getByRole('heading', { name: 'Recovery Spin' }),
+	).toBeVisible();
 });
