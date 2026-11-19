@@ -8,8 +8,13 @@
 	 *
 	 * A door with nothing to ask never opens it: outside a voice channel a
 	 * workout's Ride starts at once (the rider's call, 2026-11-16).
+	 *
+	 * It asks only what nothing after it asks. Alone goes to the ride card,
+	 * which holds workout or free ride, the road and the games; a workout is
+	 * chosen in the full picker, never from a short list here.
 	 */
 	import CalendarCheck from '@lucide/svelte/icons/calendar-check';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Info from '@lucide/svelte/icons/info';
 	import Mountain from '@lucide/svelte/icons/mountain';
 	import Play from '@lucide/svelte/icons/play';
@@ -17,17 +22,13 @@
 	import User from '@lucide/svelte/icons/user';
 	import Users from '@lucide/svelte/icons/users';
 	import Modal from '#lib/components/Modal.svelte';
-	import type { ShelfEntry } from '#lib/workout/shelf.ts';
-	import type { Workout } from '#lib/workout/types.ts';
-	import { localDay, myPlan } from '#lib/workout/plan.svelte.ts';
-	import { pickable, type RideWhat, type RideWho } from './ride-choice.ts';
+	import type { RideWhat, RideWho } from './ride-choice.ts';
 
 	let {
 		channelName,
 		running,
-		shelf,
 		who: firstWho = null,
-		pick: firstPick = null,
+		pick = null,
 		onAlone,
 		onJoin,
 		onJoinOwn,
@@ -40,14 +41,15 @@
 		channelName: string;
 		/** The session riding here, when one is: what and how many. */
 		running: { workout: string; riders: number } | null;
-		shelf: ShelfEntry[];
 		who?: RideWho | null;
-		/** A workout the door already chose (a card's Ride, today's plan). */
+		/** A workout the door already chose (a card's Ride, today's plan):
+		 *  what the card or the picker after this opens on. */
 		pick?: string | null;
-		/** Alone: a workout by id, or null for a free ride. */
+		/** Alone: onto the ride card, on the door's workout when it chose one. */
 		onAlone: (workoutId: string | null) => void;
 		onJoin: () => void;
-		onJoinOwn: (workout: Workout) => void;
+		/** Your own workout beside the session: the picker chooses it. */
+		onJoinOwn: (workoutId: string | null) => void;
 		onJoinFree: () => void;
 		onStartBunch: () => void;
 		onStartWorkout: (workoutId: string | null) => void;
@@ -60,24 +62,7 @@
 		firstWho === 'join' && !running ? null : firstWho,
 	);
 	// svelte-ignore state_referenced_locally
-	let what = $state<RideWhat | null>(firstPick ? 'mine' : null);
-	// svelte-ignore state_referenced_locally
-	let pick = $state<string | null>(firstPick);
-
-	const plan = myPlan();
-	void plan.fresh();
-	// Today's plan first, then your own, then what you rode lately: six at
-	// most, and the one a door chose always among them.
-	const choices = $derived(
-		pickable(
-			shelf,
-			plan.on(localDay(new Date())).map((r) => r.workoutId),
-			pick,
-		),
-	);
-	const planned = $derived(
-		new Set(plan.on(localDay(new Date())).map((r) => r.workoutId)),
-	);
+	let what = $state<RideWhat | null>(pick ? 'mine' : null);
 
 	const whats = $derived.by(() => {
 		if (who === 'join')
@@ -91,7 +76,7 @@
 				{
 					id: 'mine' as const,
 					label: 'My own workout, in ERG',
-					hint: 'From your shelf, today’s plan first',
+					hint: 'Pick it next, from your whole shelf',
 					icon: CalendarCheck,
 				},
 				{
@@ -112,7 +97,7 @@
 				{
 					id: 'mine' as const,
 					label: 'A workout, everyone rides it',
-					hint: 'One timeline, you coach',
+					hint: 'Pick it next, on a road or none. You coach',
 					icon: CalendarCheck,
 				},
 				{
@@ -122,20 +107,7 @@
 					icon: Mountain,
 				},
 			];
-		return [
-			{
-				id: 'mine' as const,
-				label: 'A workout',
-				hint: 'From your shelf, today’s plan first',
-				icon: CalendarCheck,
-			},
-			{
-				id: 'free' as const,
-				label: 'Free ride',
-				hint: 'Grade from a road, your gears',
-				icon: Mountain,
-			},
-		];
+		return [];
 	});
 
 	// An answer the new question no longer offers is cleared, not kept.
@@ -143,32 +115,30 @@
 		if (what && !whats.some((w) => w.id === what)) what = null;
 	});
 
-	// The workout list is asked only where a workout is ridden by you alone
-	// or beside a session; a session's workout is chosen in its own picker.
-	// A door's own pick shows from the start, before with whom is answered.
-	const listsWorkouts = $derived(what === 'mine' && who !== 'start');
-	const ready = $derived(
-		who !== null && what !== null && (!listsWorkouts || pick !== null),
+	// Alone asks nothing more here: the ride card is where it is set up,
+	// workout or free ride and the road under it.
+	const ready = $derived(who === 'alone' || (who !== null && what !== null));
+	// Only a join and Each on their own ride at once; the rest go on to a
+	// picker or the card, and the button says so.
+	const now = $derived(
+		(who === 'join' && what === 'session') ||
+			(who === 'start' && what === 'free'),
 	);
 	const startLabel = $derived(
-		who === 'join'
+		who === 'join' && what === 'session'
 			? 'Join'
-			: who === 'start'
-				? what === 'free'
-					? 'Start the session'
-					: 'Choose it'
-				: 'Ride',
+			: who === 'start' && what === 'free'
+				? 'Start the session'
+				: 'Next',
 	);
 
 	function go() {
 		if (!ready) return;
-		const entry = choices.find((e) => e.id === pick);
-		if (who === 'alone') return onAlone(what === 'mine' ? pick : null);
+		if (who === 'alone') return onAlone(pick);
 		if (who === 'join') {
 			if (what === 'session') return onJoin();
 			if (what === 'free') return onJoinFree();
-			if (entry) return onJoinOwn(entry.workout);
-			return;
+			return onJoinOwn(pick);
 		}
 		if (what === 'bunch') return onStartBunch();
 		if (what === 'free') return onStartEach();
@@ -230,33 +200,42 @@
 			</div>
 		</div>
 
-		<div class={who === null ? 'opacity-40' : ''}>
-			<h2 class="text-sm font-semibold">What</h2>
-			<div class="mt-2 flex flex-col gap-2">
-				{#each whats as w (w.id)}
-					<button
-						class={choice(what === w.id)}
-						disabled={who === null}
-						onclick={() => (what = w.id)}
-					>
-						<w.icon size={20} class="shrink-0" />
-						<span>
-							<span class="block font-semibold">{w.label}</span>
-							<span class="text-muted text-xs">{w.hint}</span>
-						</span>
-					</button>
-				{/each}
-			</div>
-			{#if listsWorkouts}
-				<div class="mt-3 flex flex-wrap gap-2" aria-label="workout">
-					{#each choices as entry (entry.id)}
-						<button
-							onclick={() => (pick = entry.id)}
-							aria-pressed={pick === entry.id}
-							class="btn {pick === entry.id ? 'btn-primary' : 'btn-secondary'}"
+		<div>
+			<h2 class="text-sm font-semibold {who === null ? 'opacity-40' : ''}">
+				What
+			</h2>
+			{#if who === null}
+				<p class="text-muted mt-2 text-sm">Choose with whom first.</p>
+			{:else if who === 'alone'}
+				<!-- The ride card after this asks it, with the road: asking here
+				     too made the rider answer twice. -->
+				<div
+					class="border-ink/10 mt-2 flex flex-col gap-3 rounded-lg border px-4 py-3 text-sm"
+				>
+					<p class="flex gap-3">
+						<CalendarCheck size={18} class="mt-0.5 shrink-0" />
+						<span
+							>{pick ? 'Your workout' : 'A workout'} or a free ride: you choose on
+							the next screen.</span
 						>
-							{#if planned.has(entry.id)}<CalendarCheck size={14} />{/if}
-							{entry.workout.name}
+					</p>
+					<p class="flex gap-3">
+						<Mountain size={18} class="mt-0.5 shrink-0" />
+						<span
+							>Either rides on a road if you pick one. With a workout, ERG holds
+							your targets and the road shows where you are.</span
+						>
+					</p>
+				</div>
+			{:else}
+				<div class="mt-2 flex flex-col gap-2">
+					{#each whats as w (w.id)}
+						<button class={choice(what === w.id)} onclick={() => (what = w.id)}>
+							<w.icon size={20} class="shrink-0" />
+							<span>
+								<span class="block font-semibold">{w.label}</span>
+								<span class="text-muted text-xs">{w.hint}</span>
+							</span>
 						</button>
 					{/each}
 				</div>
@@ -290,8 +269,10 @@
 
 	<div class="mt-5 flex items-center justify-end gap-3">
 		<button onclick={onClose} class="btn btn-ghost btn-lg">Cancel</button>
-		<button onclick={go} disabled={!ready} class="btn btn-primary btn-lg"
-			><Play size={16} /> {startLabel}</button
-		>
+		<button onclick={go} disabled={!ready} class="btn btn-primary btn-lg">
+			{#if now}<Play size={16} />{/if}
+			{startLabel}
+			{#if !now}<ChevronRight size={16} />{/if}
+		</button>
 	</div>
 </Modal>

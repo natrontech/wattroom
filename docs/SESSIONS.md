@@ -22,19 +22,19 @@ Taken on 2026-11-11 (#4469), from WATTROOM.md's "A session drives only the rider
 
 Where a session assumes a voice channel:
 
-| Layer | Coupling |
-| --- | --- |
-| Hub | `channelState` ([channel.go](../server/internal/hub/channel.go)) is the voice channel's goroutine. It holds the call (clients, voice, jukebox, lounge, board, away) and the session (`session`, `record`, `sprint`, `game`, the bunch, start line, roadside, execution, recap, presence spans) in one struct, ticked by one loop ([tick.go](../server/internal/hub/tick.go)). At most one session per channel ([session.go](../server/internal/hub/session.go)). |
-| Free ride | A free rider's metrics go to the channel tick. Everyone with the channel open sees them ([channel_ride.go](../server/internal/hub/channel_ride.go) `setMetrics`). |
-| Socket | One socket per rider, `/ws/channels/{id}`, gated by `Access.Authorize` per channel. Session controls (`pick`, `start`, `join` …) ride it. |
-| Lists | `GET /api/crews/{id}/live` walks the crew's voice channels and asks each for its session ([live.go](../server/internal/channels/live.go)). |
-| Durable | Rides and `session_recaps` carry `channel_id`. A recap is gated by its channel's privacy, and a recap with no channel is shown to admins only ([recaps.sql](../server/internal/store/queries/recaps.sql)). `scheduled_sessions.channel_id` is nullable already (null is crew-wide) and is stamped when a plan starts ([schedule.sql](../server/internal/store/queries/schedule.sql)). |
-| Roads | `ChannelsRiding(route)` serves a session's road to the members of the channels riding it ([channels_riding.go](../server/internal/hub/channels_riding.go)). |
-| XP | The voice bonus counts seconds in the session's own voice channel (`voiceMs`). |
-| Client connection | `channelConnection` ([connection.svelte.ts](../web/src/lib/channel/connection.svelte.ts)) holds one place at a time: socket, call and the session's shared state together. Opening a session in another channel leaves your call. |
-| Client ride | `holdChannelRide` ([channel-ride.svelte.ts](../web/src/lib/ride/channel-ride.svelte.ts)) ties the ride to the call. Leaving the call ends it. |
-| Routes | `/crew/[id]/s/[session]` resolves the session's channel and mounts that channel's shell ([+layout.ts](../web/src/routes/(app)/crew/[id]/s/[session]/+layout.ts)). An ended session redirects to its channel. The free ride lives at `/crew/[id]/v/[channel]/training`. |
-| Now bar | Ride ▾ "Start a session for everyone" opens the picker in the current channel ([NowBar.svelte](../web/src/lib/nav/NowBar.svelte)). |
+| Layer             | Coupling                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hub               | `channelState` ([channel.go](../server/internal/hub/channel.go)) is the voice channel's goroutine. It holds the call (clients, voice, jukebox, lounge, board, away) and the session (`session`, `record`, `sprint`, `game`, the bunch, start line, roadside, execution, recap, presence spans) in one struct, ticked by one loop ([tick.go](../server/internal/hub/tick.go)). At most one session per channel ([session.go](../server/internal/hub/session.go)). |
+| Free ride         | A free rider's metrics go to the channel tick. Everyone with the channel open sees them ([channel_ride.go](../server/internal/hub/channel_ride.go) `setMetrics`).                                                                                                                                                                                                                                                                                                |
+| Socket            | One socket per rider, `/ws/channels/{id}`, gated by `Access.Authorize` per channel. Session controls (`pick`, `start`, `join` …) ride it.                                                                                                                                                                                                                                                                                                                        |
+| Lists             | `GET /api/crews/{id}/live` walks the crew's voice channels and asks each for its session ([live.go](../server/internal/channels/live.go)).                                                                                                                                                                                                                                                                                                                       |
+| Durable           | Rides and `session_recaps` carry `channel_id`. A recap is gated by its channel's privacy, and a recap with no channel is shown to admins only ([recaps.sql](../server/internal/store/queries/recaps.sql)). `scheduled_sessions.channel_id` is nullable already (null is crew-wide) and is stamped when a plan starts ([schedule.sql](../server/internal/store/queries/schedule.sql)).                                                                            |
+| Roads             | `ChannelsRiding(route)` serves a session's road to the members of the channels riding it ([channels_riding.go](../server/internal/hub/channels_riding.go)).                                                                                                                                                                                                                                                                                                      |
+| XP                | The voice bonus counts seconds in the session's own voice channel (`voiceMs`).                                                                                                                                                                                                                                                                                                                                                                                   |
+| Client connection | `channelConnection` ([connection.svelte.ts](../web/src/lib/channel/connection.svelte.ts)) holds one place at a time: socket, call and the session's shared state together. Opening a session in another channel leaves your call.                                                                                                                                                                                                                                |
+| Client ride       | `holdChannelRide` ([channel-ride.svelte.ts](../web/src/lib/ride/channel-ride.svelte.ts)) ties the ride to the call. Leaving the call ends it.                                                                                                                                                                                                                                                                                                                    |
+| Routes            | `/crew/[id]/s/[session]` resolves the session's channel and mounts that channel's shell ([+layout.ts](<../web/src/routes/(app)/crew/[id]/s/[session]/+layout.ts>)). An ended session redirects to its channel. The free ride lives at `/crew/[id]/v/[channel]/training`.                                                                                                                                                                                         |
+| Now bar           | Ride ▾ "Start a session for everyone" opens the picker in the current channel ([NowBar.svelte](../web/src/lib/nav/NowBar.svelte)).                                                                                                                                                                                                                                                                                                                               |
 
 Open rides already work the way this plan wants. Each one is a hub object of its own, keyed by ride id, beside the voice channels and never messaging them ([openride.go](../server/internal/hub/openride.go)). A crew session follows the same shape.
 
@@ -64,13 +64,13 @@ Open rides already work the way this plan wants. Each one is a hub object of its
 
 ## URLs and navigation
 
-| Address | Becomes |
-| --- | --- |
-| `/crew/[id]/s/[session]` | Stays the session's address. It connects to the session's socket, not to a channel. |
-| `/crew/[id]/s/[session]/watch` | Stays. |
-| An ended session's address | The crew page, with the recap. No channel to fall back to. |
-| `/crew/[id]/v/[channel]` | The call only: stage, lounge, music. |
-| `/crew/[id]/v/[channel]/training` | Redirects to `/ride`, the device's one ride. |
+| Address                           | Becomes                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| `/crew/[id]/s/[session]`          | Stays the session's address. It connects to the session's socket, not to a channel. |
+| `/crew/[id]/s/[session]/watch`    | Stays.                                                                              |
+| An ended session's address        | The crew page, with the recap. No channel to fall back to.                          |
+| `/crew/[id]/v/[channel]`          | The call only: stage, lounge, music.                                                |
+| `/crew/[id]/v/[channel]/training` | Redirects to `/ride`, the device's one ride.                                        |
 
 Navigation never ends a session or a call. Opening another voice channel moves the call and leaves the session where it is.
 
@@ -80,8 +80,8 @@ Navigation never ends a session or a call. Opening another voice channel moves t
 - Voice, Away and Leave are the call's. On a desk they sit under your name in the sidebar's foot. Riding or on a phone the sidebar is out of reach, so they sit in the bar.
 - **Ride** opens the **ride sheet** (#4616), the one way into a ride from a call, joining included. It asks two things, big targets, no typing:
   - **With whom:** Alone, or **Join the session** when one runs in the channel, else **Start a session**.
-  - **What:** joining, the session's workout, your own workout in ERG (beside the session, #2329) or a free ride, the last two saying once that you stay in the session's voice and board but not in its bunch; starting, One road, one bunch, a workout everyone rides, or Each on their own; alone, a workout or a free ride.
-- The sheet hands off to what was there: the Start a session picker (on its Roads or Workouts tab), the own ride, the join. Every door in a call opens it pre-filled: a running session's line in the sidebar with Join chosen, a workout's Ride and Home's Today's ride with that workout chosen. Out of a call there is nothing to ask, and a workout's Ride starts at once.
+  - **What:** joining, the session's workout, your own workout in ERG (beside the session, #2329) or a free ride, the last two saying once that you stay in the session's voice and board but not in its bunch; starting, One road, one bunch, a workout everyone rides, or Each on their own. Alone asks no what: the ride card after it holds workout or free ride and the road under either, so nothing is asked twice.
+- The sheet hands off to what was there: the ride card, the Start a session picker (on its Roads or Workouts tab), the Ride a workout picker for your own workout beside the session, the join. A workout is always chosen in a full picker, never from a short list on the sheet. Every door in a call opens it pre-filled: a running session's line in the sidebar with Join chosen, a workout's Ride and Home's Today's ride with that workout chosen. Out of a call there is nothing to ask, and a workout's Ride starts at once.
 - On a session: the ride's controls from the ride HUD (#4386), plus **Leave session**. The coach also gets Pause and End.
 - The ride's row never scrolls: End ride and Leave stay on screen at every width, and what does not fit is under **More** (docs/spec/riding.md, #4567).
 - Off any crew page, Start a session uses the crew of your call, else the last crew you opened.
@@ -119,11 +119,11 @@ Navigation never ends a session or a call. Opening another voice channel moves t
 
 Expand and contract only.
 
-| PR | Change |
-| --- | --- |
-| Session rooms | Add `session_recaps.crew_wide boolean`, nullable. True means every crew member sees it. Null keeps today's channel gate, so old recaps of a private channel stay narrow forever. |
-| Schedule | None. `scheduled_sessions.channel_id` is nullable already; the code stops writing it. |
-| Contract, one release after Schedule and after the last channel-pinned plan is past | Drop `scheduled_sessions.channel_id`. |
+| PR                                                                                  | Change                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session rooms                                                                       | Add `session_recaps.crew_wide boolean`, nullable. True means every crew member sees it. Null keeps today's channel gate, so old recaps of a private channel stay narrow forever. |
+| Schedule                                                                            | None. `scheduled_sessions.channel_id` is nullable already; the code stops writing it.                                                                                            |
+| Contract, one release after Schedule and after the last channel-pinned plan is past | Drop `scheduled_sessions.channel_id`.                                                                                                                                            |
 
 `rides.channel_id` and `session_recaps.channel_id` stay. They are history, and they keep old rows gated as they were.
 
