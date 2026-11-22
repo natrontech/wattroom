@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { toasts } from '#lib/toast.svelte.ts';
 	import X from '@lucide/svelte/icons/x';
+	import SoundCaption from '#lib/sound/SoundCaption.svelte';
 </script>
 
 <!-- Bottom-centre on a desk. On a phone the bottom is spoken for — the
@@ -34,6 +35,9 @@
 	}}
 	class="pointer-events-none fixed left-1/2 z-[52] flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 max-md:top-[calc(4rem+var(--safe-top))] md:bottom-[calc(1.5rem+var(--safe-bottom))]"
 >
+	<!-- What the last sound meant: in the stack, so it moves with the
+	     toasts round the phone's and the desk's reserved corners. -->
+	<SoundCaption />
 	{#each toasts.items as toast (toast.id)}
 		<div
 			role={toast.tone === 'error' ? 'alert' : 'status'}

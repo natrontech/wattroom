@@ -1,4 +1,5 @@
 <script lang="ts">
+	import RecentSounds from '#lib/sound/RecentSounds.svelte';
 	// The mix and the gate, reachable without leaving the call (#477). ADR-0020
 	// sent these behind the cog as "set once at a desk"; riders reported the
 	// opposite — you only find out the mix is wrong when someone is talking
@@ -161,6 +162,12 @@
 				<h3 class="eyebrow">mix, yours only</h3>
 				<div class="mt-2">
 					<MixFaders onShareGain={(gain) => voice.setShareGain(gain)} />
+				</div>
+			</section>
+			<section>
+				<h3 class="eyebrow">recent sounds</h3>
+				<div class="mt-2">
+					<RecentSounds />
 				</div>
 			</section>
 			<section>

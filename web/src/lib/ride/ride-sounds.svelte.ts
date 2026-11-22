@@ -131,22 +131,30 @@ export function createRideSounds(deps: RideSoundDeps) {
 	// there is. Only while the session runs: the index going to undefined at
 	// the end is the end, not a block.
 	const heardBlock = changes<number | null>((index, previous) => {
-		if (index !== null && previous !== null) play('block');
+		if (index !== null && previous !== null)
+			play('block', { say: 'Next block: the target changed' });
 	});
 	$effect(() => heardBlock(deps.block() ?? null));
 
 	// The spiral release (docs/SPEC.md): the target drops on purpose, and
 	// comes back — said the way auto-pause is, since it feels the same.
 	const heardSpiral = changes<boolean>((on) =>
-		play(on ? 'block' : 'go', { semitones: on ? -5 : 0 }),
+		play(on ? 'block' : 'go', {
+			semitones: on ? -5 : 0,
+			say: on ? 'Cadence collapsed: targets off' : 'Targets back on',
+		}),
 	);
 	$effect(() => heardSpiral(deps.spiral() ?? false));
 
 	// A fault, and its recovery, announce themselves too. The banner is the
 	// whole story only for someone reading the screen — which is nobody on a
 	// bike.
-	const heardFault = changes<string | null>((now) =>
-		play(now ? 'fault' : 'recover'),
+	const heardFault = changes<string | null>((now, previous) =>
+		now
+			? play('fault', { say: faultWords(now) })
+			: play('recover', {
+					say: previous ? `${faultWords(previous)}: back` : undefined,
+				}),
 	);
 	$effect(() => heardFault(deps.fault()));
 
@@ -154,9 +162,14 @@ export function createRideSounds(deps: RideSoundDeps) {
 	// see coming — it fires when they have stopped looking — and the resume
 	// countdown exists so picking up is not a jump-scare (docs/SPEC.md).
 	const heardGuard = changes<GuardPhase | undefined>((next, previous) => {
-		if (next === 'autopaused') play('block', { semitones: -5 });
+		if (next === 'autopaused')
+			play('block', {
+				semitones: -5,
+				say: 'Auto-paused: you stopped pedalling',
+			});
 		else if (next === 'resuming') playCountdownTick(3);
-		else if (next === 'running' && previous === 'resuming') play('go');
+		else if (next === 'running' && previous === 'resuming')
+			play('go', { say: 'Resumed' });
 	});
 	$effect(() => heardGuard(deps.guard()));
 
@@ -217,4 +230,20 @@ export function createRideSounds(deps: RideSoundDeps) {
 	$effect(() => {
 		if (deps.ended) heardEnd(deps.ended());
 	});
+}
+
+/** A fault kind as the caption says it (the banner's ranking, ChannelShell). */
+function faultWords(kind: string): string {
+	switch (kind) {
+		case 'trainer':
+			return 'Trainer lost';
+		case 'channel':
+			return 'Connection lost';
+		case 'voice':
+			return 'Voice dropped';
+		case 'mic':
+			return 'Microphone stopped';
+		default:
+			return 'Something broke';
+	}
 }

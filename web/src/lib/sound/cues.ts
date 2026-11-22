@@ -7,6 +7,7 @@ import {
 	scheduleVoices,
 } from '#lib/sound/cue-graph.ts';
 import { glideTo } from '#lib/sound/glide.ts';
+import { hear } from '#lib/sound/heard.svelte.ts';
 
 /**
  * Session sound design (WATTROOM.md feel layer, #33).
@@ -179,6 +180,8 @@ export interface CueTiming {
 	semitones?: number;
 	inMs?: number;
 	pan?: number;
+	/** What happened, in words, for the caption (heard.svelte.ts); else the cue's name. */
+	say?: string;
 }
 
 /** Past this a cue is in one ear, which reads as a broken headphone, not a place. */
@@ -189,12 +192,14 @@ let noise: AudioBuffer | undefined;
 
 export function play(
 	id: CueId,
-	{ semitones = 0, inMs = 0, pan = 0 }: CueTiming = {},
+	{ semitones = 0, inMs = 0, pan = 0, say }: CueTiming = {},
 ): void {
 	// debug-level so sound issues are diagnosable without ears on the machine
-	console.debug('[cue]', id, semitones || '');
+	console.debug('[cue]', id, semitones || '', say ?? '');
 	const audio = ensure();
 	if (!audio) return;
+	// Written down only when it can be heard: a caption for silence is noise.
+	if (!muted && volume > 0) hear(id, say);
 	const { ctx: context, master: out } = audio;
 	const now = context.currentTime + Math.max(0, inMs) / 1000 + 0.01;
 	const shift = Math.pow(2, semitones / 12);
