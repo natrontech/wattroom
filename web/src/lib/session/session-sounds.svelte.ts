@@ -47,7 +47,10 @@ export function createSessionSounds(deps: SoundDeps) {
 	// something different, and they were the silent one (#834). The block cue
 	// is exactly right for it: the target just changed.
 	const heardPause = changes<boolean>((paused) =>
-		play('block', { semitones: paused ? -5 : 0 }),
+		play('block', {
+			semitones: paused ? -5 : 0,
+			say: paused ? 'Session paused' : 'Session resumed',
+		}),
 	);
 	$effect(() => heardPause(deps.phase() === 'paused'));
 
@@ -56,7 +59,7 @@ export function createSessionSounds(deps: SoundDeps) {
 	// that as a crash rather than the coach stopping it.
 	const heardEnd = changes<string>((phase, previous) => {
 		if (phase === 'done' && (previous === 'running' || previous === 'paused'))
-			play('fanfare');
+			play('fanfare', { say: 'Session finished' });
 	});
 	$effect(() => heardEnd(deps.phase() ?? 'idle'));
 

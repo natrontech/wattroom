@@ -104,7 +104,15 @@ export function createWorldView(calm: typeof watchCalm = watchCalm) {
 			// A world that goes flat says so (ux.md: a state change announces
 			// itself with a sound and a visual, the visual the view switch's
 			// 3D segment): a rider who looked away missed it (#4217).
-			if (!failure) play('fault');
+			if (!failure)
+				play('fault', {
+					say:
+						why === 'frames'
+							? '3D world fell behind: flat road for now'
+							: why === 'context-lost'
+								? '3D world lost its graphics: flat road for now'
+								: '3D world did not load: flat road for now',
+				});
 			failure = why;
 			view = decide();
 			if (cameBack !== null && Date.now() - cameBack >= HELD_S * 1000)
@@ -120,7 +128,7 @@ export function createWorldView(calm: typeof watchCalm = watchCalm) {
 				failure = null;
 				view = decide();
 				cameBack = Date.now();
-				if (view === 'world') play('recover');
+				if (view === 'world') play('recover', { say: '3D world is back' });
 			}, RETURN_S[returns++]);
 		},
 		/**

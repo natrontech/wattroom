@@ -35,6 +35,8 @@ export function connectionCues({
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
 	let known: Set<string> | null = null;
+	// The roster the last look saw: who left is no longer in this one.
+	let lastRoster: { id: string; name: string }[] = [];
 	let lastPhase: string | null = null;
 
 	$effect(() => {
@@ -46,6 +48,8 @@ export function connectionCues({
 			known = null;
 			return;
 		}
+		const previous = lastRoster;
+		lastRoster = roster;
 		if (known === null) {
 			known = ids;
 			return;
@@ -57,7 +61,9 @@ export function connectionCues({
 		if (arrived.length > 0) {
 			// Once per tag across tabs, and the channel's name, not its slug.
 			if (!shouldAnnounce(`join-${address.key}-${at}`, at)) return;
-			play('join');
+			play('join', {
+				say: `${arrived.map((rider) => rider.name).join(', ')} joined the channel`,
+			});
 			notify.push(
 				address.name,
 				`${arrived.map((rider) => rider.name).join(', ')} joined the channel`,
@@ -65,7 +71,9 @@ export function connectionCues({
 				{ href: address.home },
 			);
 		} else if ([...before].some((id) => !ids.has(id))) {
-			play('leave');
+			play('leave', {
+				say: `${namesOf(previous, before, ids)} left the channel`,
+			});
 		}
 	});
 
@@ -97,7 +105,12 @@ export function connectionCues({
 			// A rider the last tick did not have is arriving, not coming
 			// back: that is the cue above's event, not this one's.
 			if (was === undefined || was === !!rider.away) continue;
-			play(rider.away ? 'leave' : 'join', { semitones: -7 });
+			play(rider.away ? 'leave' : 'join', {
+				semitones: -7,
+				say: rider.away
+					? `${rider.name} stepped away`
+					: `${rider.name} is back`,
+			});
 		}
 	});
 
@@ -128,8 +141,16 @@ export function connectionCues({
 		const before = knownVoice;
 		knownVoice = now;
 		if (before === null) return;
-		for (const change of comingsAndGoings(before, now, account.me?.id))
-			play(change.live ? 'join' : 'leave', { semitones: 7 });
+		const names = new Map(
+			(live.tick?.roster ?? []).map((rider) => [rider.id, rider.name]),
+		);
+		for (const change of comingsAndGoings(before, now, account.me?.id)) {
+			const who = names.get(change.rider) ?? 'Someone';
+			play(change.live ? 'join' : 'leave', {
+				semitones: 7,
+				say: change.live ? `${who} joined voice` : `${who} left voice`,
+			});
+		}
 	});
 
 	// Someone else's screen appearing announces itself (#664): while the
@@ -149,7 +170,8 @@ export function connectionCues({
 		const changes = screenShareChanges(knownScreens, now, account.me?.id);
 		knownScreens = now;
 		if (changes.length === 0) return;
-		if (changes.some((change) => change.live)) play('join');
+		if (changes.some((change) => change.live))
+			play('join', { say: 'A screen share started' });
 	});
 
 	// A DM, a poke or a bottle arriving mid-ride (#1743) does not toast:
@@ -244,4 +266,18 @@ export function connectionCues({
 				);
 		}
 	});
+}
+
+/** Who left between two looks, by name from the roster that still had them. */
+function namesOf(
+	roster: { id: string; name: string }[],
+	before: Set<string>,
+	now: Set<string>,
+): string {
+	const gone = roster.filter(
+		(rider) => before.has(rider.id) && !now.has(rider.id),
+	);
+	return gone.length > 0
+		? gone.map((rider) => rider.name).join(', ')
+		: 'Someone';
 }
