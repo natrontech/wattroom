@@ -400,7 +400,6 @@
 		running={running
 			? { workout: shared?.workoutName || 'the session', riders: inRide }
 			: null}
-		shelf={layers.setup.shelf}
 		who={layers.ride.who}
 		pick={layers.ride.pick}
 		onAlone={(id) => {
@@ -412,10 +411,12 @@
 			if (running)
 				void goto(joinSessionPath(channel.address.crew, running), GO);
 		}}
-		onJoinOwn={(workout) => {
-			// Beside the session, on this channel's riding surface (#2329).
+		onJoinOwn={(id) => {
+			// Chosen in the full picker, then ridden beside the session (#2329).
 			layers.ride.open = false;
-			void connection.ownRide.start(workout);
+			layers.openPicker('ride', id ?? undefined, undefined, {
+				opens: 'workouts',
+			});
 		}}
 		onJoinFree={() => {
 			layers.ride.open = false;
