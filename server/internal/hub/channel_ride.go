@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // validMetrics bounds WS input before it touches room state.
@@ -310,6 +311,11 @@ func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider pr
 	stopping := c.Action == "end" && (was == "countdown" || (was == "idle" && rm.session.open()))
 	stopped := rm.session.workoutName
 	plan := rm.session.plan
+	// Everyone rides a session's workout at their own FTP: steps written in
+	// watts become fractions of the picker's, who is who they were written for.
+	if c.Action == "pick" {
+		c.WorkoutJSON = workout.Relative(c.WorkoutJSON, rider.FtpWatts)
+	}
 	// The session answers first: a start the phase refuses — a stale coach
 	// tab, two coaches racing the countdown — used to wipe the running
 	// ride's record and roster before hearing no (audit 2026-09-09).
