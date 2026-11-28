@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.11.41] - 2026-11-28
+
+### Added
+
+- Every sound now shows a short caption saying what it meant, and a tap lists the recent ones, so a chime mid-ride is never a mystery. (#4629)
+
+### Fixed
+
+- In a crew session, a workout written in watts now scales to each rider's own FTP instead of handing everyone the coach's watts. (#4628)
+- In a voice channel, Ride → Alone now takes you straight to the ride setup instead of asking workout or free ride twice, and workouts are chosen from the full picker. The setup says a workout can ride along a road in ERG. (#4627)
+
 ## [2026.11.40] - 2026-11-16
 
 ### Added
@@ -4642,7 +4653,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.40...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.11.41...HEAD
+[2026.11.41]: https://github.com/natrontech/wattroom/compare/2026.11.40...2026.11.41
 [2026.11.40]: https://github.com/natrontech/wattroom/compare/2026.11.39...2026.11.40
 [2026.11.39]: https://github.com/natrontech/wattroom/compare/2026.11.38...2026.11.39
 [2026.11.38]: https://github.com/natrontech/wattroom/compare/2026.11.37...2026.11.38
